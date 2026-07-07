@@ -1,0 +1,608 @@
+
+<html lang="uk">
+<head>
+<meta charset="UTF-8" />
+<title>LiveMedCard — Аналіз архітектури</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+    font-size: 14px; line-height: 1.65;
+    background: #ffffff; color: #1f2328;
+    padding: 32px 16px 48px;
+  }
+  .page { max-width: 760px; margin: 0 auto; }
+  h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+  .subtitle { color: #57606a; font-size: 13px; margin-bottom: 28px; }
+  h2 { font-size: 16px; font-weight: 700; margin: 28px 0 10px; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; }
+  h3 { font-size: 14px; font-weight: 600; margin: 18px 0 6px; }
+  p { margin-bottom: 10px; }
+  code {
+    font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+    font-size: 12px; background: #f7f8fa; border: 1px solid #e5e7eb;
+    border-radius: 4px; padding: 1px 5px;
+  }
+  pre {
+    background: #f7f8fa; border: 1px solid #e5e7eb;
+    border-radius: 6px; padding: 12px 14px;
+    font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+    font-size: 12px; overflow-x: auto; margin-bottom: 12px; line-height: 1.5;
+  }
+
+  /* Scorecard */
+  .score-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+  .score-card {
+    background: #f7f8fa; border: 1px solid #e5e7eb; border-radius: 8px;
+    padding: 12px 14px; text-align: center;
+  }
+  .score-card .label { font-size: 11px; color: #57606a; margin-bottom: 4px; }
+  .score-card .value { font-size: 22px; font-weight: 700; }
+  .green { color: #1a7f37; }
+  .amber { color: #9a6700; }
+  .red   { color: #cf222e; }
+
+  /* Tag badges */
+  .tag {
+    display: inline-block; font-size: 11px; font-weight: 600; border-radius: 4px;
+    padding: 2px 7px; margin-right: 4px; vertical-align: middle;
+  }
+  .tag-good { background: #dafbe1; color: #1a7f37; }
+  .tag-warn { background: #fff8c5; color: #9a6700; }
+  .tag-bad  { background: #ffebe9; color: #cf222e; }
+  .tag-info { background: #ddf4ff; color: #0550ae; }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 13px; }
+  thead th {
+    background: #f7f8fa; text-align: left;
+    padding: 7px 10px; border: 1px solid #e5e7eb; font-weight: 600;
+  }
+  td { padding: 6px 10px; border: 1px solid #e5e7eb; vertical-align: top; }
+  tr:nth-child(even) td { background: #fafbfc; }
+
+  /* Findings list */
+  .finding {
+    border: 1px solid #e5e7eb; border-radius: 6px;
+    margin-bottom: 12px; overflow: hidden;
+  }
+  .finding-header {
+    display: flex; align-items: center; gap: 8px;
+    background: #f7f8fa; padding: 8px 12px;
+    font-weight: 600; font-size: 13px;
+  }
+  .finding-body { padding: 10px 12px; }
+  .finding-body p { margin-bottom: 6px; }
+
+  /* Architecture diagram (text-art) */
+  .diagram {
+    background: #f7f8fa; border: 1px solid #e5e7eb; border-radius: 6px;
+    padding: 14px 16px; font-family: ui-monospace, Consolas, monospace;
+    font-size: 12px; line-height: 1.7; margin-bottom: 14px; overflow-x: auto;
+  }
+
+  /* Priority table pills */
+  .p0 { font-weight: 700; color: #cf222e; }
+  .p1 { font-weight: 700; color: #9a6700; }
+  .p2 { font-weight: 700; color: #0550ae; }
+
+  /* Numbered list */
+  ol { padding-left: 20px; margin-bottom: 12px; }
+  ol li { margin-bottom: 6px; }
+  ul { padding-left: 20px; margin-bottom: 12px; }
+  ul li { margin-bottom: 4px; }
+
+  .muted { color: #57606a; font-size: 12px; }
+
+  footer {
+    margin-top: 48px; padding-top: 14px; border-top: 1px solid #e5e7eb;
+    text-align: center; color: #57606a; font-size: 12px;
+  }
+
+  .divider { height: 1px; background: #e5e7eb; margin: 22px 0; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <h1>LiveMedCard — Аналіз архітектури та рекомендації</h1>
+  <p class="subtitle">
+    Digital Future Hackathon MVP · Python 3.12 · FastAPI + Pydantic v2 + networkx
+    · Архітектура TRACE · ~1 600 рядків Python, 13 модулів, 43 тести
+  </p>
+
+  
+  <div class="score-grid">
+    <div class="score-card">
+      <div class="label">Архітектурна цілісність</div>
+      <div class="value green">9 / 10</div>
+    </div>
+    <div class="score-card">
+      <div class="label">Якість коду</div>
+      <div class="value green">8 / 10</div>
+    </div>
+    <div class="score-card">
+      <div class="label">Готовність до prod</div>
+      <div class="value amber">4 / 10</div>
+    </div>
+    <div class="score-card">
+      <div class="label">Безпека / регуляція</div>
+      <div class="value green">7 / 10</div>
+    </div>
+    <div class="score-card">
+      <div class="label">Тестове покриття</div>
+      <div class="value amber">6 / 10</div>
+    </div>
+    <div class="score-card">
+      <div class="label">Розширюваність</div>
+      <div class="value green">8 / 10</div>
+    </div>
+  </div>
+
+  
+  <h2>Поточна архітектура (потік даних)</h2>
+  <div class="diagram">
+Document (text/фото*)
+    │
+    ▼  L2b  ─ StubExtractor (словниковий regex)  →  [MedGemma on-device†]
+ExtractionResult  {Observation, Condition, MedicationRequest + Provenance}
+    │                           │
+    ▼                           ▼
+FactStore (KV-T)        KnowledgeGraph (networkx)
+  per-LOINC series        провенанс + зв'язки
+    │                           │
+    ▼  L1 ─ check_interactions     ▼
+    ▼  L2a ─ detect_trends      grounded Q&amp;A
+list[Signal]
+    │
+    ▼  L3  ─ route()  →  Decision (auto | L4_human)
+    ▼  L4  ─ людина (родина / лікар)
+
+* OCR ще не реалізовано   † запланований реальний екстрактор
+  </div>
+
+  
+  <h2>1. Сильні сторони</h2>
+
+  <div class="finding">
+    <div class="finding-header"><span class="tag tag-good">ДОБРЕ</span>Головний інваріант дотримано на рівні коду</div>
+    <div class="finding-body">
+      <p>Сигнали безпеки формуються <strong>детерміновано</strong> на <code>FactStore</code> (L1/L2a), а
+      L2b <em>лише витягує факти</em> без висновків. Це операціоналізований людський нагляд — відповідь на EU AI Act ст. 14 ще до MVP.</p>
+      <p><code>l3_router.route()</code> ескалює незалежно від впевненості витягу, якщо є <em>major/critical</em>-сигнал
+      — правильна семантика: сигнал на факт-сторі достовірний завжди.</p>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header"><span class="tag tag-good">ДОБРЕ</span>Чіткі контракти між шарами</div>
+    <div class="finding-body">
+      <p>Єдиний тип <code>Signal(layer, kind, severity, confidence)</code> повністю роз'єднує L3 від реалізацій
+      L1 та L2a. Protocol <code>Extractor</code> дає clean-room підміну <code>StubExtractor</code> →
+      <code>MedGemmaExtractor</code> без зміни конвеєра.</p>
+      <p>FHIR-вирівняні Pydantic-моделі з кодами LOINC/RxNorm/SNOMED закладають сумісність з eHealth без переписування.</p>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header"><span class="tag tag-good">ДОБРЕ</span>Два узгоджених сховища з ідемпотентністю</div>
+    <div class="finding-body">
+      <p><code>FactStore</code> — ідемпотентний за <code>obs_id</code>: повторний ingest того ж документа не дублює факти.
+      <code>KnowledgeGraph</code> зберігає провенанс-ребра (derived_from), що дозволяє кожній Q&amp;A-відповіді посилатися
+      на документ-джерело.</p>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header"><span class="tag tag-good">ДОБРЕ</span>LiveMedCard — єдине джерело істини</div>
+    <div class="finding-body">
+      <p><code>pipeline.LiveMedCard</code> зберігає <em>канонічні FHIR-ресурси</em>; <code>FactStore</code> і
+      <code>KnowledgeGraph</code> — похідні проєкції. Це дає симетричний <code>snapshot/from_snapshot</code>,
+      FHIR Bundle export/import і аудит L3 без додаткової синхронізації.</p>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header"><span class="tag tag-good">ДОБРЕ</span>Typed reference models + sex-aware ranges</div>
+    <div class="finding-body">
+      <p><code>refmodels.py</code> + <code>reference.range_for(loinc, sex)</code> — референсні межі з урахуванням статі
+      (напр. креатинін ♀ ≤ 90 vs ♂ ≤ 106). Це не косметика: тест
+      <code>test_female_creatinine_breach_uses_sex_range</code> ловить клінічно значущий кейс.</p>
+    </div>
+  </div>
+
+  
+  <h2>2. Знайдені проблеми</h2>
+
+  <div class="finding">
+    <div class="finding-header"><span class="tag tag-bad">КРИТИЧНО</span>Глобальний mutable стан у API</div>
+    <div class="finding-body">
+      <p>У <code>api.py</code> є глобальна змінна <code>_card: LiveMedCard</code>, яку
+      <code>reset</code> та <code>import_bundle</code> перезаписують через <code>global _card</code>.
+      При будь-якій багатопотоковості (навіть кілька вкладок браузера) — race condition.</p>
+      <p><strong>Ризик:</strong> пацієнт A бачить дані пацієнта B після reset; аудит змішується.</p>
+      <pre>
+# api.py — зараз
+_card = LiveMedCard(_new_patient())  # module-level singleton
+
+@app.post("/reset")
+def reset():
+    global _card              # ← небезпечно при concurrency
+    _card = LiveMedCard(_new_patient())
+      </pre>
+      <p><strong>Рекомендація:</strong> помістити <code>_card</code> у FastAPI dependency
+      або використати <code>asyncio.Lock</code>; для prod — виокремити стан у repository-шар
+      з per-patient ізоляцією.</p>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header"><span class="tag tag-bad">КРИТИЧНО</span>Немає автентифікації та ізоляції пацієнтів</div>
+    <div class="finding-body">
+      <p>Будь-хто, хто знає URL, бачить медичні дані, може скинути картку або імпортувати
+      довільний Bundle. Для хакатону прийнятно, для будь-якого реального розгортання —
+      GDPR / Закон про персональні дані.</p>
+      <p><strong>Рекомендація (мін.):</strong> JWT або OAuth2 Bearer токен через
+      <code>fastapi.security</code>; кожен пацієнт — окремий <code>LiveMedCard</code> з ізольованим
+      сховищем.</p>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header"><span class="tag tag-warn">ВАЖЛИВО</span>reference.py — відсутність кешу на рівні об'єктів</div>
+    <div class="finding-body">
+      <p><code>_raw(name)</code> кешовано через <code>@lru_cache</code>, але <code>load_interactions()</code>,
+      <code>load_dose_limits()</code>, <code>load_vocab()</code> щоразу будують <em>нові</em>
+      Pydantic-об'єкти:</p>
+      <pre>
+def load_interactions() -&gt; list[Interaction]:
+    return [Interaction(**p) for p in _raw("interactions.json")["pairs"]]
+# ↑ викликається кожного ingest() → нові об'єкти кожного разу
+      </pre>
+      <p>При великих БД (тисячі взаємодій) це помітне зайве навантаження. L1 перебудовує
+      <code>pair_map</code> при кожному виклику <code>check_interactions()</code>.</p>
+      <p><strong>Рекомендація:</strong> додати <code>@lru_cache</code> або модуль-рівневий singleton на самі
+      <code>load_*</code> функції; <code>pair_map</code> в L1 — модуль-рівнева константа.</p>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header"><span class="tag tag-warn">ВАЖЛИВО</span>l2b_extractor — confidence захардкоджений як 0.95</div>
+    <div class="finding-body">
+      <p>StubExtractor виставляє <code>confidence=0.95</code> для <em>кожного</em> витягнутого факту,
+      незалежно від якості. Це магічна константа без тесту на граничний випадок.</p>
+      <pre>
+provenance=Provenance(
+    source_doc_id=doc.id,
+    extracted_by="StubExtractor",
+    confidence=0.95,   # ← завжди 0.95, навіть для нечіткого матчингу
+)
+      </pre>
+      <p><strong>Рекомендація:</strong> винести в <code>config.py</code> як <code>STUB_CONFIDENCE = 0.95</code>;
+      при переході на реальний екстрактор — confidence залежить від модельної впевненості токена.</p>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header"><span class="tag tag-warn">ВАЖЛИВО</span>QA.ask() — keyword matching без нормалізації</div>
+    <div class="finding-body">
+      <p>Маршрутизація питань у <code>qa.py</code> — проста перевірка <code>kw in q</code> по
+      <code>_KEYWORD_TO_LOINC</code>. Перефразування, помилки друку, синоніми — мовчазна
+      порожня відповідь.</p>
+      <pre>
+_KEYWORD_TO_LOINC = {
+    "нирк": "2160-0",
+    "креатинін": "2160-0",
+    ...
+}
+# "Яка функція нирок?" → спрацює; "Нирки в порядку?" → спрацює;
+# "Чи норм філтрація?" → не спрацює → "Не вдалося зіставити..."
+      </pre>
+      <p><strong>Рекомендація:</strong> додати fuzzy-matching або просту TF-IDF схожість для
+      fallback; або перейти на embedding-based retrieval при підключенні MedGemma.</p>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header"><span class="tag tag-warn">ВАЖЛИВО</span>FactStore.series() — O(n) кожного виклику</div>
+    <div class="finding-body">
+      <p><code>series(loinc)</code> лінійно проходить увесь <code>_facts</code> при кожному зверненні.
+      Метод <code>current_signals()</code> викликається на кожному <code>ingest</code> та кожному
+      GET <code>/state</code> — і всередині двічі обходить весь стор (trend + breach).</p>
+      <p><strong>Рекомендація:</strong> зберігати індекс <code>dict[loinc, list[KVTFact]]</code>
+      поруч із <code>_facts</code>; тоді <code>series()</code> — O(1) lookup + O(k log k) сортування
+      (k — кількість вимірів одного показника).</p>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header"><span class="tag tag-warn">ВАЖЛИВО</span>Observation ID — не стабільний між запусками</div>
+    <div class="finding-body">
+      <p>StubExtractor генерує id як <code>f"{doc.id}-obs-{i}"</code> де <code>i</code> — порядок
+      знахідок у конкретному документі. Якщо словник <code>vocab.json</code> зміниться або
+      порядок матчингу зміниться — id зміниться, і <code>FactStore</code> втратить ідемпотентність
+      при завантаженні snapshot зі старими ids.</p>
+      <p><strong>Рекомендація:</strong> id = детермінований хеш від <code>(doc.id, loinc, effectiveDateTime)</code>
+      — стабільний і колізієстійкий.</p>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header"><span class="tag tag-warn">ВАЖЛИВО</span>Аудит: _audit — mutable dict без схеми</div>
+    <div class="finding-body">
+      <p><code>_audit</code> — список <code>dict</code> без типізації. Немає гарантії структури між
+      версіями; <code>from_snapshot</code> відновлює їх «як є» без валідації.</p>
+      <p><strong>Рекомендація:</strong> визначити <code>AuditEntry(BaseModel)</code> в <code>dto.py</code>;
+      серіалізація через <code>model_dump()</code>, десеріалізація через <code>AuditEntry(**a)</code>.</p>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header"><span class="tag tag-info">НОТАТКА</span>Статичні файли та data/*.json не входять у wheel</div>
+    <div class="finding-body">
+      <p><code>pyproject.toml</code> пакує лише Python-модулі. При <code>pip install livemedcard</code>
+      бракуватиме <code>static/index.html</code> і всіх <code>data/*.json</code>.</p>
+      <pre>
+# pyproject.toml — додати:
+[tool.hatch.build.targets.wheel]
+packages = ["livemedcard"]
+artifacts = ["livemedcard/static", "livemedcard/data"]
+      </pre>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header"><span class="tag tag-info">НОТАТКА</span>Немає CI / linter / type check</div>
+    <div class="finding-body">
+      <p>Репозиторій має <code>.github/</code>-директорію, але немає workflow для автоматичного
+      запуску pytest, ruff і mypy/pyright на кожному PR. Тести написані — автоматизація
+      відсутня.</p>
+      <p><strong>Рекомендація:</strong> мінімальний <code>.github/workflows/ci.yml</code> на
+      <code>uv run --extra dev pytest -q</code> + <code>ruff check livemedcard/</code>.</p>
+    </div>
+  </div>
+
+  
+  <h2>3. Пріоритезовані рекомендації</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Пріоритет</th>
+        <th>Рекомендація</th>
+        <th>Зусилля</th>
+        <th>Де</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="p0">P0</span></td>
+        <td>Прибрати global <code>_card</code>; ізолювати стан через FastAPI Dependency або per-request scope</td>
+        <td>S</td>
+        <td><code>api.py</code></td>
+      </tr>
+      <tr>
+        <td><span class="p0">P0</span></td>
+        <td>Мінімальна автентифікація (Bearer токен) + заглушка multi-patient (dict[patient_id, LiveMedCard])</td>
+        <td>M</td>
+        <td><code>api.py</code></td>
+      </tr>
+      <tr>
+        <td><span class="p0">P0</span></td>
+        <td>Стабільний детермінований ID для Observation: hash(doc_id + loinc + ts)</td>
+        <td>S</td>
+        <td><code>l2b_extractor.py</code></td>
+      </tr>
+      <tr>
+        <td><span class="p0">P0</span></td>
+        <td>Типізований <code>AuditEntry(BaseModel)</code> в <code>dto.py</code></td>
+        <td>S</td>
+        <td><code>dto.py</code>, <code>pipeline.py</code></td>
+      </tr>
+      <tr>
+        <td><span class="p0">P0</span></td>
+        <td>GitHub Actions CI: pytest + ruff</td>
+        <td>S</td>
+        <td><code>.github/workflows/</code></td>
+      </tr>
+      <tr>
+        <td><span class="p1">P1</span></td>
+        <td>Індекс у FactStore: <code>dict[str, list[KVTFact]]</code> для O(1) <code>series()</code></td>
+        <td>S</td>
+        <td><code>stores.py</code></td>
+      </tr>
+      <tr>
+        <td><span class="p1">P1</span></td>
+        <td>Кеш на <code>load_*</code> функціях (<code>@lru_cache</code>) і модуль-рівневий <code>pair_map</code> в L1</td>
+        <td>S</td>
+        <td><code>reference.py</code>, <code>l1_safety.py</code></td>
+      </tr>
+      <tr>
+        <td><span class="p1">P1</span></td>
+        <td>Винести <code>STUB_CONFIDENCE = 0.95</code> у <code>config.py</code></td>
+        <td>XS</td>
+        <td><code>l2b_extractor.py</code>, <code>config.py</code></td>
+      </tr>
+      <tr>
+        <td><span class="p1">P1</span></td>
+        <td>Пакування <code>static/</code> + <code>data/</code> у wheel artifacts</td>
+        <td>XS</td>
+        <td><code>pyproject.toml</code></td>
+      </tr>
+      <tr>
+        <td><span class="p1">P1</span></td>
+        <td>Реальний OCR pipeline (Apple Vision / Tesseract → <code>Document.text</code>)</td>
+        <td>M</td>
+        <td>новий модуль <code>ocr.py</code></td>
+      </tr>
+      <tr>
+        <td><span class="p1">P1</span></td>
+        <td>Замінити StubExtractor на MedGemma 4B зі schema-guided generation</td>
+        <td>L</td>
+        <td><code>l2b_extractor.py</code></td>
+      </tr>
+      <tr>
+        <td><span class="p2">P2</span></td>
+        <td>Fuzzy / embedding-based routing у QA.ask()</td>
+        <td>M</td>
+        <td><code>qa.py</code></td>
+      </tr>
+      <tr>
+        <td><span class="p2">P2</span></td>
+        <td>Розширення довідкових БД (NLM DDI, повний LOINC, дозові межі з формами)</td>
+        <td>M</td>
+        <td><code>data/*.json</code></td>
+      </tr>
+      <tr>
+        <td><span class="p2">P2</span></td>
+        <td>mypy / pyright strict + ruff у pyproject.toml</td>
+        <td>S</td>
+        <td><code>pyproject.toml</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  
+  <h2>4. Конкретні quick-fix приклади</h2>
+
+  <h3>4.1 Стабільний ID для Observation (l2b_extractor.py)</h3>
+  <pre>
+import hashlib
+
+def _obs_id(doc_id: str, loinc: str, ts: str) -&gt; str:
+    key = f"{doc_id}|{loinc}|{ts}"
+    return "obs-" + hashlib.sha1(key.encode()).hexdigest()[:12]
+
+# використання:
+observations.append(
+    Observation(
+        id=_obs_id(doc.id, info.loinc, str(doc.received_at)),
+        ...
+    )
+)
+  </pre>
+
+  <h3>4.2 Індекс у FactStore (stores.py)</h3>
+  <pre>
+class FactStore:
+    def __init__(self) -&gt; None:
+        self._by_loinc: dict[str, list[KVTFact]] = {}
+        self._seen_ids: set[str] = set()
+
+    def add_observation(self, o: Observation) -&gt; Optional[KVTFact]:
+        if o.id in self._seen_ids:
+            return None
+        fact = observation_to_kvt(o)
+        if fact is not None:
+            self._by_loinc.setdefault(fact.loinc or "", []).append(fact)
+            self._seen_ids.add(o.id)
+        return fact
+
+    def series(self, loinc: str) -&gt; list[KVTFact]:
+        return sorted(self._by_loinc.get(loinc, []), key=lambda f: f.ts)
+
+    def loincs(self) -&gt; list[str]:
+        return list(self._by_loinc)
+  </pre>
+
+  <h3>4.3 Кеш пари взаємодій у L1 (l1_safety.py)</h3>
+  <pre>
+from ..reference import load_interactions
+
+# Один раз при імпорті модуля — не перебудовувати щоразу
+_PAIR_MAP = {entry.pair(): entry for entry in load_interactions()}
+
+def check_interactions(meds: list[MedicationRequest]) -&gt; list[Signal]:
+    signals: list[Signal] = []
+    for m1, m2 in combinations(meds, 2):
+        ...
+        entry = _PAIR_MAP.get(frozenset((rx1, rx2)))   # O(1)
+        ...
+  </pre>
+
+  <h3>4.4 AuditEntry як Pydantic-модель (dto.py)</h3>
+  <pre>
+class AuditEntry(BaseModel):
+    ts: datetime
+    document_id: str
+    kind: str
+    extraction_confidence: float
+    n_signals: int
+    route_to: Literal["auto", "L4_human"]
+    escalate: bool
+
+# pipeline.py — _record_audit:
+self._audit.append(AuditEntry(
+    ts=datetime.now(timezone.utc),
+    document_id=doc.id,
+    ...
+).model_dump(mode="json"))
+  </pre>
+
+  
+  <h2>5. Прогалини в тестовому покритті</h2>
+  <table>
+    <thead>
+      <tr><th>Модуль</th><th>Що не покрито</th><th>Пріоритет</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>api.py</code></td>
+        <td>HTTP-ендпойнти через TestClient (httpx); race condition на reset</td>
+        <td><span class="p0">P0</span></td>
+      </tr>
+      <tr>
+        <td><code>qa.py</code></td>
+        <td>Незнайомий запит → fallback-відповідь; пустий FactStore</td>
+        <td><span class="p1">P1</span></td>
+      </tr>
+      <tr>
+        <td><code>bundle.py</code></td>
+        <td>Bundle без Patient → ValueError; невідомий resourceType ігнорується</td>
+        <td><span class="p1">P1</span></td>
+      </tr>
+      <tr>
+        <td><code>l2b_extractor.py</code></td>
+        <td>Дублікат obs при повторному ingest; порожній документ → confidence=0.0</td>
+        <td><span class="p1">P1</span></td>
+      </tr>
+      <tr>
+        <td><code>repository.py</code></td>
+        <td>Пошкоджений JSON → виняток; snapshot версії N → load версії N+1</td>
+        <td><span class="p2">P2</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  
+  <h2>6. Що НЕ треба змінювати</h2>
+  <ul>
+    <li><strong>Головний інваріант TRACE</strong> (детерм. сигнали на FactStore, L2b лише витяг) — архітектурна основа, зберігати при будь-яких змінах.</li>
+    <li><strong>Extractor Protocol</strong> — чистий інтерфейс для підміни на MedGemma без торкання конвеєра.</li>
+    <li><strong>LiveMedCard як єдине джерело істини</strong> з snapshot/from_snapshot — симетрична серіалізація, потрібно лише додати AuditEntry-типізацію.</li>
+    <li><strong>FHIR-вирівняні Pydantic моделі</strong> — закладають сумісність з eHealth; розширювати, не замінювати.</li>
+    <li><strong>Детермінований StubExtractor</strong> — правильний дефолт для MVP; залишити як fallback і regression fixture навіть після MedGemma.</li>
+    <li><strong>local-first JSON persistence</strong> — правильна відповідь на «медичні дані не залишають пристрій»; SQLite — природна наступна сходинка, не Postgres.</li>
+  </ul>
+
+  
+  <h2>7. Підсумок</h2>
+  <p>
+    LiveMedCard — технічно зрілий MVP для 48 год. хакатону. Архітектурний каркас TRACE
+    реалізовано правильно: межа між детермінованим та генеративним збережена в коді, а не
+    лише в документації. Основні ризики — не в архітектурі, а в <strong>production-readiness</strong>:
+    глобальний стан, відсутня автентифікація, нестабільні ID ресурсів.
+  </p>
+  <p>
+    Пріоритет P0 (~2–3 год. роботи): прибрати <code>global _card</code>, стабілізувати ID,
+    типізувати аудит, додати CI. Це перетворює демонстратор на код, який можна показувати
+    інвесторам без застережень.
+  </p>
+  <p>
+    Пріоритет P1 (~1–2 тижні): OCR pipeline, real MedGemma extractor, per-patient isolation
+    — перетворює прототип на придатний до пілоту продукт без зміни архітектури.
+  </p>
+
+  <footer>Made with IBM Bob</footer>
+</div>
+</body>
+</html>

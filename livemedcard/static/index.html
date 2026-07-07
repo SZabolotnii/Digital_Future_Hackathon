@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LiveMedCard — жива медична картка</title>
+<style>
+  :root{
+    --bg:#eef1f6; --panel:#ffffff; --ink:#16202e; --muted:#5c6b7d;
+    --line:#dce3ec; --accent:#1a4d8f; --accent-soft:#e8eff8;
+    --band:rgba(42,127,98,.12);
+    --critical:#8f1d14; --major:#d1453b; --moderate:#c07700; --info:#5a6b7b;
+    --ok:#1e7d3a;
+    --shadow:0 1px 2px rgba(16,32,46,.06),0 6px 18px rgba(16,32,46,.05);
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#0e1520; --panel:#161f2c; --ink:#e6edf5; --muted:#93a3b6;
+      --line:#243244; --accent:#6ea8f0; --accent-soft:#182436;
+      --band:rgba(72,187,148,.16);
+      --critical:#ff7a6b; --major:#ff8a7d; --moderate:#e5a23a; --info:#93a3b6; --ok:#5fd08a;
+      --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 22px rgba(0,0,0,.3);
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Ubuntu,sans-serif;}
+  a{color:var(--accent)}
+  .wrap{max-width:1100px;margin:0 auto;padding:20px 18px 60px}
+  header.top{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px 16px;margin-bottom:6px}
+  header.top h1{font-size:22px;margin:0;letter-spacing:-.01em}
+  header.top .sub{color:var(--muted);font-size:13px}
+  .badge{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:600;line-height:1.7}
+  .toolbar{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 18px}
+  button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--panel);
+    color:var(--ink);border-radius:9px;padding:8px 14px;transition:.12s}
+  button:hover{border-color:var(--accent)}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  button.primary:hover{filter:brightness(1.06)}
+  button.ghost{background:transparent}
+  .grid{display:grid;grid-template-columns:1fr;gap:16px}
+  @media(min-width:820px){.grid{grid-template-columns:1.15fr .85fr}}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:16px;box-shadow:var(--shadow)}
+  .panel h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);
+    margin:0 0 12px}
+  .series{display:grid;gap:12px}
+  .metric{border:1px solid var(--line);border-radius:11px;padding:12px 12px 8px;background:var(--bg)}
+  .metric .row{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .metric .name{font-weight:600}
+  .metric .val{font-variant-numeric:tabular-nums;font-weight:700;font-size:17px}
+  .metric .status{font-size:12px;font-weight:600}
+  .status.ok{color:var(--ok)} .status.high{color:var(--major)} .status.low{color:var(--moderate)}
+  .metric .src{color:var(--muted);font-size:11px;margin-top:2px}
+  .sig{display:flex;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+  .sig:first-of-type{border-top:none}
+  .sig .dot{flex:0 0 auto;width:10px;height:10px;border-radius:50%;margin-top:5px}
+  .sig .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+  .sig .d{font-size:14px}
+  .decision{display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:10px 12px;
+    border-radius:11px;border:1px solid var(--line)}
+  .decision.escalate{background:color-mix(in srgb,var(--major) 12%,transparent);border-color:var(--major)}
+  .decision.auto{background:color-mix(in srgb,var(--ok) 12%,transparent);border-color:var(--ok)}
+  .decision .t{font-weight:700}
+  .reasons{margin:6px 0 0;padding-left:18px;color:var(--muted);font-size:12.5px}
+  .meds{display:flex;flex-wrap:wrap;gap:8px}
+  .pill{background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:5px 12px;
+    font-size:13px;font-weight:600}
+  .empty{color:var(--muted);font-size:13px;padding:6px 0}
+  /* QA */
+  .qa .log{display:grid;gap:10px;margin-bottom:12px;max-height:340px;overflow:auto}
+  .bubble{padding:10px 13px;border-radius:12px;max-width:92%;white-space:pre-wrap}
+  .bubble.q{justify-self:end;background:var(--accent);color:#fff;border-bottom-right-radius:4px}
+  .bubble.a{justify-self:start;background:var(--bg);border:1px solid var(--line);border-bottom-left-radius:4px}
+  .bubble .src{display:block;margin-top:6px;font-size:11px;color:var(--muted)}
+  .askrow{display:flex;gap:8px}
+  .askrow input{flex:1;font:inherit;padding:10px 12px;border-radius:10px;border:1px solid var(--line);
+    background:var(--panel);color:var(--ink)}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .chip{font-size:12px;color:var(--accent);background:transparent;border:1px solid var(--line);
+    border-radius:999px;padding:4px 10px}
+  .add{margin-top:12px;display:none;gap:8px;grid-template-columns:1fr;background:var(--bg);
+    border:1px dashed var(--line);border-radius:11px;padding:12px}
+  .add.show{display:grid}
+  .add textarea{font:inherit;min-height:80px;border-radius:9px;border:1px solid var(--line);
+    padding:9px;background:var(--panel);color:var(--ink);resize:vertical}
+  .add select{font:inherit;padding:8px;border-radius:9px;border:1px solid var(--line);
+    background:var(--panel);color:var(--ink)}
+  footer{color:var(--muted);font-size:12px;margin-top:26px;text-align:center}
+  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);
+    color:var(--bg);padding:10px 16px;border-radius:10px;box-shadow:var(--shadow);opacity:0;
+    transition:.25s;pointer-events:none}
+  .toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>LiveMedCard</h1>
+    <span class="sub">жива медична картка · архітектура TRACE</span>
+    <span id="patient" class="sub" style="margin-left:auto"></span>
+  </header>
+
+  <div class="toolbar">
+    <button class="primary" id="btn-samples">Завантажити демо-документи</button>
+    <button class="ghost" id="btn-add">+ Додати документ</button>
+    <button class="ghost" id="btn-export">Експорт FHIR</button>
+    <button class="ghost" id="btn-reset">Скинути картку</button>
+  </div>
+
+  <div class="add" id="add-form">
+    <textarea id="add-text" placeholder="Вставте текст документа, напр.: «Креатинін 121 µmol/L. Призначено: аспірин 100 мг на добу.»"></textarea>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <select id="add-kind">
+        <option value="discharge_summary">Виписний епікриз</option>
+        <option value="lab_report">Лабораторний звіт</option>
+        <option value="prescription">Рецепт</option>
+        <option value="note">Нотатка</option>
+      </select>
+      <button class="primary" id="add-submit">Обробити документ</button>
+    </div>
+  </div>
+
+  <div class="grid" style="margin-top:16px">
+    <section class="panel">
+      <h2>Таймлайн показників</h2>
+      <div class="series" id="series"><div class="empty">Даних ще немає. Завантажте демо-документи.</div></div>
+    </section>
+
+    <div style="display:grid;gap:16px">
+      <section class="panel">
+        <h2>Безпека — шар TRACE</h2>
+        <div id="decision"></div>
+        <div id="signals"><div class="empty">Сигналів немає.</div></div>
+      </section>
+      <section class="panel">
+        <h2>Призначені ліки</h2>
+        <div class="meds" id="meds"><div class="empty">Ліків немає.</div></div>
+      </section>
+    </div>
+  </div>
+
+  <section class="panel qa" style="margin-top:16px">
+    <h2>Запитати картку</h2>
+    <div class="log" id="log"></div>
+    <div class="askrow">
+      <input id="q" placeholder="Напр.: Що з нирками за останній рік?" autocomplete="off">
+      <button class="primary" id="ask">Спитати</button>
+    </div>
+    <div class="chips" id="chips"></div>
+  </section>
+
+  <footer>Прототип для Digital Future Hackathon. Система структурує факти й показує динаміку — не ставить діагнозів.</footer>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const SEV = {critical:'var(--critical)',major:'var(--major)',moderate:'var(--moderate)',info:'var(--info)'};
+const SEV_UK = {critical:'критичний',major:'високий',moderate:'помірний',info:'інфо'};
+
+function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');
+  clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2600);}
+
+async function api(path, opts){const r=await fetch(path,opts);if(!r.ok)throw new Error(path+' '+r.status);
+  return r.status===204?null:r.json();}
+
+function sparkline(points, low, high){
+  const w=280,h=66,pad=8;
+  const vals=points.map(p=>p.value);
+  let min=Math.min(...vals), max=Math.max(...vals);
+  if(low!=null)min=Math.min(min,low); if(high!=null)max=Math.max(max,high);
+  if(min===max){min-=1;max+=1;}
+  const X=i=>points.length===1?w/2:pad+i*(w-2*pad)/(points.length-1);
+  const Y=v=>h-pad-(v-min)/(max-min)*(h-2*pad);
+  let band='';
+  if(low!=null&&high!=null){const y1=Y(high),y2=Y(low);
+    band=`<rect x="0" y="${y1.toFixed(1)}" width="${w}" height="${Math.max(0,y2-y1).toFixed(1)}" fill="var(--band)"/>`;}
+  const d=points.map((p,i)=>`${i?'L':'M'}${X(i).toFixed(1)},${Y(p.value).toFixed(1)}`).join(' ');
+  const last=points[points.length-1];
+  const breach=(low!=null&&last.value<low)||(high!=null&&last.value>high);
+  const dots=points.map((p,i)=>{const isLast=i===points.length-1;
+    return `<circle cx="${X(i).toFixed(1)}" cy="${Y(p.value).toFixed(1)}" r="${isLast?4:2.4}" fill="${isLast&&breach?'var(--major)':'var(--accent)'}"/>`;}).join('');
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" preserveAspectRatio="none" style="display:block;margin-top:8px">
+    ${band}<path d="${d}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>${dots}</svg>`;
+}
+
+function statusOf(s){
+  if(s.high!=null && s.points.at(-1).value>s.high) return ['вище норми','high'];
+  if(s.low!=null && s.points.at(-1).value<s.low) return ['нижче норми','low'];
+  if(s.low!=null||s.high!=null) return ['у нормі','ok'];
+  return ['',''];
+}
+
+function render(st){
+  $('#patient').textContent = `Пацієнт: ${st.patient.id} · документів: ${st.document_count}`;
+
+  // series
+  const sEl=$('#series');
+  if(!st.series.length){sEl.innerHTML='<div class="empty">Даних ще немає. Завантажте демо-документи.</div>';}
+  else{sEl.innerHTML=st.series.map(s=>{
+    const last=s.points.at(-1);const [txt,cls]=statusOf(s);
+    const ref=(s.low!=null&&s.high!=null)?`норма ${s.low}–${s.high} ${s.unit||''}`:'';
+    return `<div class="metric">
+      <div class="row"><span class="name">${s.keyword}</span>
+        <span class="val">${last.value} ${s.unit||''}</span></div>
+      <div class="row"><span class="src">${ref}</span>
+        <span class="status ${cls}">${txt}</span></div>
+      ${sparkline(s.points,s.low,s.high)}
+      <div class="src">${s.points.length} вимір. · джерела: ${[...new Set(s.points.map(p=>p.source).filter(Boolean))].join(', ')||'—'}</div>
+    </div>`;}).join('');}
+
+  // decision
+  const d=st.decision;const dEl=$('#decision');
+  dEl.className='decision '+(d.escalate?'escalate':'auto');
+  dEl.innerHTML=`<span class="badge" style="background:${d.escalate?'var(--major)':'var(--ok)'};color:#fff">
+    ${d.escalate?'ескалація до людини (L4)':'автоматична обробка'}</span>
+    <span class="t">${d.route_to}</span>
+    <ul class="reasons">${d.reasons.map(r=>`<li>${r}</li>`).join('')}</ul>`;
+
+  // signals
+  const sig=$('#signals');
+  if(!st.signals.length){sig.innerHTML='<div class="empty">Сигналів немає — показники в межах, небезпечних взаємодій не виявлено.</div>';}
+  else{sig.innerHTML=st.signals.map(x=>`<div class="sig">
+      <span class="dot" style="background:${SEV[x.severity]||'var(--info)'}"></span>
+      <span><span class="k">${x.layer} · ${x.kind} · ${SEV_UK[x.severity]||x.severity}</span><br>
+      <span class="d">${x.detail}</span></span></div>`).join('');}
+
+  // meds
+  const m=$('#meds');
+  m.innerHTML=st.medications.length?st.medications.map(n=>`<span class="pill">${n}</span>`).join('')
+    :'<div class="empty">Ліків немає.</div>';
+}
+
+async function refresh(){try{render(await api('/state'));}catch(e){toast('Помилка: '+e.message);}}
+
+async function ask(q){
+  q=(q||$('#q').value).trim(); if(!q)return;
+  const log=$('#log');
+  log.insertAdjacentHTML('beforeend',`<div class="bubble q">${q}</div>`);
+  $('#q').value='';log.scrollTop=log.scrollHeight;
+  try{const a=await api('/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q})});
+    const src=a.sources&&a.sources.length?`<span class="src">Джерела: ${a.sources.join(', ')}</span>`:'';
+    log.insertAdjacentHTML('beforeend',`<div class="bubble a">${a.text}${src}</div>`);
+    log.scrollTop=log.scrollHeight;
+  }catch(e){toast('Помилка: '+e.message);}
+}
+
+$('#btn-samples').onclick=async()=>{await api('/ingest/samples',{method:'POST'});await refresh();toast('Демо-документи оброблено');};
+$('#btn-reset').onclick=async()=>{await api('/reset',{method:'POST'});$('#log').innerHTML='';await refresh();toast('Картку скинуто');};
+$('#btn-export').onclick=async()=>{
+  const b=await api('/export');
+  const blob=new Blob([JSON.stringify(b,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download='livemedcard_fhir_bundle.json';
+  document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+  toast('FHIR Bundle завантажено');
+};
+$('#btn-add').onclick=()=>$('#add-form').classList.toggle('show');
+$('#add-submit').onclick=async()=>{
+  const text=$('#add-text').value.trim(); if(!text){toast('Введіть текст документа');return;}
+  const doc={id:'doc-'+Date.now(),text,kind:$('#add-kind').value};
+  const rep=await api('/ingest',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(doc)});
+  $('#add-text').value='';$('#add-form').classList.remove('show');
+  await refresh();
+  toast(rep.decision.escalate?'Оброблено · ескалація до людини':'Оброблено · авто');
+};
+$('#ask').onclick=()=>ask();
+$('#q').addEventListener('keydown',e=>{if(e.key==='Enter')ask();});
+
+const CHIPS=['Що з нирками за останній рік?','Який був калій?','Які ліки приймає і чи є взаємодії?','Що з HbA1c?'];
+$('#chips').innerHTML=CHIPS.map(c=>`<button class="chip">${c}</button>`).join('');
+$('#chips').querySelectorAll('.chip').forEach(b=>b.onclick=()=>ask(b.textContent));
+
+refresh();
+</script>
+</body>
+</html>

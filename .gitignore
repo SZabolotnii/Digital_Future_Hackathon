@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# uv / venv
+.venv/
+
+# local-first persistence (медичні дані не залишають пристрій — не в git)
+*.lmc.json
+lmc.json
+
+# OS
+.DS_Store
+
+# локальні runtime-артефакти Claude Code
+.claude/scheduled_tasks.lock

@@ -1,0 +1,26 @@
+{
+  "_note": "Словник StubExtractor: український термін → стандартний код. Ключі — у нижньому регістрі.",
+  "labs": {
+    "креатинін": {"loinc": "2160-0", "unit": "µmol/L", "display": "Creatinine"},
+    "калій": {"loinc": "2823-3", "unit": "mmol/L", "display": "Potassium"},
+    "глікований гемоглобін": {"loinc": "4548-4", "unit": "%", "display": "HbA1c"},
+    "hba1c": {"loinc": "4548-4", "unit": "%", "display": "HbA1c"},
+    "систолічний тиск": {"loinc": "8480-6", "unit": "mmHg", "display": "Systolic BP"}
+  },
+  "medications": {
+    "варфарин": {"rxnorm": "11289", "display": "Warfarin"},
+    "аспірин": {"rxnorm": "1191", "display": "Aspirin"},
+    "ацетилсаліцилова кислота": {"rxnorm": "1191", "display": "Aspirin"},
+    "ібупрофен": {"rxnorm": "5640", "display": "Ibuprofen"},
+    "метформін": {"rxnorm": "6809", "display": "Metformin"},
+    "лізиноприл": {"rxnorm": "29046", "display": "Lisinopril"},
+    "аміодарон": {"rxnorm": "703", "display": "Amiodarone"},
+    "кордарон": {"rxnorm": "703", "display": "Amiodarone"}
+  },
+  "conditions": {
+    "фібриляція передсердь": {"snomed": "49436004", "display": "Atrial fibrillation"},
+    "цукровий діабет": {"snomed": "44054006", "display": "Diabetes mellitus type 2"},
+    "артеріальна гіпертензія": {"snomed": "38341003", "display": "Hypertension"},
+    "гіпертонічна хвороба": {"snomed": "38341003", "display": "Hypertension"}
+  }
+}

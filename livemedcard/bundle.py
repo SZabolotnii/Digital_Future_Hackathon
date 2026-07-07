@@ -1,0 +1,55 @@
+"""Експорт/імпорт картки як стандартного FHIR Bundle (type=collection).
+
+Наслідок продуктовий: картку можна передати лікарняній системі чи еЗдоров'ю у
+стандартному форматі, а не як скрін. Метадані (документи, аудит) — у полі `_meta`,
+щоб не порушувати FHIR-структуру ресурсів.
+"""
+from __future__ import annotations
+
+from typing import Optional
+
+from .layers.l2b_extractor import Extractor
+from .pipeline import LiveMedCard
+
+_RT_TO_KEY = {
+    "Observation": "observations",
+    "Condition": "conditions",
+    "MedicationRequest": "medications",
+}
+
+
+def to_bundle(card: LiveMedCard) -> dict:
+    """Серіалізувати картку у FHIR Bundle."""
+    snap = card.snapshot()
+    entries = [{"resource": snap["patient"]}]
+    for key in ("observations", "conditions", "medications"):
+        entries.extend({"resource": r} for r in snap[key])
+    return {
+        "resourceType": "Bundle",
+        "type": "collection",
+        "entry": entries,
+        "_meta": {"documents": snap["documents"], "audit": snap["audit"]},
+    }
+
+
+def from_bundle(data: dict, extractor: Optional[Extractor] = None) -> LiveMedCard:
+    """Відновити картку з FHIR Bundle."""
+    patient: Optional[dict] = None
+    buckets: dict[str, list] = {"observations": [], "conditions": [], "medications": []}
+    for entry in data.get("entry", []):
+        resource = entry.get("resource", {})
+        rt = resource.get("resourceType")
+        if rt == "Patient":
+            patient = resource
+        elif rt in _RT_TO_KEY:
+            buckets[_RT_TO_KEY[rt]].append(resource)
+    if patient is None:
+        raise ValueError("Bundle не містить ресурсу Patient")
+    meta = data.get("_meta", {})
+    snapshot = {
+        "patient": patient,
+        **buckets,
+        "documents": meta.get("documents", []),
+        "audit": meta.get("audit", []),
+    }
+    return LiveMedCard.from_snapshot(snapshot, extractor)
