@@ -2,25 +2,46 @@
   "_note": "Словник StubExtractor: український термін → стандартний код. Ключі — у нижньому регістрі.",
   "labs": {
     "креатинін": {"loinc": "2160-0", "unit": "µmol/L", "display": "Creatinine"},
+    "creatinine": {"loinc": "2160-0", "unit": "µmol/L", "display": "Creatinine"},
     "калій": {"loinc": "2823-3", "unit": "mmol/L", "display": "Potassium"},
+    "potassium": {"loinc": "2823-3", "unit": "mmol/L", "display": "Potassium"},
     "глікований гемоглобін": {"loinc": "4548-4", "unit": "%", "display": "HbA1c"},
+    "glycated hemoglobin": {"loinc": "4548-4", "unit": "%", "display": "HbA1c"},
     "hba1c": {"loinc": "4548-4", "unit": "%", "display": "HbA1c"},
-    "систолічний тиск": {"loinc": "8480-6", "unit": "mmHg", "display": "Systolic BP"}
+    "систолічний тиск": {"loinc": "8480-6", "unit": "mmHg", "display": "Systolic BP"},
+    "systolic bp": {"loinc": "8480-6", "unit": "mmHg", "display": "Systolic BP"},
+    "systolic blood pressure": {"loinc": "8480-6", "unit": "mmHg", "display": "Systolic BP"}
   },
   "medications": {
     "варфарин": {"rxnorm": "11289", "display": "Warfarin"},
+    "warfarin": {"rxnorm": "11289", "display": "Warfarin"},
     "аспірин": {"rxnorm": "1191", "display": "Aspirin"},
+    "aspirin": {"rxnorm": "1191", "display": "Aspirin"},
     "ацетилсаліцилова кислота": {"rxnorm": "1191", "display": "Aspirin"},
     "ібупрофен": {"rxnorm": "5640", "display": "Ibuprofen"},
+    "ibuprofen": {"rxnorm": "5640", "display": "Ibuprofen"},
     "метформін": {"rxnorm": "6809", "display": "Metformin"},
+    "metformin": {"rxnorm": "6809", "display": "Metformin"},
     "лізиноприл": {"rxnorm": "29046", "display": "Lisinopril"},
+    "lisinopril": {"rxnorm": "29046", "display": "Lisinopril"},
     "аміодарон": {"rxnorm": "703", "display": "Amiodarone"},
+    "amiodarone": {"rxnorm": "703", "display": "Amiodarone"},
     "кордарон": {"rxnorm": "703", "display": "Amiodarone"}
   },
   "conditions": {
     "фібриляція передсердь": {"snomed": "49436004", "display": "Atrial fibrillation"},
+    "atrial fibrillation": {"snomed": "49436004", "display": "Atrial fibrillation"},
     "цукровий діабет": {"snomed": "44054006", "display": "Diabetes mellitus type 2"},
+    "diabetes": {"snomed": "44054006", "display": "Diabetes mellitus type 2"},
+    "diabetes mellitus": {"snomed": "44054006", "display": "Diabetes mellitus type 2"},
     "артеріальна гіпертензія": {"snomed": "38341003", "display": "Hypertension"},
-    "гіпертонічна хвороба": {"snomed": "38341003", "display": "Hypertension"}
+    "hypertension": {"snomed": "38341003", "display": "Hypertension"},
+    "гіпертонічна хвороба": {"snomed": "38341003", "display": "Hypertension"},
+    "belching": {"snomed": "77526002", "display": "Belching"},
+    "indigestion": {"snomed": "50289006", "display": "Indigestion"},
+    "gastroesophageal reflux disease without esophagitis": {"snomed": "366258000", "display": "Gastroesophageal reflux disease without esophagitis"},
+    "history of hiatal hernia": {"snomed": "395041006", "display": "History of hiatal hernia"},
+    "hiatal hernia": {"snomed": "58293003", "display": "Hiatal hernia"},
+    "ruq pain": {"snomed": "249511003", "display": "Right upper quadrant pain"}
   }
 }

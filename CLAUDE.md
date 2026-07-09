@@ -21,6 +21,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `pipeline.py` — `LiveMedCard` (джерело істини FHIR-ресурсів; `snapshot`/`from_snapshot`, типізований аудит `AuditEntry`)
 - `bundle.py` — експорт/імпорт FHIR Bundle; `repository.py` — персистентність у локальний JSON (пошкоджений знімок → явний `ValueError`, не мовчазний порожній старт)
 - `qa.py` — grounded Q&A з провенансом (за статтю); `api.py` — FastAPI + UI (стан під `threading.Lock`, без `global`); `demo.py` — CLI-демо
+- `ocr.py` — `OcrService`: OCR медичних зображень через локальний OpenAI-сумісний сервер (LM Studio, vision-модель типу MedGemma). `detect_model()` пробує `/v1/models` і відкочується на `OCR_MODEL`; `perform_ocr(base64)` шле картинку у `/v1/chat/completions` (temp=0). Це практична реалізація L2b: тільки транскрипція тексту, **жодних висновків про безпеку**
 
 Документи та легасі:
 - `build_pdf.py` / `build_onepager.py` / `build_submit.py` — reportlab-генератори PDF (`build_submit.py` — фінальний, з flowable `TraceDiagram`)
@@ -34,7 +35,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 uv run python -m livemedcard.demo            # E2E-демо в терміналі
 uv run uvicorn livemedcard.api:app --reload  # веб-UI на http://127.0.0.1:8000 + JSON API
-uv run --extra dev pytest -q                 # тести (64 шт.)
+uv run --extra dev pytest -q                 # тести (72 шт.)
 uv run --extra dev pytest tests/test_pipeline.py -q   # один файл
 uv run --extra dev ruff check livemedcard tests       # лінтер (як у CI)
 LMC_PERSIST_PATH=~/lmc.json uv run uvicorn livemedcard.api:app  # з персистентністю
@@ -43,9 +44,16 @@ LMC_PERSIST_PATH=~/lmc.json uv run uvicorn livemedcard.api:app  # з перси�
 Веб-інтерфейс (`livemedcard/static/index.html`) — самодостатня SPA, яку віддає
 FastAPI за `/`: таймлайн показників зі спарклайнами, панель безпеки TRACE
 (сигнали + рішення L3), список ліків, grounded Q&A і експорт FHIR. Ендпойнти:
-`/state`, `/ingest`, `/ingest/samples`, `/reset`, `/timeline/{loinc}`, `/signals`,
-`/ask`, `/export` (FHIR Bundle), `/import`, `/audit`, `/metrics`. Персистентність —
+`/state`, `/ingest`, `/ingest/image` (OCR зображення → текст → `ingest`),
+`/ingest/samples`, `/reset`, `/timeline/{loinc}`, `/signals`, `/ask`,
+`/export` (FHIR Bundle), `/import`, `/audit`, `/metrics`. Персистентність —
 через env `LMC_PERSIST_PATH` (local-first JSON-знімок).
+
+**OCR через локальну LLM:** `/ingest/image` вимагає запущеного LM Studio (або
+іншого OpenAI-сумісного сервера) з завантаженою vision-моделлю. Налаштування —
+env `LMC_LMSTUDIO_URL` (типово `http://127.0.0.1:1234/v1`) і `LMC_OCR_MODEL`
+(типово `medgemma-1.5-4b-it`). Без сервера ендпойнт віддає `503`. Тести
+(`tests/test_ocr.py`) мокають `urllib`, тож реального сервера не потребують.
 
 Архітектурний інваріант, який слід зберігати при змінах: **сигнали безпеки (L1/L2a) рахуються детерміновано на факт-сторі, а L2b лише витягує факти й не робить висновків про безпеку.**
 
@@ -77,4 +85,4 @@ FastAPI за `/`: таймлайн показників зі спарклайн�
 
 ## Git
 
-Тека проєкту **не є окремим git-репозиторієм** — команди git резолвляться в репозиторій у домашній директорії (`~`) без жодного коміту. Не робити commit/push звідси без явного запиту користувача: staging зачепить увесь `$HOME`.
+Тека проєкту **є власним git-репозиторієм** (root = сама тека проєкту, гілка `main`). Робити commit/push лише за явним запитом користувача.

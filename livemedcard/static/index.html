@@ -91,6 +91,14 @@
     color:var(--bg);padding:10px 16px;border-radius:10px;box-shadow:var(--shadow);opacity:0;
     transition:.25s;pointer-events:none}
   .toast.show{opacity:1}
+  .dropzone{
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:16px; border:2px dashed var(--line); border-radius:10px; background:var(--panel);
+    cursor:pointer; transition:.15s; text-align:center; font-size:13px; margin: 8px 0 12px;
+  }
+  .dropzone:hover, .dropzone.dragover{
+    border-color:var(--accent); background:var(--accent-soft);
+  }
 </style>
 </head>
 <body>
@@ -110,6 +118,12 @@
 
   <div class="add" id="add-form">
     <textarea id="add-text" placeholder="Вставте текст документа, напр.: «Креатинін 121 µmol/L. Призначено: аспірин 100 мг на добу.»"></textarea>
+    <div style="margin: 4px 0 2px; font-size: 11.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; font-weight: 600; text-align: center;">— або завантажте фото (OCR) —</div>
+    <label class="dropzone" id="dropzone">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:4px;color:var(--accent)"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      <span id="dropzone-text">Перетягніть фото сюди або натисніть для вибору</span>
+      <input type="file" id="add-image" accept="image/*" style="display:none">
+    </label>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <select id="add-kind">
         <option value="discharge_summary">Виписний епікриз</option>
@@ -162,8 +176,18 @@ const SEV_UK = {critical:'критичний',major:'високий',moderate:'�
 function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');
   clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2600);}
 
-async function api(path, opts){const r=await fetch(path,opts);if(!r.ok)throw new Error(path+' '+r.status);
-  return r.status===204?null:r.json();}
+async function api(path, opts){
+  const r=await fetch(path,opts);
+  if(!r.ok){
+    let msg = path+' '+r.status;
+    try {
+      const err = await r.json();
+      if(err && err.detail) msg = err.detail;
+    } catch(e){}
+    throw new Error(msg);
+  }
+  return r.status===204?null:r.json();
+}
 
 function sparkline(points, low, high){
   const w=280,h=66,pad=8;
@@ -257,13 +281,80 @@ $('#btn-export').onclick=async()=>{
   toast('FHIR Bundle завантажено');
 };
 $('#btn-add').onclick=()=>$('#add-form').classList.toggle('show');
+const fileInput = $('#add-image');
+const dz = $('#dropzone');
+
+fileInput.onchange = e => {
+  const file = e.target.files[0];
+  if(file){
+    $('#dropzone-text').textContent = 'Вибрано: ' + file.name;
+    $('#add-text').value = '';
+  }
+};
+
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+dz.addEventListener('drop', e => {
+  e.preventDefault();
+  dz.classList.remove('dragover');
+  if(e.dataTransfer.files.length){
+    fileInput.files = e.dataTransfer.files;
+    $('#dropzone-text').textContent = 'Вибрано: ' + e.dataTransfer.files[0].name;
+    $('#add-text').value = '';
+  }
+});
+
 $('#add-submit').onclick=async()=>{
-  const text=$('#add-text').value.trim(); if(!text){toast('Введіть текст документа');return;}
-  const doc={id:'doc-'+Date.now(),text,kind:$('#add-kind').value};
-  const rep=await api('/ingest',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(doc)});
-  $('#add-text').value='';$('#add-form').classList.remove('show');
-  await refresh();
-  toast(rep.decision.escalate?'Оброблено · ескалація до людини':'Оброблено · авто');
+  const text=$('#add-text').value.trim();
+  const file=fileInput.files[0];
+  if(!text && !file){
+    toast('Введіть текст або виберіть фото');
+    return;
+  }
+
+  const btn = $('#add-submit');
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.style.opacity = '0.6';
+
+  try {
+    let rep;
+    if(file){
+      btn.textContent = 'Зчитування тексту (OCR)...';
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      rep = await api('/ingest/image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image_base64: base64, kind: $('#add-kind').value })
+      });
+    } else {
+      btn.textContent = 'Опрацювання...';
+      const doc = { id: 'doc-' + Date.now(), text, kind: $('#add-kind').value };
+      rep = await api('/ingest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(doc)
+      });
+    }
+
+    $('#add-text').value = '';
+    fileInput.value = '';
+    $('#dropzone-text').textContent = 'Перетягніть фото сюди або натисніть для вибору';
+    $('#add-form').classList.remove('show');
+    await refresh();
+    toast(rep.decision.escalate?'Оброблено · ескалація до людини':'Оброблено · авто');
+  } catch(e) {
+    toast('Помилка: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.textContent = originalText;
+  }
 };
 $('#ask').onclick=()=>ask();
 $('#q').addEventListener('keydown',e=>{if(e.key==='Enter')ask();});

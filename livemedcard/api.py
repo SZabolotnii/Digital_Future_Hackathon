@@ -28,19 +28,23 @@ from __future__ import annotations
 import threading
 from datetime import date
 
+import hashlib
+
 from fastapi import Body, FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from .bundle import from_bundle, to_bundle
 from .config import MAX_DOC_CHARS, PERSIST_PATH, STATIC_DIR
-from .dto import Document
+from .dto import Document, DocKind
 from .fhir import Patient
 from .layers import l3_router
 from .pipeline import LiveMedCard
 from .qa import Answer, QA
 from .reference import load_sample_docs, range_for
 from .repository import load_card, save_card
+from .ocr import OcrService, OcrError
+
 
 app = FastAPI(title="LiveMedCard", version="0.1.0")
 
@@ -95,6 +99,54 @@ def ingest(doc: Document):
         report = _state.card.ingest(doc)
         _state.autosave()
     return report
+
+
+class ImageIngestRequest(BaseModel):
+    image_base64: str
+    kind: DocKind = "note"
+
+
+@app.post("/ingest/image")
+def ingest_image(req: ImageIngestRequest):
+    if not req.image_base64.strip():
+        raise HTTPException(
+            status_code=422,
+            detail="Зображення порожнє або некоректне",
+        )
+
+    try:
+        text = OcrService.perform_ocr(req.image_base64)
+    except OcrError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=str(exc),
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Помилка під час OCR: {exc}",
+        )
+
+    if not text:
+        raise HTTPException(
+            status_code=422,
+            detail="Не вдалося розпізнати текст із зображення",
+        )
+
+    if len(text) > MAX_DOC_CHARS:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Розпізнаний текст документа завеликий (> {MAX_DOC_CHARS} символів)",
+        )
+
+    doc_id = f"doc-ocr-{hashlib.sha1(text.encode('utf-8')).hexdigest()[:12]}"
+    doc = Document(id=doc_id, text=text, kind=req.kind)
+
+    with _state.lock:
+        report = _state.card.ingest(doc)
+        _state.autosave()
+    return report
+
 
 
 @app.post("/ingest/samples")
