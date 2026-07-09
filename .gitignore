@@ -18,5 +18,8 @@ lmc.json
 # OS
 .DS_Store
 
+# runtime-логи
+*.log
+
 # локальні runtime-артефакти Claude Code
 .claude/scheduled_tasks.lock
