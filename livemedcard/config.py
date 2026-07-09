@@ -28,3 +28,10 @@ PERSIST_PATH = os.getenv("LMC_PERSIST_PATH", "")
 LMSTUDIO_URL = os.getenv("LMC_LMSTUDIO_URL", "http://127.0.0.1:1234/v1")
 OCR_MODEL = os.getenv("LMC_OCR_MODEL", "medgemma-1.5-4b-it")
 
+# Екстрактор L2b: "stub" — детермінований offline (дефолт, тести/CI/демо);
+# "two_stage" — Stage 1 (LLM SGR-стиснення) → Stage 2 (детермінована KV-T екстракція).
+EXTRACTOR = os.getenv("LMC_EXTRACTOR", "stub")
+
+# Модель Stage 1 (SGR-стиснення). None → автовизначення завантаженої моделі.
+STAGE1_MODEL = os.getenv("LMC_STAGE1_MODEL") or None
+

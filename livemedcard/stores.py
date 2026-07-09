@@ -120,6 +120,16 @@ class KnowledgeGraph:
         self.g.add_node(nid, type="Patient", gender=p.gender)
         return nid
 
+    def add_document(self, doc_id: str, summary_text: str) -> str:
+        """Явний вузол документа з текстом summary — ціль ребер ``derived_from``.
+
+        Раніше вузол ``Document/{id}`` існував лише як порожня мішень ребра; тепер
+        несе free-text (Stage 1 SGR-summary), тож провенанс стає доказовим.
+        """
+        nid = f"Document/{doc_id}"
+        self.g.add_node(nid, type="Document", text=summary_text)
+        return nid
+
     def add_encounter(self, e: Encounter, patient_id: str) -> str:
         nid = f"Encounter/{e.id}"
         self.g.add_node(nid, type="Encounter", status=e.status)

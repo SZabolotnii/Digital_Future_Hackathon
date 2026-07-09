@@ -35,10 +35,11 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from .bundle import from_bundle, to_bundle
-from .config import MAX_DOC_CHARS, PERSIST_PATH, STATIC_DIR
+from .config import EXTRACTOR, MAX_DOC_CHARS, PERSIST_PATH, STATIC_DIR
 from .dto import Document, DocKind
 from .fhir import Patient
 from .layers import l3_router
+from .layers.l2b_extractor import Extractor, StubExtractor, TwoStageExtractor
 from .pipeline import LiveMedCard
 from .qa import Answer, QA
 from .reference import load_sample_docs, range_for
@@ -53,6 +54,13 @@ _STATIC = STATIC_DIR
 
 def _new_patient() -> Patient:
     return Patient(id="mom-001", gender="female", birthDate=date(1950, 1, 1))
+
+
+def _make_extractor() -> Extractor:
+    """Екстрактор L2b за конфігом: 'two_stage' (LLM+детермінований) або 'stub'."""
+    if EXTRACTOR == "two_stage":
+        return TwoStageExtractor()
+    return StubExtractor()
 
 
 class _State:
@@ -70,10 +78,10 @@ class _State:
 
 def _initial_card() -> LiveMedCard:
     if PERSIST_PATH:
-        loaded = load_card(PERSIST_PATH)
+        loaded = load_card(PERSIST_PATH, _make_extractor())
         if loaded is not None:
             return loaded
-    return LiveMedCard(_new_patient())
+    return LiveMedCard(_new_patient(), _make_extractor())
 
 
 _state = _State(_initial_card())
@@ -161,7 +169,7 @@ def ingest_samples():
 @app.post("/reset")
 def reset():
     with _state.lock:
-        _state.card = LiveMedCard(_new_patient())
+        _state.card = LiveMedCard(_new_patient(), _make_extractor())
         _state.autosave()
         return {"status": "reset", "patient": _state.card.patient.id}
 
@@ -177,7 +185,7 @@ def export_bundle():
 def import_bundle(bundle: dict = Body(...)):
     """Імпорт картки з FHIR Bundle (замінює поточний стан)."""
     try:
-        card = from_bundle(bundle)
+        card = from_bundle(bundle, _make_extractor())
     except (ValueError, KeyError, TypeError) as exc:
         raise HTTPException(status_code=422, detail=f"Некоректний Bundle: {exc}")
     with _state.lock:

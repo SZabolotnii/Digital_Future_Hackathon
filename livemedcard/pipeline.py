@@ -13,7 +13,13 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from .dto import AuditEntry, Document, ExtractionResult, Signal, TraceReport
-from .fhir import Condition, MedicationRequest, Observation, Patient
+from .fhir import (
+    Condition,
+    DocumentReference,
+    MedicationRequest,
+    Observation,
+    Patient,
+)
 from .layers import l1_safety, l2a_trends, l3_router
 from .layers.l2b_extractor import Extractor, StubExtractor
 from .stores import FactStore, KnowledgeGraph
@@ -32,9 +38,11 @@ class LiveMedCard:
         self._observations: list[Observation] = []
         self._conditions: list[Condition] = []
         self._medications: list[MedicationRequest] = []
+        self._doc_refs: list[DocumentReference] = []
         self._obs_ids: set[str] = set()
         self._cond_ids: set[str] = set()
         self._med_ids: set[str] = set()
+        self._docref_ids: set[str] = set()
         self._document_ids: set[str] = set()
         self._audit: list[AuditEntry] = []
 
@@ -56,6 +64,18 @@ class LiveMedCard:
             if m.id not in self._med_ids:
                 self._medications.append(m)
                 self._med_ids.add(m.id)
+        if ext.document_reference is not None:
+            self._absorb_docref(ext.document_reference)
+
+    def _absorb_docref(self, dref: DocumentReference) -> None:
+        """Зберегти free-text іпостась + додати текст у вузол-документ графа."""
+        if dref.provenance is not None:
+            self.graph.add_document(
+                dref.provenance.source_doc_id, dref.content.data or ""
+            )
+        if dref.id not in self._docref_ids:
+            self._doc_refs.append(dref)
+            self._docref_ids.add(dref.id)
 
     # ── L1 + L2a на поточному стані сховищ ────────────────────────────────────
     def current_signals(self) -> list[Signal]:
@@ -107,6 +127,9 @@ class LiveMedCard:
             "observations": [o.model_dump(mode="json") for o in self._observations],
             "conditions": [c.model_dump(mode="json") for c in self._conditions],
             "medications": [m.model_dump(mode="json") for m in self._medications],
+            "document_references": [
+                d.model_dump(mode="json") for d in self._doc_refs
+            ],
             "documents": sorted(self._document_ids),
             "audit": [a.model_dump(mode="json") for a in self._audit],
         }
@@ -122,6 +145,8 @@ class LiveMedCard:
             conditions=[Condition(**c) for c in data.get("conditions", [])],
             medications=[MedicationRequest(**m) for m in data.get("medications", [])],
         ))
+        for d in data.get("document_references", []):
+            card._absorb_docref(DocumentReference(**d))
         card._document_ids.update(data.get("documents", []))
         # Валідація журналу при відновленні: биті записи → явна помилка, не сміття.
         card._audit.extend(AuditEntry(**a) for a in data.get("audit", []))
@@ -139,6 +164,10 @@ class LiveMedCard:
     @property
     def medications(self) -> list[MedicationRequest]:
         return list(self._medications)
+
+    @property
+    def document_references(self) -> list[DocumentReference]:
+        return list(self._doc_refs)
 
     @property
     def document_count(self) -> int:

@@ -10,11 +10,13 @@
 ```
 Документ (фото/текст)
    │
-   ▼  L2b  — локальна LLM (MedGemma), у MVP: детермінований StubExtractor
-ExtractionResult  (FHIR-ресурси: Observation / Condition / MedicationRequest + Provenance)
+   ▼  L2b  — Stage 1 (MedGemma → SGR-summary) → Stage 2 (детермінований deterministic_extract)
+             дефолт offline: StubExtractor (Stage 2 напряму по сирому тексту)
+ExtractionResult  (FHIR: Observation / Condition / MedicationRequest + Provenance; + DocumentReference — free-text)
    │
    ├──► FactStore (KV-T)   — джерело істини для кількісного
-   └──► KnowledgeGraph     — зв'язки + провенанс
+   ├──► KnowledgeGraph     — зв'язки + провенанс (вузол Document несе summary)
+   └──► DocumentReference  — free-text іпостась (Stage 1 summary)
    │
    ▼  L1  — детермінований якір: взаємодії ліків, дозові межі (по відкритій БД)
    ▼  L2a — класичний аналіз: тренди й вихід за референс-межі на KV-T
@@ -53,10 +55,15 @@ Q&A (grounded): запит → детермінований ретрив по Fa
 - **`Signal` — єдиний тип** для L1 і L2a (`layer`, `kind`, `severity`, `subjects`,
   `confidence`). Детерміновані сигнали мають `confidence=1.0`. Це роз'єднує L3 від
   реалізацій L1/L2a.
-- **L2b ізольований**: у MVP `StubExtractor` парсить український текст за словником
-  `data/vocab.json`. Інтерфейс `Extractor` дозволяє підмінити на реальну MedGemma
-  без змін конвеєра. Екстрактор ставить лише `confidence` витягу, **не** висновок
-  про безпеку.
+- **L2b ізольований**: `StubExtractor` (дефолт, offline) парсить український текст
+  за словником `data/vocab.json`. Інтерфейс `Extractor` дозволяє підмінити на
+  реальну MedGemma без змін конвеєра. Екстрактор ставить лише `confidence` витягу,
+  **не** висновок про безпеку.
+- **Двоетапний L2b** (`LMC_EXTRACTOR=two_stage`, метод *LLM StructCore*): Stage 1
+  (MedGemma) згортає текст у SGR-summary (free-text іпостась → FHIR
+  `DocumentReference`); Stage 2 (`deterministic_extract`) детерміновано витягує з
+  summary KV-T факти з **датою на факт**. Стохастика LLM впливає лише на recall;
+  формат, словник і сигнали безпеки лишаються детермінованими.
 - **L3 ескалює до людини** на поєднанні **високий ризик + висока впевненість**
   (`severity ∈ {major, critical}` і `mean_confidence ≥ 0.85`) — саме впевнена
   помилка найнебезпечніша. Також ескалація на низьку впевненість витягу.

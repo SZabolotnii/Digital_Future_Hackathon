@@ -10,7 +10,7 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
-from .fhir import Condition, MedicationRequest, Observation
+from .fhir import Condition, DocumentReference, MedicationRequest, Observation
 
 Severity = Literal["info", "moderate", "major", "critical"]
 DocKind = Literal["discharge_summary", "lab_report", "prescription", "note"]
@@ -33,12 +33,17 @@ class Document(BaseModel):
 
 
 class ExtractionResult(BaseModel):
-    """Результат L2b: FHIR-ресурси + середня впевненість витягу."""
+    """Результат L2b: FHIR-ресурси + середня впевненість витягу.
+
+    ``document_reference`` (free-text іпостась) заповнює лише двоетапний
+    екстрактор; детермінований stub лишає None.
+    """
 
     observations: list[Observation] = Field(default_factory=list)
     conditions: list[Condition] = Field(default_factory=list)
     medications: list[MedicationRequest] = Field(default_factory=list)
     mean_confidence: float = 1.0
+    document_reference: Optional[DocumentReference] = None
 
     def is_empty(self) -> bool:
         return not (self.observations or self.conditions or self.medications)

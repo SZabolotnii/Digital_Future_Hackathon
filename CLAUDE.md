@@ -17,11 +17,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `config.py` — централізовані налаштування (пороги, шляхи; override через env `LMC_*`)
 - `stores.py` — `FactStore` (KV-T, ідемпотентний, індекс за LOINC) + `KnowledgeGraph` (networkx)
 - `reference.py` + `data/*.json` — відкриті довідкові БД; loader-и кешовані й повертають незмінні структури; `range_for(loinc, sex)` — межі за статтю
-- `layers/` — шари TRACE: `l1_safety` (взаємодії/дози), `l2a_trends` (тренди/межі, за статтю), `l2b_extractor` (`StubExtractor`; доза×кратність; **стабільні хеш-id** ресурсів від змісту), `l3_router` (роутинг/ескалація)
-- `pipeline.py` — `LiveMedCard` (джерело істини FHIR-ресурсів; `snapshot`/`from_snapshot`, типізований аудит `AuditEntry`)
+- `layers/` — шари TRACE: `l1_safety` (взаємодії/дози), `l2a_trends` (тренди/межі, за статтю), `l2b_extractor` (детермінований Stage 2: `deterministic_extract` → `StubExtractor` (offline) та `TwoStageExtractor`; доза×кратність; **дата на факт** із рядка або fallback `received_at`; **стабільні хеш-id** ресурсів від змісту), `l2b_stage1` (Stage 1 SGR-стиснення: локальна MedGemma згортає текст у 9-key summary — free-text іпостась), `l3_router` (роутинг/ескалація)
+- `pipeline.py` — `LiveMedCard` (джерело істини FHIR-ресурсів; `snapshot`/`from_snapshot`, типізований аудит `AuditEntry`; тримає й `DocumentReference`-и — free-text іпостась, `_absorb_docref` додає summary у вузол `Document/{id}` графа)
 - `bundle.py` — експорт/імпорт FHIR Bundle; `repository.py` — персистентність у локальний JSON (пошкоджений знімок → явний `ValueError`, не мовчазний порожній старт)
 - `qa.py` — grounded Q&A з провенансом (за статтю); `api.py` — FastAPI + UI (стан під `threading.Lock`, без `global`); `demo.py` — CLI-демо
-- `ocr.py` — `OcrService`: OCR медичних зображень через локальний OpenAI-сумісний сервер (LM Studio, vision-модель типу MedGemma). `detect_model()` пробує `/v1/models` і відкочується на `OCR_MODEL`; `perform_ocr(base64)` шле картинку у `/v1/chat/completions` (temp=0). Це практична реалізація L2b: тільки транскрипція тексту, **жодних висновків про безпеку**
+- `llm_client.py` — спільний OpenAI-сумісний клієнт до локального сервера (LM Studio): `chat_completions(messages)` + `detect_model()`; лише stdlib (`urllib`), щоб тести мокали `urllib.request.urlopen`. Спільний канал для OCR і Stage 1
+- `ocr.py` — `OcrService`: OCR медичних зображень (vision-модель типу MedGemma). Делегує HTTP у `llm_client`, лишає лише vision-payload і промпт дослівної транскрипції. Крок image→text перед двоетапним L2b, **жодних висновків про безпеку**
 
 Документи та легасі:
 - `build_pdf.py` / `build_onepager.py` / `build_submit.py` — reportlab-генератори PDF (`build_submit.py` — фінальний, з flowable `TraceDiagram`)
@@ -35,7 +36,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 uv run python -m livemedcard.demo            # E2E-демо в терміналі
 uv run uvicorn livemedcard.api:app --reload  # веб-UI на http://127.0.0.1:8000 + JSON API
-uv run --extra dev pytest -q                 # тести (72 шт.)
+uv run --extra dev pytest -q                 # тести (82 шт.)
 uv run --extra dev pytest tests/test_pipeline.py -q   # один файл
 uv run --extra dev ruff check livemedcard tests       # лінтер (як у CI)
 LMC_PERSIST_PATH=~/lmc.json uv run uvicorn livemedcard.api:app  # з персистентністю
@@ -54,6 +55,18 @@ FastAPI за `/`: таймлайн показників зі спарклайн�
 env `LMC_LMSTUDIO_URL` (типово `http://127.0.0.1:1234/v1`) і `LMC_OCR_MODEL`
 (типово `medgemma-1.5-4b-it`). Без сервера ендпойнт віддає `503`. Тести
 (`tests/test_ocr.py`) мокають `urllib`, тож реального сервера не потребують.
+
+**Двоетапний L2b (дві іпостасі даних).** За методом статті автора *LLM StructCore*
+(Schema-Guided Reasoning Condensation): вхідний текст (OCR або введений) дає дві
+іпостасі — (1) **free-text** SGR-summary (Stage 1, MedGemma; зберігається як FHIR
+`DocumentReference`, живить провенанс і Q&A-fallback) і (2) **структуровану** KV-T
+(Stage 2, детермінований `deterministic_extract` по summary → FactStore). Межа
+детермінізму збережена: LLM лише стискає текст (впливає на recall), формат/словник
+і сигнали безпеки — детерміновані. Вмикається `LMC_EXTRACTOR=two_stage` (дефолт
+`stub` — offline, детермінований, для тестів/CI/демо). Stage 1 surface-ить **дату
+на факт** (`показник: значення (YYYY-MM-DD)`), тож один документ рознесено за
+реальними датами вимірювань. Тести (`tests/test_l2b_stage1.py`) мокають
+`l2b_stage1.chat_completions`.
 
 Архітектурний інваріант, який слід зберігати при змінах: **сигнали безпеки (L1/L2a) рахуються детерміновано на факт-сторі, а L2b лише витягує факти й не робить висновків про безпеку.**
 

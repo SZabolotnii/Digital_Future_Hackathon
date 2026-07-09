@@ -8,14 +8,17 @@ from __future__ import annotations
 
 import hashlib
 import re
+from datetime import datetime, timezone
 from typing import Optional, Protocol, TypeVar
 
 from ..config import STUB_CONFIDENCE
 from ..dto import Document, ExtractionResult
 from ..fhir import (
+    Attachment,
     CodeableConcept,
     Coding,
     Condition,
+    DocumentReference,
     MedicationRequest,
     Observation,
     Provenance,
@@ -24,6 +27,7 @@ from ..fhir import (
     Sys,
 )
 from ..reference import load_vocab
+from . import l2b_stage1
 
 _T = TypeVar("_T")
 
@@ -36,6 +40,8 @@ _LAB_VALUE_RE = re.compile(_SEP + r"(\d+(?:\.\d+)?)")
 _DOSE_MG_RE = re.compile(_SEP + r"(\d+(?:\.\d+)?)\s*мг")
 # Кратність прийому: «×2», «x2», «2 рази», «двічі», «тричі» → множник за добу.
 _FREQ_RE = re.compile(r"[×xх]\s*(\d+)|(\d+)\s*раз|(двіч)|(тріч)", re.IGNORECASE)
+# Дата вимірювання на факт: ISO «2024-03-15» або «15.03.2024» у тому самому рядку.
+_DATE_RE = re.compile(r"\b(\d{4})-(\d{2})-(\d{2})\b|\b(\d{2})\.(\d{2})\.(\d{4})\b")
 
 
 def _stable_id(prefix: str, *parts: object) -> str:
@@ -48,6 +54,29 @@ def _stable_id(prefix: str, *parts: object) -> str:
     """
     key = "|".join(str(p) for p in parts)
     return f"{prefix}-{hashlib.sha1(key.encode('utf-8')).hexdigest()[:12]}"
+
+
+def _parse_effective_date(
+    text: str, pos: int, fallback: Optional[datetime]
+) -> Optional[datetime]:
+    """Дата факту з решти поточного рядка (після значення); інакше `fallback`.
+
+    Шукаємо ISO/dotted-дату лише до кінця рядка, щоб дата з наступного факту не
+    «перетікала» на попередній. Повертаємо tz-aware UTC-опівніч.
+    """
+    eol = text.find("\n", pos)
+    segment = text[pos:] if eol == -1 else text[pos:eol]
+    m = _DATE_RE.search(segment)
+    if m is None:
+        return fallback
+    if m.group(1):  # ISO YYYY-MM-DD
+        y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
+    else:  # DD.MM.YYYY
+        d, mo, y = int(m.group(4)), int(m.group(5)), int(m.group(6))
+    try:
+        return datetime(y, mo, d, tzinfo=timezone.utc)
+    except ValueError:  # напр. 2024-13-40 — ігноруємо, лишаємо fallback
+        return fallback
 
 
 def _parse_daily_dose_mg(text: str, pos: int) -> Optional[float]:
@@ -102,128 +131,182 @@ def _find_vocab_terms(
     return [(term, info, match) for _, term, info, match in found]
 
 
+def deterministic_extract(
+    text: str, doc: Document, patient_id: str, *, extracted_by: str = "StubExtractor"
+) -> ExtractionResult:
+    """Детермінований Stage 2: текст → FHIR-ресурси (LOINC/RxNorm/SNOMED).
+
+    Спільне ядро для `StubExtractor` (вхід — сирий `doc.text`) і `TwoStageExtractor`
+    (вхід — Stage 1 SGR-summary). Дата обзервації береться з рядка факту, інакше
+    fallback на `doc.received_at` — тож на тексті без дат id/час не змінюються.
+    """
+    vocab = load_vocab()
+    subject = Reference(reference=f"Patient/{patient_id}")
+
+    observations: list[Observation] = []
+    seen_obs: set[str] = set()
+    for term, info, match in _find_vocab_terms(text, vocab.labs):
+        number_match = _LAB_VALUE_RE.match(text, match.end())
+        if number_match is None:
+            continue
+        eff_date = _parse_effective_date(text, number_match.end(), doc.received_at)
+        obs_id = _stable_id(
+            "obs", doc.id, info.loinc, number_match.group(1), eff_date
+        )
+        if obs_id in seen_obs:  # ідентична повторна згадка — той самий факт
+            continue
+        seen_obs.add(obs_id)
+        observations.append(
+            Observation(
+                id=obs_id,
+                status="final",
+                code=CodeableConcept(
+                    coding=[
+                        Coding(
+                            system=Sys.LOINC,
+                            code=info.loinc,
+                            display=info.display,
+                        )
+                    ],
+                    text=term.capitalize(),
+                ),
+                subject=subject,
+                effectiveDateTime=eff_date,
+                valueQuantity=Quantity(
+                    value=float(number_match.group(1)), unit=info.unit
+                ),
+                provenance=Provenance(
+                    source_doc_id=doc.id,
+                    extracted_by=extracted_by,
+                    confidence=STUB_CONFIDENCE,
+                ),
+            )
+        )
+
+    medications: list[MedicationRequest] = []
+    seen_med: set[str] = set()
+    for term, info, match in _find_vocab_terms(text, vocab.medications):
+        dose_mg_per_day: Optional[float] = _parse_daily_dose_mg(text, match.end())
+        med_id = _stable_id("med", doc.id, info.rxnorm, dose_mg_per_day)
+        if med_id in seen_med:
+            continue
+        seen_med.add(med_id)
+        medications.append(
+            MedicationRequest(
+                id=med_id,
+                status="active",
+                intent="order",
+                medicationCodeableConcept=CodeableConcept(
+                    coding=[
+                        Coding(
+                            system=Sys.RXNORM,
+                            code=info.rxnorm,
+                            display=info.display,
+                        )
+                    ],
+                    text=term.capitalize(),
+                ),
+                subject=subject,
+                dose_mg_per_day=dose_mg_per_day,
+                provenance=Provenance(
+                    source_doc_id=doc.id,
+                    extracted_by=extracted_by,
+                    confidence=STUB_CONFIDENCE,
+                ),
+            )
+        )
+
+    conditions: list[Condition] = []
+    seen_cond: set[str] = set()
+    for term, info, _match in _find_vocab_terms(text, vocab.conditions):
+        cond_id = _stable_id("cond", doc.id, info.snomed)
+        if cond_id in seen_cond:
+            continue
+        seen_cond.add(cond_id)
+        conditions.append(
+            Condition(
+                id=cond_id,
+                subject=subject,
+                code=CodeableConcept(
+                    coding=[
+                        Coding(
+                            system=Sys.SNOMED,
+                            code=info.snomed,
+                            display=info.display,
+                        )
+                    ],
+                    text=term,
+                ),
+                clinicalStatus="active",
+                onsetDateTime=doc.received_at,
+                provenance=Provenance(
+                    source_doc_id=doc.id,
+                    extracted_by=extracted_by,
+                    confidence=STUB_CONFIDENCE,
+                ),
+            )
+        )
+
+    # Порожній витяг означає «нічого не розпізнали», а не «впевнені на 100%».
+    # Низька впевненість веде документ на перегляд людиною (L3), а не в auto.
+    mean_confidence = (
+        STUB_CONFIDENCE if (observations or medications or conditions) else 0.0
+    )
+    return ExtractionResult(
+        observations=observations,
+        conditions=conditions,
+        medications=medications,
+        mean_confidence=mean_confidence,
+    )
+
+
 class StubExtractor:
-    """Детермінований stub-екстрактор (заміна MedGemma для MVP)."""
+    """Детермінований stub-екстрактор: Stage 2 напряму по сирому `doc.text`."""
 
     def extract(self, doc: Document, patient_id: str) -> ExtractionResult:
-        vocab = load_vocab()
-        subject = Reference(reference=f"Patient/{patient_id}")
-        text = doc.text
+        return deterministic_extract(doc.text, doc, patient_id)
 
-        observations: list[Observation] = []
-        seen_obs: set[str] = set()
-        for term, info, match in _find_vocab_terms(text, vocab.labs):
-            number_match = _LAB_VALUE_RE.match(text, match.end())
-            if number_match is None:
-                continue
-            obs_id = _stable_id(
-                "obs", doc.id, info.loinc, number_match.group(1), doc.received_at
-            )
-            if obs_id in seen_obs:  # ідентична повторна згадка — той самий факт
-                continue
-            seen_obs.add(obs_id)
-            observations.append(
-                Observation(
-                    id=obs_id,
-                    status="final",
-                    code=CodeableConcept(
-                        coding=[
-                            Coding(
-                                system=Sys.LOINC,
-                                code=info.loinc,
-                                display=info.display,
-                            )
-                        ],
-                        text=term.capitalize(),
-                    ),
-                    subject=subject,
-                    effectiveDateTime=doc.received_at,
-                    valueQuantity=Quantity(
-                        value=float(number_match.group(1)), unit=info.unit
-                    ),
-                    provenance=Provenance(
-                        source_doc_id=doc.id,
-                        extracted_by="StubExtractor",
-                        confidence=STUB_CONFIDENCE,
-                    ),
-                )
-            )
 
-        medications: list[MedicationRequest] = []
-        seen_med: set[str] = set()
-        for term, info, match in _find_vocab_terms(text, vocab.medications):
-            dose_mg_per_day: Optional[float] = _parse_daily_dose_mg(text, match.end())
-            med_id = _stable_id("med", doc.id, info.rxnorm, dose_mg_per_day)
-            if med_id in seen_med:
-                continue
-            seen_med.add(med_id)
-            medications.append(
-                MedicationRequest(
-                    id=med_id,
-                    status="active",
-                    intent="order",
-                    medicationCodeableConcept=CodeableConcept(
-                        coding=[
-                            Coding(
-                                system=Sys.RXNORM,
-                                code=info.rxnorm,
-                                display=info.display,
-                            )
-                        ],
-                        text=term.capitalize(),
-                    ),
-                    subject=subject,
-                    dose_mg_per_day=dose_mg_per_day,
-                    provenance=Provenance(
-                        source_doc_id=doc.id,
-                        extracted_by="StubExtractor",
-                        confidence=STUB_CONFIDENCE,
-                    ),
-                )
-            )
+def _build_docref(
+    doc: Document, summary_text: str, patient_id: str
+) -> DocumentReference:
+    """FHIR DocumentReference з Stage 1 SGR-summary (free-text іпостась)."""
+    return DocumentReference(
+        id=f"docref-{doc.id}",
+        status="current",
+        subject=Reference(reference=f"Patient/{patient_id}"),
+        date=doc.received_at,
+        type=CodeableConcept(text=doc.kind),
+        content=Attachment(
+            contentType="text/plain",
+            data=summary_text,
+            title=f"SGR summary: {doc.id}",
+        ),
+        provenance=Provenance(
+            source_doc_id=doc.id,
+            extracted_by="MedGemma-Stage1",
+            confidence=STUB_CONFIDENCE,
+        ),
+    )
 
-        conditions: list[Condition] = []
-        seen_cond: set[str] = set()
-        for term, info, _match in _find_vocab_terms(text, vocab.conditions):
-            cond_id = _stable_id("cond", doc.id, info.snomed)
-            if cond_id in seen_cond:
-                continue
-            seen_cond.add(cond_id)
-            conditions.append(
-                Condition(
-                    id=cond_id,
-                    subject=subject,
-                    code=CodeableConcept(
-                        coding=[
-                            Coding(
-                                system=Sys.SNOMED,
-                                code=info.snomed,
-                                display=info.display,
-                            )
-                        ],
-                        text=term,
-                    ),
-                    clinicalStatus="active",
-                    onsetDateTime=doc.received_at,
-                    provenance=Provenance(
-                        source_doc_id=doc.id,
-                        extracted_by="StubExtractor",
-                        confidence=STUB_CONFIDENCE,
-                    ),
-                )
-            )
 
-        # Порожній витяг означає «нічого не розпізнали», а не «впевнені на 100%».
-        # Низька впевненість веде документ на перегляд людиною (L3), а не в auto.
-        mean_confidence = (
-            STUB_CONFIDENCE if (observations or medications or conditions) else 0.0
+class TwoStageExtractor:
+    """Двоетапний L2b: Stage 1 (LLM SGR-стиснення) → Stage 2 (детермінована KV-T).
+
+    Дає дві іпостасі одного документа: `DocumentReference` (free-text summary) і
+    структуровані FHIR-факти. Потребує живого локального LLM-сервера (LM Studio).
+    """
+
+    def __init__(self, *, model: str | None = None) -> None:
+        self._model = model
+
+    def extract(self, doc: Document, patient_id: str) -> ExtractionResult:
+        summary_text = l2b_stage1.summarize(doc.text, model=self._model)
+        ext = deterministic_extract(
+            summary_text, doc, patient_id, extracted_by="MedGemma-4B+Stage2"
         )
-        return ExtractionResult(
-            observations=observations,
-            conditions=conditions,
-            medications=medications,
-            mean_confidence=mean_confidence,
-        )
+        ext.document_reference = _build_docref(doc, summary_text, patient_id)
+        return ext
 
 
 def extract_documents(

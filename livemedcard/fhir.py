@@ -58,6 +58,17 @@ class Provenance(BaseModel):
     confidence: Optional[float] = None
 
 
+class Attachment(BaseModel):
+    """Вміст документа (FHIR Attachment, мінімальний профіль).
+
+    Free-text іпостась зберігається у ``data`` (напр. Stage 1 SGR-summary).
+    """
+
+    contentType: str = "text/plain"
+    data: Optional[str] = None
+    title: Optional[str] = None
+
+
 # ── resources ─────────────────────────────────────────────────────────────────
 class Patient(BaseModel):
     resourceType: Literal["Patient"] = "Patient"
@@ -120,6 +131,24 @@ class MedicationRequest(BaseModel):
     subject: Reference  # 1..1
     reason: Optional[Reference] = None  # → Condition (ребро indicated_for)
     dose_mg_per_day: Optional[float] = None  # спрощення для дозового чеку L1
+    provenance: Optional[Provenance] = None
+
+
+class DocumentReference(BaseModel):
+    """FHIR DocumentReference (мінімальний R4-профіль) — free-text іпостась.
+
+    Тримає згорнутий Stage 1 SGR-summary документа поряд зі структурованими
+    фактами. ``id`` детермінований від ``source_doc_id`` (docref-<doc_id>), тож
+    повторний прогін того самого документа не дублює запис.
+    """
+
+    resourceType: Literal["DocumentReference"] = "DocumentReference"
+    id: str
+    status: Literal["current", "superseded", "entered-in-error"] = "current"
+    subject: Optional[Reference] = None
+    date: Optional[datetime] = None
+    type: Optional[CodeableConcept] = None  # несе DocKind документа
+    content: Attachment
     provenance: Optional[Provenance] = None
 
 

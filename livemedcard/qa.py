@@ -6,6 +6,7 @@ LLM тут НЕ робить висновків про безпеку — від
 """
 from __future__ import annotations
 
+import re
 from typing import Optional
 
 from pydantic import BaseModel, Field
@@ -67,6 +68,12 @@ class QA:
         if loinc is not None:
             return self._answer_lab(loinc)
 
+        # Fallback на free-text іпостась (Stage 1 summary у вузлах-документах):
+        # структурного збігу немає, але відповідь може бути в тексті виписки.
+        freetext = self._answer_freetext(q)
+        if freetext is not None:
+            return freetext
+
         return Answer(
             text="Не вдалося зіставити питання з наявними даними. "
             "Спробуйте спитати про показник (нирки/креатинін, HbA1c, калій, тиск) "
@@ -118,6 +125,37 @@ class QA:
 
         sources = _unique(f.source_doc_id for f in series if f.source_doc_id)
         return Answer(text=" ".join(parts), sources=sources)
+
+    def _answer_freetext(self, q: str) -> Optional[Answer]:
+        """Пошук у Stage 1 summary (free-text іпостась) за токенами питання.
+
+        Повертає рядки summary, що містять значущі слова питання, з посиланням на
+        документ-джерело. None, якщо збігів немає (тоді — загальний fallback).
+        """
+        tokens = [w for w in re.findall(r"\w+", q.lower()) if len(w) >= 4]
+        if not tokens:
+            return None
+        hits: list[str] = []
+        sources: list[str] = []
+        for nid in self.graph.nodes_of_type("Document"):
+            text = self.graph.g.nodes[nid].get("text") or ""
+            doc_id = nid.split("/", 1)[-1]
+            for line in text.splitlines():
+                stripped = line.strip()
+                if not stripped or stripped.startswith("##") or stripped == "not stated":
+                    continue
+                low = stripped.lower()
+                if any(t in low for t in tokens):
+                    hits.append(stripped)
+                    sources.append(doc_id)
+                    if len(hits) >= 5:  # не заливати відповідь
+                        break
+            if len(hits) >= 5:
+                break
+        if not hits:
+            return None
+        text = "За текстом виписок:\n" + "\n".join(f"— {h}" for h in hits)
+        return Answer(text=text, sources=_unique(sources))
 
     def _answer_medications(self) -> Answer:
         med_nodes = self.graph.nodes_of_type("MedicationRequest")
