@@ -59,11 +59,15 @@ Q&A (grounded): запит → детермінований ретрив по Fa
   за словником `data/vocab.json`. Інтерфейс `Extractor` дозволяє підмінити на
   реальну MedGemma без змін конвеєра. Екстрактор ставить лише `confidence` витягу,
   **не** висновок про безпеку.
-- **Двоетапний L2b** (`LMC_EXTRACTOR=two_stage`, метод *LLM StructCore*): Stage 1
-  (MedGemma) згортає текст у SGR-summary (free-text іпостась → FHIR
-  `DocumentReference`); Stage 2 (`deterministic_extract`) детерміновано витягує з
-  summary KV-T факти з **датою на факт**. Стохастика LLM впливає лише на recall;
-  формат, словник і сигнали безпеки лишаються детермінованими.
+- **Двоетапний L2b** (метод *LLM StructCore*): Stage 1 (MedGemma) згортає текст у
+  SGR-summary (free-text іпостась → FHIR `DocumentReference`); Stage 2 витягує з
+  summary KV-T факти з **датою на факт**. Два режими Stage 2:
+  - `two_stage` — `deterministic_extract` (regex + `vocab.json` → LOINC);
+  - `two_stage_lora` — FT MedGemma база+LoRA генерує KVT4 `{cluster,keyword,value,
+    timestamp}`, часті лаби мостяться keyword→LOINC (два llama.cpp-сервери).
+
+  У будь-якому режимі стохастика LLM впливає лише на recall; сигнали безпеки
+  L1/L2a лишаються детермінованими на FactStore.
 - **L3 ескалює до людини** на поєднанні **високий ризик + висока впевненість**
   (`severity ∈ {major, critical}` і `mean_confidence ≥ 0.85`) — саме впевнена
   помилка найнебезпечніша. Також ескалація на низьку впевненість витягу.

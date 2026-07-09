@@ -56,6 +56,10 @@ CONTENT RULES:
 - Keep the document's original language and the EXACT raw values (numbers, units,
   test names). Do NOT translate values, do NOT round, do NOT infer from absence.
 - Include a fact ONLY if it is explicitly stated. If unsure, omit the line.
+- MEASURED VALUES, NOT SCAFFOLDING: capture the patient's own measured/reported
+  values. Do NOT record reference ranges, target thresholds, or chart axis ticks
+  (e.g. "Target Range 70-180 mg/dL", "Above 250 mg/dL", axis labels like
+  "250 / 180 / 70") as facts — they are scale, not measurements.
 - DATES PER FACT: if a measurement/prescription date is stated in the text, append
   it in parentheses at the END of that line in ISO form: "(YYYY-MM-DD)".
   Example: "креатинін: 120 (2024-03-15)". If no date is stated, omit the parentheses.
@@ -187,16 +191,21 @@ def stage1_summary_to_text(summary: dict[str, str], keys: Iterable[str] | None =
     return "\n".join(parts) + "\n"
 
 
-def summarize(note_text: str, *, model: str | None = None) -> str:
+def summarize(
+    note_text: str, *, model: str | None = None, base_url: str | None = None
+) -> str:
     """Stage 1: сирий текст → SGR-summary (плаский текст із заголовками ## KEY).
 
     Викликає локальну MedGemma; ремонтує/нормалізує JSON; повертає текст, готовий
-    і для зберігання (DocumentReference), і для детермінованого Stage 2.
+    і для зберігання (DocumentReference), і для Stage 2. `base_url` — окремий
+    Stage 1-сервер (двосерверний LoRA-сетап).
     """
     messages = [
         {"role": "system", "content": build_stage1_system_prompt()},
         {"role": "user", "content": build_stage1_user_prompt(note_text)},
     ]
-    raw = chat_completions(messages, model=model or STAGE1_MODEL, timeout=120.0)
+    raw = chat_completions(
+        messages, model=model or STAGE1_MODEL, timeout=120.0, base_url=base_url
+    )
     summary = coerce_stage1_summary(extract_json_object(raw))
     return stage1_summary_to_text(summary)

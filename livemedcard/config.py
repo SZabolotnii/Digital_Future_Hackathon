@@ -28,10 +28,18 @@ PERSIST_PATH = os.getenv("LMC_PERSIST_PATH", "")
 LMSTUDIO_URL = os.getenv("LMC_LMSTUDIO_URL", "http://127.0.0.1:1234/v1")
 OCR_MODEL = os.getenv("LMC_OCR_MODEL", "medgemma-1.5-4b-it")
 
-# Екстрактор L2b: "stub" — детермінований offline (дефолт, тести/CI/демо);
-# "two_stage" — Stage 1 (LLM SGR-стиснення) → Stage 2 (детермінована KV-T екстракція).
+# Екстрактор L2b:
+#   "stub"           — детермінований offline (дефолт, тести/CI/демо);
+#   "two_stage"      — Stage 1 (LLM SGR) → Stage 2 (детермінована vocab KV-T);
+#   "two_stage_lora" — Stage 1 (база) → Stage 2 (база+LoRA генерує KVT4).
 EXTRACTOR = os.getenv("LMC_EXTRACTOR", "stub")
 
 # Модель Stage 1 (SGR-стиснення). None → автовизначення завантаженої моделі.
 STAGE1_MODEL = os.getenv("LMC_STAGE1_MODEL") or None
+
+# Двосерверний LoRA-сетап (llama.cpp): Stage 1 — база, Stage 2 — база+LoRA-адаптер.
+# Аліаси/порти за README FT-моделі DocUA/...-two-stage.
+STAGE1_URL = os.getenv("LMC_STAGE1_URL", LMSTUDIO_URL)
+STAGE2_URL = os.getenv("LMC_STAGE2_URL", "http://127.0.0.1:1246/v1")
+STAGE2_MODEL = os.getenv("LMC_STAGE2_MODEL", "medgemma-ft-lora-adapters-q5_k_m")
 

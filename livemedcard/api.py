@@ -39,7 +39,12 @@ from .config import EXTRACTOR, MAX_DOC_CHARS, PERSIST_PATH, STATIC_DIR
 from .dto import Document, DocKind
 from .fhir import Patient
 from .layers import l3_router
-from .layers.l2b_extractor import Extractor, StubExtractor, TwoStageExtractor
+from .layers.l2b_extractor import (
+    Extractor,
+    LoraStage2Extractor,
+    StubExtractor,
+    TwoStageExtractor,
+)
 from .pipeline import LiveMedCard
 from .qa import Answer, QA
 from .reference import load_sample_docs, range_for
@@ -57,7 +62,9 @@ def _new_patient() -> Patient:
 
 
 def _make_extractor() -> Extractor:
-    """Екстрактор L2b за конфігом: 'two_stage' (LLM+детермінований) або 'stub'."""
+    """Екстрактор L2b за конфігом: 'two_stage_lora' | 'two_stage' | 'stub'."""
+    if EXTRACTOR == "two_stage_lora":
+        return LoraStage2Extractor()
     if EXTRACTOR == "two_stage":
         return TwoStageExtractor()
     return StubExtractor()

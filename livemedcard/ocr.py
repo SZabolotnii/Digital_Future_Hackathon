@@ -17,9 +17,21 @@ class OcrError(Exception):
 
 
 _OCR_PROMPT = (
-    "Transcribe all text from this image exactly as is, in its original language. "
-    "Do not translate, and do not add any comments, introductions, notes, or explanations. "
-    "Output only the transcribed text."
+    "You transcribe a medical document image into plain text. Follow these rules:\n"
+    "1. LANGUAGE: keep the original language. Do NOT translate. No comments, "
+    "headings, or explanations — output only the transcription.\n"
+    "2. VALUES ARE CRITICAL: transcribe every number, unit and date exactly "
+    "(e.g. '204 mg/dL', '8.2%', '06/13/2025'). Never omit a value.\n"
+    "3. PAIR LABELS WITH THEIR VALUES: this may be a multi-column report where a "
+    "metric name and its value are separated horizontally or placed in different "
+    "columns. Read the layout and write each on one line as 'Label: value unit' "
+    "(e.g. 'Average Glucose: 204 mg/dL', 'Time CGM Active: 34%').\n"
+    "4. CHARTS: for plots/graphs, transcribe axis titles and the legend ONCE. Do "
+    "NOT repeat tick labels or time-axis labels (e.g. '12am 3am 6am'); write such a "
+    "sequence at most once. Never loop or repeat a line.\n"
+    "5. If a value is unreadable, write the label with '[unreadable]' — do NOT "
+    "invent a number.\n"
+    "Output the transcription now."
 )
 
 
@@ -55,9 +67,14 @@ class OcrService:
         try:
             return chat_completions(
                 messages,
-                model=cls.detect_model() or OCR_MODEL,
-                timeout=120.0,  # vision inference is slow
+                # OCR мусить цілитись у КОНКРЕТНУ vision-модель (OCR_MODEL), а не в
+                # «першу завантажену»: інакше text-only модель (напр. 27B) перехопить
+                # запит і поверне 500 на зображення. Auto-detect тут недоречний.
+                model=OCR_MODEL,
+                max_tokens=4096,  # щільні звіти не влазять у 2048
+                timeout=180.0,  # vision inference is slow
                 service_name="LM Studio",
+                frequency_penalty=0.8,  # проти зациклення на підписах осей
             )
         except LLMError as exc:
             raise OcrError(str(exc)) from exc

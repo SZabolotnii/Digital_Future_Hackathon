@@ -12,6 +12,7 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 from .dto import Signal
+from .lang import Lang, detect_lang
 from .reference import range_for
 from .stores import FactStore, KnowledgeGraph
 
@@ -32,9 +33,72 @@ _KEYWORD_TO_LOINC: dict[str, str] = {
     "тиск": "8480-6",
     "холестерин": "2093-3",
     "алт": "1742-6",
+    # EN-аліаси (специфічні — раніше за загальні, щоб «glycated hemoglobin»
+    # не перехопився «hemoglobin»)
+    "glycated hemoglobin": "4548-4",
+    "a1c": "4548-4",
+    "diabetes": "4548-4",
+    "kidney": "2160-0",
+    "creatinine": "2160-0",
+    "hemoglobin": "718-7",
+    "glucose": "2345-7",
+    "sugar": "2345-7",
+    "potassium": "2823-3",
+    "blood pressure": "8480-6",
+    "pressure": "8480-6",
+    "cholesterol": "2093-3",
+    "alt": "1742-6",
 }
 
-_MED_KEYWORDS = ("ліки", "препарат", "таблет", "взаємод", "приймає", "приймати")
+_MED_KEYWORDS = (
+    "ліки", "препарат", "таблет", "взаємод", "приймає", "приймати",
+    "medication", "medicine", "drug", "pill", "interaction", "taking",
+)
+
+# Каталог фраз відповіді за мовою питання (автовибір через detect_lang).
+_MSG: dict[Lang, dict[str, str]] = {
+    "uk": {
+        "lab_none": "У картці немає вимірювань показника «{name}».",
+        "lab_latest": "{name}: останнє значення {v} {u} ({d}).",
+        "lab_trend": "Динаміка за {n} вимірювань: {a}→{b} ({d1}..{d2}), {dir}.",
+        "dir_up": "стабільно зростає",
+        "dir_down": "стабільно знижується",
+        "dir_flat": "змінюється нерівномірно",
+        "above": "Останнє значення ВИЩЕ норми ({lo}–{hi} {u}).",
+        "within": "Останнє значення в межах норми ({lo}–{hi} {u}).",
+        "below": "Останнє значення НИЖЧЕ норми ({lo}–{hi} {u}).",
+        "meds_list": "Призначені препарати: {list}.",
+        "meds_none": "У картці немає призначених препаратів.",
+        "interactions": "⚠ Виявлені взаємодії:",
+        "no_interactions": "Небезпечних взаємодій між препаратами не виявлено.",
+        "freetext_header": "За текстом виписок:",
+        "fallback": (
+            "Не вдалося зіставити питання з наявними даними. Спробуйте спитати "
+            "про показник (нирки/креатинін, HbA1c, калій, тиск) або про ліки та взаємодії."
+        ),
+    },
+    "en": {
+        "lab_none": "No measurements of «{name}» in the record.",
+        "lab_latest": "{name}: latest value {v} {u} ({d}).",
+        "lab_trend": "Trend over {n} measurements: {a}→{b} ({d1}..{d2}), {dir}.",
+        "dir_up": "steadily increasing",
+        "dir_down": "steadily decreasing",
+        "dir_flat": "changing unevenly",
+        "above": "Latest value is ABOVE the reference range ({lo}–{hi} {u}).",
+        "within": "Latest value is within the reference range ({lo}–{hi} {u}).",
+        "below": "Latest value is BELOW the reference range ({lo}–{hi} {u}).",
+        "meds_list": "Prescribed medications: {list}.",
+        "meds_none": "No prescribed medications in the record.",
+        "interactions": "⚠ Detected interactions:",
+        "no_interactions": "No dangerous drug interactions detected.",
+        "freetext_header": "Per document text:",
+        "fallback": (
+            "Could not match the question to available data. Try asking about a lab "
+            "value (kidney/creatinine, HbA1c, potassium, blood pressure) or about "
+            "medications and interactions."
+        ),
+    },
+}
 
 
 class Answer(BaseModel):
@@ -57,28 +121,25 @@ class QA:
 
     def ask(self, question: str) -> Answer:
         q = question.lower()
+        lang = detect_lang(question)  # мова відповіді = мова питання
 
         # Наміри про ліки/взаємодії перевіряємо ПЕРШИМИ: інакше питання про ліки,
         # що містить лабораторну підстроку (напр. «...при тиску»), помилково
         # перехоплювалося б лабораторною гілкою.
         if any(k in q for k in _MED_KEYWORDS):
-            return self._answer_medications()
+            return self._answer_medications(lang)
 
         loinc = self._match_loinc(q)
         if loinc is not None:
-            return self._answer_lab(loinc)
+            return self._answer_lab(loinc, lang)
 
         # Fallback на free-text іпостась (Stage 1 summary у вузлах-документах):
         # структурного збігу немає, але відповідь може бути в тексті виписки.
-        freetext = self._answer_freetext(q)
+        freetext = self._answer_freetext(q, lang)
         if freetext is not None:
             return freetext
 
-        return Answer(
-            text="Не вдалося зіставити питання з наявними даними. "
-            "Спробуйте спитати про показник (нирки/креатинін, HbA1c, калій, тиск) "
-            "або про ліки та взаємодії."
-        )
+        return Answer(text=_MSG[lang]["fallback"])
 
     # ── маршрутизація ─────────────────────────────────────────────────────────
     def _match_loinc(self, q: str) -> Optional[str]:
@@ -87,46 +148,40 @@ class QA:
                 return loinc
         return None
 
-    def _answer_lab(self, loinc: str) -> Answer:
+    def _answer_lab(self, loinc: str, lang: Lang) -> Answer:
+        m = _MSG[lang]
         series = self.factstore.series(loinc)
         ref = range_for(loinc, self.sex)
         name = ref.keyword if ref else (series[0].keyword if series else loinc)
         if not series:
-            return Answer(text=f"У картці немає вимірювань показника «{name}».")
+            return Answer(text=m["lab_none"].format(name=name))
 
         latest = series[-1]
         first = series[0]
         unit = latest.unit or (ref.unit if ref else "")
-        parts = [
-            f"{name}: останнє значення {latest.value} {unit} "
-            f"({latest.ts.date()})."
-        ]
+        parts = [m["lab_latest"].format(name=name, v=latest.value, u=unit, d=latest.ts.date())]
         if len(series) >= 2:
             # Напрям — за монотонністю всього ряду (узгоджено з L2a), а не лише
             # за крайніми точками, щоб не називати «трендом» немонотонну динаміку.
             vals = [f.value for f in series]
             if all(a <= b for a, b in zip(vals, vals[1:])) and vals[-1] > vals[0]:
-                direction = "стабільно зростає"
+                direction = m["dir_up"]
             elif all(a >= b for a, b in zip(vals, vals[1:])) and vals[-1] < vals[0]:
-                direction = "стабільно знижується"
+                direction = m["dir_down"]
             else:
-                direction = "змінюється нерівномірно"
-            parts.append(
-                f"Динаміка за {len(series)} вимірювань: {first.value}→{latest.value} "
-                f"({first.ts.date()}..{latest.ts.date()}), {direction}."
-            )
+                direction = m["dir_flat"]
+            parts.append(m["lab_trend"].format(
+                n=len(series), a=first.value, b=latest.value,
+                d1=first.ts.date(), d2=latest.ts.date(), dir=direction,
+            ))
         if ref is not None:
-            if latest.value > ref.high:
-                parts.append(f"Останнє значення ВИЩЕ норми ({ref.low}–{ref.high} {unit}).")
-            elif latest.value < ref.low:
-                parts.append(f"Останнє значення НИЖЧЕ норми ({ref.low}–{ref.high} {unit}).")
-            else:
-                parts.append(f"Останнє значення в межах норми ({ref.low}–{ref.high} {unit}).")
+            key = "above" if latest.value > ref.high else "below" if latest.value < ref.low else "within"
+            parts.append(m[key].format(lo=ref.low, hi=ref.high, u=unit))
 
         sources = _unique(f.source_doc_id for f in series if f.source_doc_id)
         return Answer(text=" ".join(parts), sources=sources)
 
-    def _answer_freetext(self, q: str) -> Optional[Answer]:
+    def _answer_freetext(self, q: str, lang: Lang) -> Optional[Answer]:
         """Пошук у Stage 1 summary (free-text іпостась) за токенами питання.
 
         Повертає рядки summary, що містять значущі слова питання, з посиланням на
@@ -154,24 +209,25 @@ class QA:
                 break
         if not hits:
             return None
-        text = "За текстом виписок:\n" + "\n".join(f"— {h}" for h in hits)
+        text = _MSG[lang]["freetext_header"] + "\n" + "\n".join(f"— {h}" for h in hits)
         return Answer(text=text, sources=_unique(sources))
 
-    def _answer_medications(self) -> Answer:
+    def _answer_medications(self, lang: Lang) -> Answer:
+        m = _MSG[lang]
         med_nodes = self.graph.nodes_of_type("MedicationRequest")
         names = [self.graph.g.nodes[n].get("label", n) for n in med_nodes]
         parts = []
         if names:
-            parts.append("Призначені препарати: " + ", ".join(sorted(set(names))) + ".")
+            parts.append(m["meds_list"].format(list=", ".join(sorted(set(names)))))
         else:
-            parts.append("У картці немає призначених препаратів.")
+            parts.append(m["meds_none"])
 
         interactions = [s for s in self.signals if s.kind == "interaction"]
         if interactions:
-            parts.append("⚠ Виявлені взаємодії:")
+            parts.append(m["interactions"])
             parts.extend(f"— {s.detail} ({s.severity})" for s in interactions)
         else:
-            parts.append("Небезпечних взаємодій між препаратами не виявлено.")
+            parts.append(m["no_interactions"])
 
         sources = _unique(
             self.graph.provenance_of(n)[0].split("/", 1)[-1]

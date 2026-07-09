@@ -17,10 +17,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `config.py` — централізовані налаштування (пороги, шляхи; override через env `LMC_*`)
 - `stores.py` — `FactStore` (KV-T, ідемпотентний, індекс за LOINC) + `KnowledgeGraph` (networkx)
 - `reference.py` + `data/*.json` — відкриті довідкові БД; loader-и кешовані й повертають незмінні структури; `range_for(loinc, sex)` — межі за статтю
-- `layers/` — шари TRACE: `l1_safety` (взаємодії/дози), `l2a_trends` (тренди/межі, за статтю), `l2b_extractor` (детермінований Stage 2: `deterministic_extract` → `StubExtractor` (offline) та `TwoStageExtractor`; доза×кратність; **дата на факт** із рядка або fallback `received_at`; **стабільні хеш-id** ресурсів від змісту), `l2b_stage1` (Stage 1 SGR-стиснення: локальна MedGemma згортає текст у 9-key summary — free-text іпостась), `l3_router` (роутинг/ескалація)
+- `layers/` — шари TRACE: `l1_safety` (взаємодії/дози), `l2a_trends` (тренди/межі, за статтю), `l2b_extractor` (екстрактори L2b: `StubExtractor` (offline, `deterministic_extract`), `TwoStageExtractor` (Stage1+детермінований Stage2), `LoraStage2Extractor` (Stage1+LoRA Stage2); доза×кратність; **дата на факт** або fallback `received_at`; **стабільні хеш-id**), `l2b_stage1` (Stage 1 SGR-стиснення → 9-key summary, free-text іпостась), `l2b_stage2_lora` (Stage 2 через FT база+LoRA → KVT4 → Observations, keyword→LOINC міст), `l3_router` (роутинг/ескалація)
 - `pipeline.py` — `LiveMedCard` (джерело істини FHIR-ресурсів; `snapshot`/`from_snapshot`, типізований аудит `AuditEntry`; тримає й `DocumentReference`-и — free-text іпостась, `_absorb_docref` додає summary у вузол `Document/{id}` графа)
 - `bundle.py` — експорт/імпорт FHIR Bundle; `repository.py` — персистентність у локальний JSON (пошкоджений знімок → явний `ValueError`, не мовчазний порожній старт)
-- `qa.py` — grounded Q&A з провенансом (за статтю); `api.py` — FastAPI + UI (стан під `threading.Lock`, без `global`); `demo.py` — CLI-демо
+- `qa.py` — grounded Q&A з провенансом (за статтю); **білінгвальний**: `detect_lang` за питанням → відповідь UA/EN через каталог `_MSG`; keyword-мапи UA+EN; `api.py` — FastAPI + UI (стан під `threading.Lock`, без `global`); `demo.py` — CLI-демо
+- `lang.py` — легкий детектор мови `detect_lang(text) -> 'uk'|'en'` (частка кирилиці); основа авто-вибору мови у білінгвальному режимі
 - `llm_client.py` — спільний OpenAI-сумісний клієнт до локального сервера (LM Studio): `chat_completions(messages)` + `detect_model()`; лише stdlib (`urllib`), щоб тести мокали `urllib.request.urlopen`. Спільний канал для OCR і Stage 1
 - `ocr.py` — `OcrService`: OCR медичних зображень (vision-модель типу MedGemma). Делегує HTTP у `llm_client`, лишає лише vision-payload і промпт дослівної транскрипції. Крок image→text перед двоетапним L2b, **жодних висновків про безпеку**
 
@@ -60,13 +61,23 @@ env `LMC_LMSTUDIO_URL` (типово `http://127.0.0.1:1234/v1`) і `LMC_OCR_MOD
 (Schema-Guided Reasoning Condensation): вхідний текст (OCR або введений) дає дві
 іпостасі — (1) **free-text** SGR-summary (Stage 1, MedGemma; зберігається як FHIR
 `DocumentReference`, живить провенанс і Q&A-fallback) і (2) **структуровану** KV-T
-(Stage 2, детермінований `deterministic_extract` по summary → FactStore). Межа
-детермінізму збережена: LLM лише стискає текст (впливає на recall), формат/словник
-і сигнали безпеки — детерміновані. Вмикається `LMC_EXTRACTOR=two_stage` (дефолт
-`stub` — offline, детермінований, для тестів/CI/демо). Stage 1 surface-ить **дату
-на факт** (`показник: значення (YYYY-MM-DD)`), тож один документ рознесено за
-реальними датами вимірювань. Тести (`tests/test_l2b_stage1.py`) мокають
-`l2b_stage1.chat_completions`.
+(Stage 2 → FactStore). Межа детермінізму збережена: LLM лише стискає/витягує факти
+(впливає на recall), сигнали безпеки — детерміновані на FactStore. Stage 1
+surface-ить **дату на факт** (`показник: значення (YYYY-MM-DD)`).
+
+Три режими `LMC_EXTRACTOR` (дефолт `stub` — offline, для тестів/CI/демо):
+- `two_stage` — Stage 2 = детермінований `deterministic_extract` по summary
+  (regex + `vocab.json` → LOINC). Одна модель.
+- `two_stage_lora` — Stage 2 = **FT MedGemma база+LoRA** (`l2b_stage2_lora`),
+  що генерує **KVT4** (`{cluster,keyword,value,timestamp}`); часті лаби мостяться
+  keyword→LOINC (решта — free-form). Потребує **двох llama.cpp-серверів**:
+  `LMC_STAGE1_URL` (база) і `LMC_STAGE2_URL` (база+LoRA-адаптер, дефолт `:1246`),
+  моделі `LMC_STAGE1_MODEL`/`LMC_STAGE2_MODEL`. Модель:
+  `DocUA/medgemma-1.5-4b-it-gguf-q5-k-m-two-stage`.
+
+Тести (`tests/test_l2b_stage1.py`, `tests/test_l2b_stage2_lora.py`) мокають
+`chat_completions` відповідного шару. E2E-runner на реальному документі —
+`~/Medical Brain/OCR_model-with_PDF/run_e2e.py` (пише `runs/<timestamp>/`).
 
 Архітектурний інваріант, який слід зберігати при змінах: **сигнали безпеки (L1/L2a) рахуються детерміновано на факт-сторі, а L2b лише витягує факти й не робить висновків про безпеку.**
 

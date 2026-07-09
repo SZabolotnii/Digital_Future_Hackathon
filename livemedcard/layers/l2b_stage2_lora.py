@@ -1,0 +1,180 @@
+"""L2b Stage 2 (LoRA) — fine-tuned MedGemma генерує KVT4 факти.
+
+Альтернатива детермінованому `deterministic_extract`: замість regex+vocab.json
+тут працює FT-модель DocUA/medgemma-1.5-4b-it-...-two-stage (база+LoRA-адаптер),
+натренована видавати KVT4 — `{cluster, keyword, value, timestamp}`. Знімає
+обмеження словника, узагальнює на будь-який документ.
+
+Межа безпеки збережена: LoRA лише **витягує факти**; сигнали L1/L2a рахуються
+детерміновано на FactStore. Часті лабораторні keywords мостяться у LOINC (щоб
+потрапляли в таймлайн і перевірки), решта лишаються free-form у summary.
+"""
+from __future__ import annotations
+
+import hashlib
+import json
+import re
+from datetime import datetime, timezone
+from typing import Optional
+
+from ..config import STAGE2_MODEL, STAGE2_URL
+from ..dto import Document
+from ..fhir import (
+    CodeableConcept,
+    Coding,
+    Observation,
+    Provenance,
+    Quantity,
+    Reference,
+    Sys,
+)
+from ..llm_client import chat_completions
+
+# ── keyword → LOINC міст (часті лаби readmission-домену) ──────────────────────
+# Значення: (LOINC, людська назва). Одиниця береться з value LoRA (fallback — тут).
+_KEYWORD_LOINC: dict[str, tuple[str, str]] = {
+    # EN (readmission-домен FT) + UA — білінгвальний міст
+    "creatinine": ("2160-0", "Creatinine"),
+    "креатинін": ("2160-0", "Creatinine"),
+    "glucose": ("2345-7", "Glucose"),
+    "глюкоза": ("2345-7", "Glucose"),
+    "potassium": ("2823-3", "Potassium"),
+    "калій": ("2823-3", "Potassium"),
+    "sodium": ("2951-2", "Sodium"),
+    "натрій": ("2951-2", "Sodium"),
+    "hemoglobin": ("718-7", "Hemoglobin"),
+    "гемоглобін": ("718-7", "Hemoglobin"),
+    "hematocrit": ("4544-3", "Hematocrit"),
+    "гематокрит": ("4544-3", "Hematocrit"),
+    "wbc": ("6690-2", "Leukocytes"),
+    "leukocytes": ("6690-2", "Leukocytes"),
+    "лейкоцити": ("6690-2", "Leukocytes"),
+    "platelet": ("777-3", "Platelets"),
+    "тромбоцити": ("777-3", "Platelets"),
+    "bun": ("3094-0", "Urea nitrogen"),
+    "сечовина": ("3094-0", "Urea nitrogen"),
+    "bicarbonate": ("1963-8", "Bicarbonate"),
+    "бікарбонат": ("1963-8", "Bicarbonate"),
+}
+
+_THOUGHT_TOKEN_RE = re.compile(r"<unused\d+>", re.IGNORECASE)
+_VALUE_NUM_RE = re.compile(r"^\s*(-?\d+(?:[.,]\d+)?)\s*(.*)$")
+_TS_DATE_FORMATS = ("%Y-%m-%d", "%d.%m.%Y", "%m/%d/%Y", "%B %d, %Y", "%b %d, %Y")
+
+
+def _stable_id(*parts: object) -> str:
+    key = "|".join(str(p) for p in parts)
+    return f"obs-{hashlib.sha1(key.encode('utf-8')).hexdigest()[:12]}"
+
+
+def build_stage2_system_prompt() -> str:
+    return (
+        "You extract clinical facts from a structured Stage-1 summary. "
+        "Output ONLY a JSON array of facts, each an object with keys "
+        '"cluster", "keyword", "value", "timestamp". '
+        "Use the patient's own measured values (numbers with units where present). "
+        "If a date/period is stated for a fact, put it in \"timestamp\", else use "
+        '"not stated". Do NOT invent facts. Output JSON only, no prose.'
+    )
+
+
+def _extract_json_array(text: str) -> list[dict]:
+    """Витягти JSON-масив фактів із відповіді моделі (стрип thought-токенів)."""
+    s = _THOUGHT_TOKEN_RE.sub("", text).strip()
+    if "```json" in s:
+        s = s.split("```json", 1)[1].split("```", 1)[0].strip()
+    elif "```" in s:
+        s = s.split("```", 1)[1].split("```", 1)[0].strip()
+    start, end = s.find("["), s.rfind("]")
+    if start == -1 or end <= start:
+        return []
+    try:
+        data = json.loads(s[start : end + 1])
+    except json.JSONDecodeError:
+        return []
+    return [d for d in data if isinstance(d, dict)]
+
+
+def _split_value(value: object) -> tuple[Optional[float], Optional[str]]:
+    """'204 mg/dL' → (204.0, 'mg/dL'); '34%' → (34.0, '%'); 'Yes' → (None, None)."""
+    m = _VALUE_NUM_RE.match(str(value))
+    if m is None:
+        return None, None
+    num = float(m.group(1).replace(",", "."))
+    unit = m.group(2).strip() or None
+    return num, unit
+
+
+def _parse_timestamp(ts: object, fallback: Optional[datetime]) -> Optional[datetime]:
+    """Дата факту з різних форматів; для періоду «A - B» береться КІНЕЦЬ (B)."""
+    s = str(ts).strip()
+    if not s or s.lower() == "not stated":
+        return fallback
+    for sep in (" - ", " – ", " — ", " to "):
+        if sep in s:
+            s = s.split(sep)[-1].strip()
+            break
+    for fmt in _TS_DATE_FORMATS:
+        try:
+            return datetime.strptime(s, fmt).replace(tzinfo=timezone.utc)
+        except ValueError:
+            continue
+    return fallback
+
+
+def extract_facts(summary_text: str, *, url: str | None = None, model: str | None = None) -> list[dict]:
+    """Викликати LoRA-Stage 2 сервер і повернути сирі KVT4-обʼєкти."""
+    messages = [
+        {"role": "system", "content": build_stage2_system_prompt()},
+        {"role": "user", "content": summary_text},
+    ]
+    raw = chat_completions(
+        messages,
+        model=model or STAGE2_MODEL,
+        base_url=url or STAGE2_URL,
+        temperature=0.0,
+        max_tokens=768,
+        frequency_penalty=0.1,  # ≈ repetition-penalty 1.1 з README
+        service_name="LoRA Stage 2",
+    )
+    return _extract_json_array(raw)
+
+
+def to_observations(
+    kvt: list[dict], doc: Document, patient_id: str, *, extracted_by: str
+) -> list[Observation]:
+    """KVT4 → FHIR Observations (лише числові; часті лаби мостяться у LOINC)."""
+    subject = Reference(reference=f"Patient/{patient_id}")
+    observations: list[Observation] = []
+    seen: set[str] = set()
+    for item in kvt:
+        keyword = str(item.get("keyword", "")).strip()
+        if not keyword:
+            continue
+        num, unit = _split_value(item.get("value"))
+        if num is None:  # нечислові (Yes/No, назви) лишаються лише в summary
+            continue
+        eff = _parse_timestamp(item.get("timestamp"), doc.received_at)
+        bridge = _KEYWORD_LOINC.get(keyword.lower())
+        coding = (
+            [Coding(system=Sys.LOINC, code=bridge[0], display=bridge[1])]
+            if bridge else []
+        )
+        obs_id = _stable_id(doc.id, keyword.lower(), num, eff)
+        if obs_id in seen:
+            continue
+        seen.add(obs_id)
+        observations.append(
+            Observation(
+                id=obs_id,
+                status="final",
+                code=CodeableConcept(coding=coding, text=keyword),
+                subject=subject,
+                effectiveDateTime=eff,
+                valueQuantity=Quantity(value=num, unit=unit),
+                provenance=Provenance(
+                    source_doc_id=doc.id, extracted_by=extracted_by, confidence=None
+                ),
+            )
+        )
+    return observations

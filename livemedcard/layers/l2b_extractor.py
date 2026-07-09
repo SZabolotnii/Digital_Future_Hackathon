@@ -11,7 +11,13 @@ import re
 from datetime import datetime, timezone
 from typing import Optional, Protocol, TypeVar
 
-from ..config import STUB_CONFIDENCE
+from ..config import (
+    STAGE1_MODEL,
+    STAGE1_URL,
+    STAGE2_MODEL,
+    STAGE2_URL,
+    STUB_CONFIDENCE,
+)
 from ..dto import Document, ExtractionResult
 from ..fhir import (
     Attachment,
@@ -27,7 +33,7 @@ from ..fhir import (
     Sys,
 )
 from ..reference import load_vocab
-from . import l2b_stage1
+from . import l2b_stage1, l2b_stage2_lora
 
 _T = TypeVar("_T")
 
@@ -307,6 +313,44 @@ class TwoStageExtractor:
         )
         ext.document_reference = _build_docref(doc, summary_text, patient_id)
         return ext
+
+
+class LoraStage2Extractor:
+    """Двоетапний L2b з FT LoRA-Stage 2 (двосерверний llama.cpp-сетап).
+
+    Stage 1 — база (SGR-summary → `DocumentReference`); Stage 2 — база+LoRA
+    генерує KVT4, які парсяться у FHIR Observations (часті лаби мостяться у LOINC).
+    Потребує двох llama.cpp-серверів (`STAGE1_URL`, `STAGE2_URL`).
+    """
+
+    def __init__(
+        self,
+        *,
+        stage1_model: str | None = STAGE1_MODEL,
+        stage1_url: str | None = STAGE1_URL,
+        stage2_model: str | None = STAGE2_MODEL,
+        stage2_url: str | None = STAGE2_URL,
+    ) -> None:
+        self._s1_model = stage1_model
+        self._s1_url = stage1_url
+        self._s2_model = stage2_model
+        self._s2_url = stage2_url
+
+    def extract(self, doc: Document, patient_id: str) -> ExtractionResult:
+        summary_text = l2b_stage1.summarize(
+            doc.text, model=self._s1_model, base_url=self._s1_url
+        )
+        kvt = l2b_stage2_lora.extract_facts(
+            summary_text, url=self._s2_url, model=self._s2_model
+        )
+        observations = l2b_stage2_lora.to_observations(
+            kvt, doc, patient_id, extracted_by="MedGemma-LoRA-Stage2"
+        )
+        return ExtractionResult(
+            observations=observations,
+            mean_confidence=STUB_CONFIDENCE if observations else 0.0,
+            document_reference=_build_docref(doc, summary_text, patient_id),
+        )
 
 
 def extract_documents(
