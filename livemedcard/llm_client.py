@@ -44,6 +44,7 @@ def chat_completions(
     frequency_penalty: float | None = None,
     presence_penalty: float | None = None,
     base_url: str | None = None,
+    extra_body: dict | None = None,
 ) -> str:
     """Викликати `/chat/completions` і повернути текст першого choice.
 
@@ -68,6 +69,8 @@ def chat_completions(
         payload["frequency_penalty"] = frequency_penalty
     if presence_penalty is not None:
         payload["presence_penalty"] = presence_penalty
+    if extra_body:  # напр. NuExtract chat_template_kwargs (template / mode)
+        payload.update(extra_body)
     req = urllib.request.Request(
         url,
         data=json.dumps(payload).encode("utf-8"),

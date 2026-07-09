@@ -39,12 +39,15 @@ from .config import EXTRACTOR, MAX_DOC_CHARS, PERSIST_PATH, STATIC_DIR
 from .dto import Document, DocKind
 from .fhir import Patient
 from .layers import l3_router
+from .layers import l2b_nuextract
 from .layers.l2b_extractor import (
     Extractor,
     LoraStage2Extractor,
+    NuExtractExtractor,
     StubExtractor,
     TwoStageExtractor,
 )
+from .llm_client import LLMError
 from .pipeline import LiveMedCard
 from .qa import Answer, QA
 from .reference import load_sample_docs, range_for
@@ -62,7 +65,9 @@ def _new_patient() -> Patient:
 
 
 def _make_extractor() -> Extractor:
-    """Екстрактор L2b за конфігом: 'two_stage_lora' | 'two_stage' | 'stub'."""
+    """Екстрактор L2b: 'nuextract' | 'two_stage_lora' | 'two_stage' | 'stub'."""
+    if EXTRACTOR == "nuextract":
+        return NuExtractExtractor()
     if EXTRACTOR == "two_stage_lora":
         return LoraStage2Extractor()
     if EXTRACTOR == "two_stage":
@@ -129,9 +134,14 @@ def ingest_image(req: ImageIngestRequest):
             detail="Зображення порожнє або некоректне",
         )
 
+    # У режимі nuextract зображення читає сам NuExtract (image→markdown), тож
+    # окремий OCR не потрібен — уникаємо накопичення помилок OCR→summary→extract.
     try:
-        text = OcrService.perform_ocr(req.image_base64)
-    except OcrError as exc:
+        if EXTRACTOR == "nuextract":
+            text = l2b_nuextract.image_to_markdown(req.image_base64)
+        else:
+            text = OcrService.perform_ocr(req.image_base64)
+    except (OcrError, LLMError) as exc:
         raise HTTPException(
             status_code=503,
             detail=str(exc),

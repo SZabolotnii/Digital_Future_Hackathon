@@ -32,8 +32,9 @@ from ..fhir import (
     Reference,
     Sys,
 )
+from ..config import NUEXTRACT_MODEL, NUEXTRACT_URL
 from ..reference import load_vocab
-from . import l2b_stage1, l2b_stage2_lora
+from . import l2b_nuextract, l2b_stage1, l2b_stage2_lora
 
 _T = TypeVar("_T")
 
@@ -350,6 +351,31 @@ class LoraStage2Extractor:
             observations=observations,
             mean_confidence=STUB_CONFIDENCE if observations else 0.0,
             document_reference=_build_docref(doc, summary_text, patient_id),
+        )
+
+
+class NuExtractExtractor:
+    """L2b через NuExtract3 (VLM). Stage 2 (текст/markdown → KVT-факти за шаблоном)
+    → Observations (міст keyword→LOINC). `doc.text` (markdown або звичайний текст)
+    зберігається як `DocumentReference` — розширена іпостась.
+
+    Для зображень Stage 1 (image→markdown) робить `/ingest/image` через
+    `l2b_nuextract.image_to_markdown`, тож сюди вже приходить markdown у `doc.text`.
+    """
+
+    def __init__(self, *, url: str | None = NUEXTRACT_URL, model: str | None = NUEXTRACT_MODEL) -> None:
+        self._url = url
+        self._model = model
+
+    def extract(self, doc: Document, patient_id: str) -> ExtractionResult:
+        kvt = l2b_nuextract.extract_facts(doc.text, url=self._url, model=self._model)
+        observations = l2b_stage2_lora.to_observations(
+            kvt, doc, patient_id, extracted_by="NuExtract3"
+        )
+        return ExtractionResult(
+            observations=observations,
+            mean_confidence=STUB_CONFIDENCE if observations else 0.0,
+            document_reference=_build_docref(doc, doc.text, patient_id),
         )
 
 

@@ -31,7 +31,8 @@ OCR_MODEL = os.getenv("LMC_OCR_MODEL", "medgemma-1.5-4b-it")
 # Екстрактор L2b:
 #   "stub"           — детермінований offline (дефолт, тести/CI/демо);
 #   "two_stage"      — Stage 1 (LLM SGR) → Stage 2 (детермінована vocab KV-T);
-#   "two_stage_lora" — Stage 1 (база) → Stage 2 (база+LoRA генерує KVT4).
+#   "two_stage_lora" — Stage 1 (база) → Stage 2 (база+LoRA генерує KVT4);
+#   "nuextract"      — NuExtract3 VLM: image→markdown + markdown→JSON за шаблоном.
 EXTRACTOR = os.getenv("LMC_EXTRACTOR", "stub")
 
 # Модель Stage 1 (SGR-стиснення). None → автовизначення завантаженої моделі.
@@ -42,4 +43,9 @@ STAGE1_MODEL = os.getenv("LMC_STAGE1_MODEL") or None
 STAGE1_URL = os.getenv("LMC_STAGE1_URL", LMSTUDIO_URL)
 STAGE2_URL = os.getenv("LMC_STAGE2_URL", "http://127.0.0.1:1246/v1")
 STAGE2_MODEL = os.getenv("LMC_STAGE2_MODEL", "medgemma-ft-lora-adapters-q5_k_m")
+
+# NuExtract (VLM structured extraction) — OpenAI-сумісний ендпойнт (llama-server
+# --jinja з mmproj, або vLLM). Один рушій робить image→markdown і markdown→JSON.
+NUEXTRACT_URL = os.getenv("LMC_NUEXTRACT_URL", "http://127.0.0.1:1299/v1")
+NUEXTRACT_MODEL = os.getenv("LMC_NUEXTRACT_MODEL", "NuExtract3")
 

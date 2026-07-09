@@ -17,7 +17,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `config.py` — централізовані налаштування (пороги, шляхи; override через env `LMC_*`)
 - `stores.py` — `FactStore` (KV-T, ідемпотентний, індекс за LOINC) + `KnowledgeGraph` (networkx)
 - `reference.py` + `data/*.json` — відкриті довідкові БД; loader-и кешовані й повертають незмінні структури; `range_for(loinc, sex)` — межі за статтю
-- `layers/` — шари TRACE: `l1_safety` (взаємодії/дози), `l2a_trends` (тренди/межі, за статтю), `l2b_extractor` (екстрактори L2b: `StubExtractor` (offline, `deterministic_extract`), `TwoStageExtractor` (Stage1+детермінований Stage2), `LoraStage2Extractor` (Stage1+LoRA Stage2); доза×кратність; **дата на факт** або fallback `received_at`; **стабільні хеш-id**), `l2b_stage1` (Stage 1 SGR-стиснення → 9-key summary, free-text іпостась), `l2b_stage2_lora` (Stage 2 через FT база+LoRA → KVT4 → Observations, keyword→LOINC міст), `l3_router` (роутинг/ескалація)
+- `layers/` — шари TRACE: `l1_safety` (взаємодії/дози), `l2a_trends` (тренди/межі, за статтю), `l2b_extractor` (екстрактори L2b: `StubExtractor` (offline, `deterministic_extract`), `TwoStageExtractor` (Stage1+детермінований Stage2), `LoraStage2Extractor` (Stage1+LoRA Stage2); доза×кратність; **дата на факт** або fallback `received_at`; **стабільні хеш-id**), `l2b_stage1` (Stage 1 SGR-стиснення → 9-key summary, free-text іпостась), `l2b_stage2_lora` (Stage 2 через FT база+LoRA → KVT4 → Observations, keyword→LOINC міст), `l2b_nuextract` (NuExtract3 VLM: image→markdown + markdown→JSON за шаблоном), `l3_router` (роутинг/ескалація)
 - `pipeline.py` — `LiveMedCard` (джерело істини FHIR-ресурсів; `snapshot`/`from_snapshot`, типізований аудит `AuditEntry`; тримає й `DocumentReference`-и — free-text іпостась, `_absorb_docref` додає summary у вузол `Document/{id}` графа)
 - `bundle.py` — експорт/імпорт FHIR Bundle; `repository.py` — персистентність у локальний JSON (пошкоджений знімок → явний `ValueError`, не мовчазний порожній старт)
 - `qa.py` — grounded Q&A з провенансом (за статтю); **білінгвальний**: `detect_lang` за питанням → відповідь UA/EN через каталог `_MSG`; keyword-мапи UA+EN; `api.py` — FastAPI + UI (стан під `threading.Lock`, без `global`); `demo.py` — CLI-демо
@@ -74,6 +74,13 @@ surface-ить **дату на факт** (`показник: значення (
   `LMC_STAGE1_URL` (база) і `LMC_STAGE2_URL` (база+LoRA-адаптер, дефолт `:1246`),
   моделі `LMC_STAGE1_MODEL`/`LMC_STAGE2_MODEL`. Модель:
   `DocUA/medgemma-1.5-4b-it-gguf-q5-k-m-two-stage`.
+- `nuextract` — **NuExtract3 VLM** (`l2b_nuextract`): один рушій робить
+  image→markdown (Stage 1, у `/ingest/image` замість OCR) і markdown/текст→JSON
+  за шаблоном (Stage 2). У бенчмарку — найточніший (value-accuracy 90% на Libre-View
+  gold; двоетапний бере TIR-бари, які інші губили). Ендпойнт `LMC_NUEXTRACT_URL`
+  (дефолт `:1299`), модель `LMC_NUEXTRACT_MODEL`. Легкий деплой:
+  `numind/NuExtract3-GGUF` через `llama-server --jinja --mmproj ...` (без torch,
+  `chat_template_kwargs` проходить). KVT4→Observations через той самий міст keyword→LOINC.
 
 Тести (`tests/test_l2b_stage1.py`, `tests/test_l2b_stage2_lora.py`) мокають
 `chat_completions` відповідного шару. E2E-runner на реальному документі —
