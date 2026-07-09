@@ -54,6 +54,20 @@ def test_extract_json_array_strips_thought_tokens_and_fences():
 
 
 # ── KVT4 → Observations ───────────────────────────────────────────────────────
+def test_cgm_bridge_substring_match():
+    """CGM-метрики з варіативним формулюванням мостяться через substring."""
+    kvt = [
+        {"keyword": "CGM Average Glucose", "value": "204 mg/dL", "timestamp": "not stated"},
+        {"keyword": "Glucose Management Indicator (GMI)", "value": "8.2%", "timestamp": "not stated"},
+        {"keyword": "CGM Glucose Variability", "value": "32.0%", "timestamp": "not stated"},
+    ]
+    obs = l2b_stage2_lora.to_observations(kvt, _doc(), "mom-001", extracted_by="test")
+    by_kw = {o.code.text: o for o in obs}
+    assert loinc_of(by_kw["CGM Average Glucose"]) == "97507-8"          # mean glucose (CGM)
+    assert loinc_of(by_kw["Glucose Management Indicator (GMI)"]) == "97506-0"  # GMI
+    assert loinc_of(by_kw["CGM Glucose Variability"]) is None           # свідомо не мапимо
+
+
 def test_to_observations_bridge_and_freeform():
     kvt = json.loads(_KVT_JSON)
     obs = l2b_stage2_lora.to_observations(kvt, _doc(), "mom-001", extracted_by="test")
@@ -67,7 +81,7 @@ def test_to_observations_bridge_and_freeform():
     assert creat.effectiveDateTime == datetime(2024, 3, 15, tzinfo=timezone.utc)
 
     glu = by_kw["CGM Average Glucose"]
-    assert loinc_of(glu) is None  # немає у мості → free-form
+    assert loinc_of(glu) == "97507-8"  # CGM mean glucose міст
     assert glu.valueQuantity.value == 204.0
     assert glu.effectiveDateTime == datetime(2025, 6, 13, tzinfo=timezone.utc)  # кінець періоду
 

@@ -57,6 +57,29 @@ _KEYWORD_LOINC: dict[str, tuple[str, str]] = {
     "бікарбонат": ("1963-8", "Bicarbonate"),
 }
 
+# CGM/AGP-метрики → стандартні LOINC CGM-панелі. Substring-матчинг, бо NuExtract
+# дає варіативні формулювання («Glucose Management Indicator (GMI)», «CGM Average
+# Glucose»). Даємо ЛИШЕ headline-коди, в яких упевнені; TIR-біни / variability /
+# active-time свідомо НЕ мапимо (коди треба звірити з авторитетним LOINC —
+# фабрикувати клінічні коди небезпечно). Порядок — специфічніше раніше.
+# ⚠ Перед клінічним використанням підтвердити ці коди за офіційним LOINC.
+_CGM_LOINC: list[tuple[tuple[str, ...], str, str]] = [
+    (("glucose management indicator", "gmi"), "97506-0", "Glucose Management Indicator"),
+    (("average glucose", "mean glucose"), "97507-8", "Mean glucose (CGM)"),
+]
+
+
+def _resolve_loinc(keyword: str) -> tuple[str, str] | None:
+    """LOINC для keyword: точний збіг (лаби) → substring (CGM) → None (free-form)."""
+    low = keyword.lower()
+    exact = _KEYWORD_LOINC.get(low)
+    if exact is not None:
+        return exact
+    for toks, code, display in _CGM_LOINC:
+        if any(t in low for t in toks):
+            return code, display
+    return None
+
 _THOUGHT_TOKEN_RE = re.compile(r"<unused\d+>", re.IGNORECASE)
 _VALUE_NUM_RE = re.compile(r"^\s*(-?\d+(?:[.,]\d+)?)\s*(.*)$")
 _TS_DATE_FORMATS = ("%Y-%m-%d", "%d.%m.%Y", "%m/%d/%Y", "%B %d, %Y", "%b %d, %Y")
@@ -155,7 +178,7 @@ def to_observations(
         if num is None:  # нечислові (Yes/No, назви) лишаються лише в summary
             continue
         eff = _parse_timestamp(item.get("timestamp"), doc.received_at)
-        bridge = _KEYWORD_LOINC.get(keyword.lower())
+        bridge = _resolve_loinc(keyword)
         coding = (
             [Coding(system=Sys.LOINC, code=bridge[0], display=bridge[1])]
             if bridge else []
