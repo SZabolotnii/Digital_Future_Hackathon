@@ -35,7 +35,13 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from .bundle import from_bundle, to_bundle
-from .config import EXTRACTOR, MAX_DOC_CHARS, PERSIST_PATH, STATIC_DIR
+from .config import (
+    EXTRACTOR,
+    MAX_DOC_CHARS,
+    PERSIST_PATH,
+    SEED_SAMPLES,
+    STATIC_DIR,
+)
 from .dto import Document, DocKind
 from .fhir import Patient
 from .layers import l3_router
@@ -93,7 +99,10 @@ def _initial_card() -> LiveMedCard:
         loaded = load_card(PERSIST_PATH, _make_extractor())
         if loaded is not None:
             return loaded
-    return LiveMedCard(_new_patient(), _make_extractor())
+    card = LiveMedCard(_new_patient(), _make_extractor())
+    if SEED_SAMPLES:  # публічне демо (HF Space) стартує з заповненою карткою
+        card.ingest_all([Document(**d) for d in load_sample_docs()])
+    return card
 
 
 _state = _State(_initial_card())

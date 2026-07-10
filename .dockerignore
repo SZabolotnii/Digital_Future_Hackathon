@@ -1,0 +1,15 @@
+# Тримаємо build-context малим: у образ іде лише livemedcard/ (див. Dockerfile COPY).
+*.pdf
+*.md
+tests/
+build_*.py
+livemedcard_fhir_skeleton.py
+.venv/
+.git/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.github/
+GEMINI.md
+*.log

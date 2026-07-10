@@ -6,125 +6,268 @@
 <title>LiveMedCard — жива медична картка</title>
 <style>
   :root{
-    --bg:#eef1f6; --panel:#ffffff; --ink:#16202e; --muted:#5c6b7d;
-    --line:#dce3ec; --accent:#1a4d8f; --accent-soft:#e8eff8;
-    --band:rgba(42,127,98,.12);
-    --critical:#8f1d14; --major:#d1453b; --moderate:#c07700; --info:#5a6b7b;
-    --ok:#1e7d3a;
-    --shadow:0 1px 2px rgba(16,32,46,.06),0 6px 18px rgba(16,32,46,.05);
+    /* dark clinical (default) */
+    --bg:#080d12; --bg-grad:radial-gradient(1200px 600px at 78% -8%, rgba(45,212,191,.10), transparent 60%),
+                             radial-gradient(900px 500px at 10% 0%, rgba(56,140,255,.07), transparent 55%);
+    --panel:#101923; --panel-2:#0d151d; --panel-hi:#16232f;
+    --ink:#e9f1f5; --muted:#8ba1ae; --faint:#5f7583; --line:#1d2b37;
+    --accent:#2dd4bf; --accent-ink:#062b26; --accent-soft:#0f2622;
+    --critical:#ff6b6b; --major:#ff7d6b; --moderate:#f0b429; --ok:#34d399; --info:#8ba1ae;
+    --band:rgba(45,212,191,.10);
+    --shadow:0 1px 0 rgba(255,255,255,.02) inset, 0 10px 30px rgba(0,0,0,.45);
+    --glow:0 0 0 1px rgba(45,212,191,.25), 0 8px 30px rgba(45,212,191,.12);
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,sans-serif;
   }
-  @media (prefers-color-scheme:dark){
+  @media (prefers-color-scheme:light){
     :root{
-      --bg:#0e1520; --panel:#161f2c; --ink:#e6edf5; --muted:#93a3b6;
-      --line:#243244; --accent:#6ea8f0; --accent-soft:#182436;
-      --band:rgba(72,187,148,.16);
-      --critical:#ff7a6b; --major:#ff8a7d; --moderate:#e5a23a; --info:#93a3b6; --ok:#5fd08a;
-      --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 22px rgba(0,0,0,.3);
+      --bg:#eef3f6; --bg-grad:radial-gradient(1100px 560px at 80% -10%, rgba(13,148,136,.10), transparent 60%),
+                               radial-gradient(800px 460px at 8% 0%, rgba(37,99,235,.06), transparent 55%);
+      --panel:#ffffff; --panel-2:#f5f8fa; --panel-hi:#eef3f6;
+      --ink:#0d1b24; --muted:#4f6774; --faint:#7d94a1; --line:#dde6ec;
+      --accent:#0d9488; --accent-ink:#ffffff; --accent-soft:#e2f2ef;
+      --critical:#dc2626; --major:#e0483c; --moderate:#b45309; --ok:#0f9d58; --info:#4f6774;
+      --band:rgba(13,148,136,.12);
+      --shadow:0 1px 2px rgba(13,27,36,.05), 0 10px 26px rgba(13,27,36,.07);
+      --glow:0 0 0 1px rgba(13,148,136,.25), 0 8px 26px rgba(13,148,136,.12);
     }
   }
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--ink);
-    font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Ubuntu,sans-serif;}
-  a{color:var(--accent)}
-  .wrap{max-width:1100px;margin:0 auto;padding:20px 18px 60px}
-  header.top{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px 16px;margin-bottom:6px}
-  header.top h1{font-size:22px;margin:0;letter-spacing:-.01em}
-  header.top .sub{color:var(--muted);font-size:13px}
-  .badge{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:600;line-height:1.7}
-  .toolbar{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 18px}
-  button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--panel);
-    color:var(--ink);border-radius:9px;padding:8px 14px;transition:.12s}
-  button:hover{border-color:var(--accent)}
-  button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
-  button.primary:hover{filter:brightness(1.06)}
-  button.ghost{background:transparent}
-  .grid{display:grid;grid-template-columns:1fr;gap:16px}
-  @media(min-width:820px){.grid{grid-template-columns:1.15fr .85fr}}
-  .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;
-    padding:16px;box-shadow:var(--shadow)}
-  .panel h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);
-    margin:0 0 12px}
-  .series{display:grid;gap:12px}
-  .metric{border:1px solid var(--line);border-radius:11px;padding:12px 12px 8px;background:var(--bg)}
-  .metric .row{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
-  .metric .name{font-weight:600}
-  .metric .val{font-variant-numeric:tabular-nums;font-weight:700;font-size:17px}
-  .metric .status{font-size:12px;font-weight:600}
-  .status.ok{color:var(--ok)} .status.high{color:var(--major)} .status.low{color:var(--moderate)}
-  .metric .src{color:var(--muted);font-size:11px;margin-top:2px}
-  .sig{display:flex;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
-  .sig:first-of-type{border-top:none}
-  .sig .dot{flex:0 0 auto;width:10px;height:10px;border-radius:50%;margin-top:5px}
-  .sig .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
-  .sig .d{font-size:14px}
-  .decision{display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:10px 12px;
-    border-radius:11px;border:1px solid var(--line)}
-  .decision.escalate{background:color-mix(in srgb,var(--major) 12%,transparent);border-color:var(--major)}
-  .decision.auto{background:color-mix(in srgb,var(--ok) 12%,transparent);border-color:var(--ok)}
-  .decision .t{font-weight:700}
-  .reasons{margin:6px 0 0;padding-left:18px;color:var(--muted);font-size:12.5px}
-  .meds{display:flex;flex-wrap:wrap;gap:8px}
-  .pill{background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:5px 12px;
-    font-size:13px;font-weight:600}
-  .empty{color:var(--muted);font-size:13px;padding:6px 0}
-  /* QA */
-  .qa .log{display:grid;gap:10px;margin-bottom:12px;max-height:340px;overflow:auto}
-  .bubble{padding:10px 13px;border-radius:12px;max-width:92%;white-space:pre-wrap}
-  .bubble.q{justify-self:end;background:var(--accent);color:#fff;border-bottom-right-radius:4px}
-  .bubble.a{justify-self:start;background:var(--bg);border:1px solid var(--line);border-bottom-left-radius:4px}
-  .bubble .src{display:block;margin-top:6px;font-size:11px;color:var(--muted)}
-  .askrow{display:flex;gap:8px}
-  .askrow input{flex:1;font:inherit;padding:10px 12px;border-radius:10px;border:1px solid var(--line);
-    background:var(--panel);color:var(--ink)}
-  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
-  .chip{font-size:12px;color:var(--accent);background:transparent;border:1px solid var(--line);
-    border-radius:999px;padding:4px 10px}
-  .add{margin-top:12px;display:none;gap:8px;grid-template-columns:1fr;background:var(--bg);
-    border:1px dashed var(--line);border-radius:11px;padding:12px}
-  .add.show{display:grid}
-  .add textarea{font:inherit;min-height:80px;border-radius:9px;border:1px solid var(--line);
-    padding:9px;background:var(--panel);color:var(--ink);resize:vertical}
-  .add select{font:inherit;padding:8px;border-radius:9px;border:1px solid var(--line);
-    background:var(--panel);color:var(--ink)}
-  footer{color:var(--muted);font-size:12px;margin-top:26px;text-align:center}
-  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);
-    color:var(--bg);padding:10px 16px;border-radius:10px;box-shadow:var(--shadow);opacity:0;
-    transition:.25s;pointer-events:none}
-  .toast.show{opacity:1}
-  .dropzone{
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    padding:16px; border:2px dashed var(--line); border-radius:10px; background:var(--panel);
-    cursor:pointer; transition:.15s; text-align:center; font-size:13px; margin: 8px 0 12px;
+  :root[data-theme="light"]{
+    --bg:#eef3f6; --bg-grad:radial-gradient(1100px 560px at 80% -10%, rgba(13,148,136,.10), transparent 60%),
+                             radial-gradient(800px 460px at 8% 0%, rgba(37,99,235,.06), transparent 55%);
+    --panel:#ffffff; --panel-2:#f5f8fa; --panel-hi:#eef3f6;
+    --ink:#0d1b24; --muted:#4f6774; --faint:#7d94a1; --line:#dde6ec;
+    --accent:#0d9488; --accent-ink:#ffffff; --accent-soft:#e2f2ef;
+    --critical:#dc2626; --major:#e0483c; --moderate:#b45309; --ok:#0f9d58; --info:#4f6774;
+    --band:rgba(13,148,136,.12);
+    --shadow:0 1px 2px rgba(13,27,36,.05), 0 10px 26px rgba(13,27,36,.07);
+    --glow:0 0 0 1px rgba(13,148,136,.25), 0 8px 26px rgba(13,148,136,.12);
   }
-  .dropzone:hover, .dropzone.dragover{
-    border-color:var(--accent); background:var(--accent-soft);
+  :root[data-theme="dark"]{
+    --bg:#080d12; --panel:#101923; --panel-2:#0d151d; --panel-hi:#16232f;
+    --ink:#e9f1f5; --muted:#8ba1ae; --faint:#5f7583; --line:#1d2b37;
+    --accent:#2dd4bf; --accent-ink:#062b26; --accent-soft:#0f2622;
+    --critical:#ff6b6b; --major:#ff7d6b; --moderate:#f0b429; --ok:#34d399; --info:#8ba1ae;
+    --band:rgba(45,212,191,.10);
+    --shadow:0 1px 0 rgba(255,255,255,.02) inset, 0 10px 30px rgba(0,0,0,.45);
+    --glow:0 0 0 1px rgba(45,212,191,.25), 0 8px 30px rgba(45,212,191,.12);
+  }
+
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;color:var(--ink);font:15px/1.55 var(--sans);
+    background:var(--bg-grad),var(--bg);background-attachment:fixed;min-height:100vh;
+    -webkit-font-smoothing:antialiased;}
+  a{color:var(--accent);text-underline-offset:2px}
+  .wrap{max-width:1160px;margin:0 auto;padding:26px 20px 72px}
+
+  /* ── header ─────────────────────────────────────────── */
+  header.top{display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin-bottom:4px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .logo{width:40px;height:40px;border-radius:11px;display:grid;place-items:center;flex:0 0 auto;
+    background:linear-gradient(150deg,var(--accent),color-mix(in srgb,var(--accent) 55%, #2563eb));
+    box-shadow:var(--glow)}
+  .logo svg{width:24px;height:24px;color:var(--accent-ink)}
+  .brand h1{font-size:23px;margin:0;letter-spacing:-.02em;font-weight:750}
+  .brand .sub{display:block;color:var(--muted);font-size:12.5px;margin-top:-1px;letter-spacing:.01em}
+  .top .spacer{flex:1}
+  .patient{font:12.5px/1.3 var(--mono);color:var(--muted);text-align:right;
+    background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:7px 11px}
+  .patient b{color:var(--ink)}
+  .theme-btn{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--panel);
+    color:var(--muted);cursor:pointer;display:grid;place-items:center;transition:.15s}
+  .theme-btn:hover{color:var(--accent);border-color:var(--accent)}
+
+  /* pulse line */
+  .pulse{height:34px;margin:12px 0 2px;overflow:hidden;opacity:.9}
+  .pulse svg{width:100%;height:100%}
+  .pulse .lead{stroke:var(--accent);stroke-width:2;fill:none;
+    stroke-dasharray:1400;stroke-dashoffset:1400;animation:trace 4.5s linear infinite}
+  .pulse .ghost{stroke:var(--line);stroke-width:2;fill:none}
+  @keyframes trace{to{stroke-dashoffset:0}}
+
+  /* ── stat strip ─────────────────────────────────────── */
+  .stats{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0 18px}
+  .stat{flex:1 1 130px;background:var(--panel);border:1px solid var(--line);border-radius:13px;
+    padding:13px 15px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .stat .n{font:700 26px/1 var(--mono);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+  .stat .l{font-size:12px;color:var(--muted);margin-top:5px}
+  .stat.bi .n{color:var(--accent)}
+  .stat.alert .n{color:var(--major)}
+
+  /* ── toolbar ────────────────────────────────────────── */
+  .toolbar{display:flex;flex-wrap:wrap;gap:9px;margin:0 0 20px}
+  button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--panel);
+    color:var(--ink);border-radius:10px;padding:9px 15px;transition:.14s;font-weight:550}
+  button:hover{border-color:var(--accent);transform:translateY(-1px)}
+  button:active{transform:translateY(0)}
+  button.primary{background:linear-gradient(150deg,var(--accent),color-mix(in srgb,var(--accent) 62%, #2563eb));
+    border-color:transparent;color:var(--accent-ink);font-weight:650;box-shadow:var(--glow)}
+  button.primary:hover{filter:brightness(1.05)}
+  button.ghost{background:transparent}
+  button:disabled{opacity:.55;cursor:default;transform:none}
+
+  /* ── layout ─────────────────────────────────────────── */
+  .grid{display:grid;grid-template-columns:1fr;gap:18px}
+  @media(min-width:900px){.grid{grid-template-columns:1.18fr .82fr}}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;
+    box-shadow:var(--shadow);animation:rise .5s cubic-bezier(.2,.7,.2,1) both}
+  .panel.d1{animation-delay:.05s} .panel.d2{animation-delay:.12s} .panel.d3{animation-delay:.19s}
+  @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+  .panel h2{font:600 11.5px/1 var(--sans);text-transform:uppercase;letter-spacing:.09em;color:var(--faint);
+    margin:0 0 15px;display:flex;align-items:center;gap:8px}
+  .panel h2 .tag{margin-left:auto;text-transform:none;letter-spacing:0;font-weight:600;font-size:11px;
+    color:var(--accent);background:var(--accent-soft);border-radius:999px;padding:3px 9px}
+  .right{display:grid;gap:18px}
+
+  /* ── metrics / timeline ─────────────────────────────── */
+  .series{display:grid;gap:13px}
+  .metric{border:1px solid var(--line);border-radius:13px;padding:14px 14px 10px;background:var(--panel-2);
+    transition:.16s;animation:rise .45s cubic-bezier(.2,.7,.2,1) both}
+  .metric:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--line));background:var(--panel-hi)}
+  .metric .row{display:flex;justify-content:space-between;align-items:flex-end;gap:10px}
+  .metric .name{font-weight:600;font-size:14.5px}
+  .metric .big{display:flex;align-items:baseline;gap:6px}
+  .metric .val{font:750 25px/1 var(--mono);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+  .metric .unit{font-size:12.5px;color:var(--muted);font-weight:600}
+  .metric .trend{font:700 12px/1 var(--mono);padding:2px 7px;border-radius:999px;white-space:nowrap}
+  .trend.up{color:var(--major);background:color-mix(in srgb,var(--major) 15%,transparent)}
+  .trend.down{color:var(--ok);background:color-mix(in srgb,var(--ok) 15%,transparent)}
+  .trend.flat{color:var(--muted);background:color-mix(in srgb,var(--muted) 14%,transparent)}
+  .metric .meta{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-top:3px}
+  .metric .ref{color:var(--faint);font-size:11.5px;font-family:var(--mono)}
+  .status{font-size:11.5px;font-weight:700}
+  .status.ok{color:var(--ok)} .status.high{color:var(--major)} .status.low{color:var(--moderate)}
+  .metric .src{color:var(--faint);font-size:11px;margin-top:7px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+  .lang{font:700 10px/1 var(--mono);padding:2px 5px;border-radius:5px;border:1px solid var(--line)}
+  .lang.ua{color:var(--accent)} .lang.en{color:#5e9dff}
+  .spark{margin-top:9px}
+  .spark path.line{stroke:var(--accent);stroke-width:2.2;fill:none;stroke-linejoin:round;stroke-linecap:round;
+    stroke-dasharray:var(--len);stroke-dashoffset:var(--len);animation:draw 1.1s .1s ease-out forwards}
+  @keyframes draw{to{stroke-dashoffset:0}}
+
+  /* ── safety ─────────────────────────────────────────── */
+  .decision{display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:11px 13px;
+    border-radius:12px;border:1px solid var(--line);flex-wrap:wrap}
+  .decision.escalate{background:color-mix(in srgb,var(--major) 12%,transparent);
+    border-color:color-mix(in srgb,var(--major) 45%,var(--line))}
+  .decision.auto{background:color-mix(in srgb,var(--ok) 12%,transparent);
+    border-color:color-mix(in srgb,var(--ok) 40%,var(--line))}
+  .badge{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:999px;
+    font-size:12px;font-weight:700;color:#fff}
+  .decision .t{font:600 12.5px/1 var(--mono);color:var(--muted);margin-left:auto}
+  .reasons{margin:8px 0 0;padding-left:18px;color:var(--muted);font-size:12.5px;flex-basis:100%}
+  .sig{display:flex;gap:11px;padding:12px 0;border-top:1px solid var(--line)}
+  .sig:first-of-type{border-top:none;padding-top:2px}
+  .sig .dot{flex:0 0 auto;width:11px;height:11px;border-radius:50%;margin-top:4px;position:relative}
+  .sig.hot .dot::after{content:"";position:absolute;inset:-4px;border-radius:50%;
+    border:2px solid currentColor;opacity:.5;animation:ping 1.8s cubic-bezier(0,0,.2,1) infinite}
+  @keyframes ping{0%{transform:scale(.9);opacity:.6}70%,100%{transform:scale(2.1);opacity:0}}
+  .sig .k{font:600 10.5px/1.3 var(--mono);color:var(--faint);text-transform:uppercase;letter-spacing:.05em}
+  .sig .d{font-size:13.5px;margin-top:3px;display:block}
+
+  .meds{display:flex;flex-wrap:wrap;gap:8px}
+  .pill{background:var(--panel-2);border:1px solid var(--line);color:var(--ink);border-radius:999px;
+    padding:6px 13px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:7px}
+  .pill.flag{border-color:color-mix(in srgb,var(--major) 55%,var(--line));
+    color:var(--major);background:color-mix(in srgb,var(--major) 10%,transparent)}
+  .pill .warn{font-size:11px}
+  .empty{color:var(--muted);font-size:13px;padding:8px 0}
+
+  /* ── Q&A ────────────────────────────────────────────── */
+  .qa .log{display:grid;gap:10px;margin-bottom:14px;max-height:320px;overflow:auto;padding-right:4px}
+  .bubble{padding:11px 14px;border-radius:14px;max-width:90%;white-space:pre-wrap;
+    animation:pop .28s cubic-bezier(.2,.7,.2,1) both;font-size:14px}
+  @keyframes pop{from{opacity:0;transform:translateY(6px) scale(.98)}to{opacity:1;transform:none}}
+  .bubble.q{justify-self:end;background:linear-gradient(150deg,var(--accent),color-mix(in srgb,var(--accent) 62%, #2563eb));
+    color:var(--accent-ink);border-bottom-right-radius:5px;font-weight:550}
+  .bubble.a{justify-self:start;background:var(--panel-2);border:1px solid var(--line);border-bottom-left-radius:5px}
+  .bubble .src{display:block;margin-top:7px;font:11px/1.4 var(--mono);color:var(--faint)}
+  .askrow{display:flex;gap:9px}
+  .askrow input{flex:1;font:inherit;padding:11px 14px;border-radius:11px;border:1px solid var(--line);
+    background:var(--panel-2);color:var(--ink)}
+  .askrow input:focus{outline:none;border-color:var(--accent);box-shadow:var(--glow)}
+  .chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+  .chip{font-size:12.5px;color:var(--muted);background:var(--panel-2);border:1px solid var(--line);
+    border-radius:999px;padding:5px 12px;cursor:pointer;transition:.14s}
+  .chip:hover{color:var(--accent);border-color:var(--accent)}
+
+  /* add doc */
+  .add{margin:14px 0 0;display:none;gap:9px;grid-template-columns:1fr;background:var(--panel-2);
+    border:1px dashed var(--line);border-radius:13px;padding:14px}
+  .add.show{display:grid;animation:rise .3s ease both}
+  .add textarea{font:inherit;min-height:78px;border-radius:10px;border:1px solid var(--line);
+    padding:10px;background:var(--panel);color:var(--ink);resize:vertical}
+  .add textarea:focus,.add select:focus{outline:none;border-color:var(--accent)}
+  .add select{font:inherit;padding:9px;border-radius:10px;border:1px solid var(--line);
+    background:var(--panel);color:var(--ink)}
+  .or{margin:2px 0;font:600 11px/1 var(--mono);color:var(--faint);text-transform:uppercase;
+    letter-spacing:.06em;text-align:center}
+  .dropzone{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;
+    border:2px dashed var(--line);border-radius:11px;background:var(--panel);cursor:pointer;transition:.15s;
+    text-align:center;font-size:13px;color:var(--muted)}
+  .dropzone:hover,.dropzone.dragover{border-color:var(--accent);background:var(--accent-soft);color:var(--ink)}
+
+  footer{color:var(--faint);font-size:12px;margin-top:30px;text-align:center;line-height:1.6}
+  footer b{color:var(--muted)}
+  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(8px);
+    background:var(--ink);color:var(--bg);padding:11px 18px;border-radius:11px;font-weight:600;font-size:13.5px;
+    box-shadow:0 10px 30px rgba(0,0,0,.35);opacity:0;transition:.28s;pointer-events:none;z-index:50}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  @media (prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation-duration:.001s!important;animation-iteration-count:1!important;
+      transition-duration:.001s!important}
+    .spark path.line{stroke-dashoffset:0}
   }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header class="top">
-    <h1>LiveMedCard</h1>
-    <span class="sub">жива медична картка · архітектура TRACE</span>
-    <span id="patient" class="sub" style="margin-left:auto"></span>
+    <div class="brand">
+      <div class="logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 12h3l2-5 4 10 2-5h5"/>
+        </svg>
+      </div>
+      <div>
+        <h1>LiveMedCard</h1>
+        <span class="sub">жива медична картка · архітектура TRACE</span>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <div class="patient" id="patient">картка не завантажена</div>
+    <button class="theme-btn" id="theme" title="Тема" aria-label="Перемкнути тему">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M4 12H2M22 12h-2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/></svg>
+    </button>
   </header>
 
+  <div class="pulse" aria-hidden="true">
+    <svg viewBox="0 0 1400 34" preserveAspectRatio="none">
+      <path class="ghost" d="M0,17 H520 l14,-13 l12,26 l16,-30 l14,17 H760 l16,-9 l10,9 H1400"/>
+      <path class="lead"  d="M0,17 H520 l14,-13 l12,26 l16,-30 l14,17 H760 l16,-9 l10,9 H1400"/>
+    </svg>
+  </div>
+
+  <div class="stats" id="stats"></div>
+
   <div class="toolbar">
-    <button class="primary" id="btn-samples">Завантажити демо-документи</button>
+    <button class="primary" id="btn-samples">Завантажити демо-картку</button>
     <button class="ghost" id="btn-add">+ Додати документ</button>
     <button class="ghost" id="btn-export">Експорт FHIR</button>
-    <button class="ghost" id="btn-reset">Скинути картку</button>
+    <button class="ghost" id="btn-reset">Скинути</button>
   </div>
 
   <div class="add" id="add-form">
     <textarea id="add-text" placeholder="Вставте текст документа, напр.: «Креатинін 121 µmol/L. Призначено: аспірин 100 мг на добу.»"></textarea>
-    <div style="margin: 4px 0 2px; font-size: 11.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; font-weight: 600; text-align: center;">— або завантажте фото (OCR) —</div>
+    <div class="or">— або завантажте фото (OCR) —</div>
     <label class="dropzone" id="dropzone">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:4px;color:var(--accent)"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:5px;color:var(--accent)"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
       <span id="dropzone-text">Перетягніть фото сюди або натисніть для вибору</span>
       <input type="file" id="add-image" accept="image/*" style="display:none">
     </label>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <div style="display:flex;gap:9px;flex-wrap:wrap">
       <select id="add-kind">
         <option value="discharge_summary">Виписний епікриз</option>
         <option value="lab_report">Лабораторний звіт</option>
@@ -135,27 +278,27 @@
     </div>
   </div>
 
-  <div class="grid" style="margin-top:16px">
-    <section class="panel">
-      <h2>Таймлайн показників</h2>
-      <div class="series" id="series"><div class="empty">Даних ще немає. Завантажте демо-документи.</div></div>
+  <div class="grid" style="margin-top:18px">
+    <section class="panel d1">
+      <h2>Таймлайн показників <span class="tag" id="bi-tag" style="display:none">білінгвально · UA + EN</span></h2>
+      <div class="series" id="series"><div class="empty">Даних ще немає. Натисніть «Завантажити демо-картку».</div></div>
     </section>
 
-    <div style="display:grid;gap:16px">
-      <section class="panel">
+    <div class="right">
+      <section class="panel d2">
         <h2>Безпека — шар TRACE</h2>
         <div id="decision"></div>
         <div id="signals"><div class="empty">Сигналів немає.</div></div>
       </section>
-      <section class="panel">
+      <section class="panel d3">
         <h2>Призначені ліки</h2>
         <div class="meds" id="meds"><div class="empty">Ліків немає.</div></div>
       </section>
     </div>
   </div>
 
-  <section class="panel qa" style="margin-top:16px">
-    <h2>Запитати картку</h2>
+  <section class="panel qa" style="margin-top:18px">
+    <h2>Запитати картку <span class="tag">grounded · з посиланням на джерело</span></h2>
     <div class="log" id="log"></div>
     <div class="askrow">
       <input id="q" placeholder="Напр.: Що з нирками за останній рік?" autocomplete="off">
@@ -164,7 +307,8 @@
     <div class="chips" id="chips"></div>
   </section>
 
-  <footer>Прототип для Digital Future Hackathon. Система структурує факти й показує динаміку — не ставить діагнозів.</footer>
+  <footer>Прототип для <b>Digital Future Hackathon</b> · ніша Aging &amp; Longevity.<br>
+    Система структурує факти й показує динаміку — <b>не ставить діагнозів і не призначає лікування</b>.</footer>
 </div>
 <div class="toast" id="toast"></div>
 
@@ -173,24 +317,33 @@ const $ = s => document.querySelector(s);
 const SEV = {critical:'var(--critical)',major:'var(--major)',moderate:'var(--moderate)',info:'var(--info)'};
 const SEV_UK = {critical:'критичний',major:'високий',moderate:'помірний',info:'інфо'};
 
+/* theme toggle (respects OS by default; stamps data-theme on click) */
+(function(){
+  const root=document.documentElement;
+  $('#theme').onclick=()=>{
+    const cur=root.getAttribute('data-theme')
+      || (matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');
+    root.setAttribute('data-theme', cur==='dark'?'light':'dark');
+  };
+})();
+
 function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');
   clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2600);}
 
 async function api(path, opts){
   const r=await fetch(path,opts);
   if(!r.ok){
-    let msg = path+' '+r.status;
-    try {
-      const err = await r.json();
-      if(err && err.detail) msg = err.detail;
-    } catch(e){}
+    let msg=path+' '+r.status;
+    try{const err=await r.json(); if(err&&err.detail) msg=err.detail;}catch(e){}
     throw new Error(msg);
   }
   return r.status===204?null:r.json();
 }
 
+function langOf(src){ return src && /(-|_)en\b|_en$|-en$/.test(src) ? 'en' : 'ua'; }
+
 function sparkline(points, low, high){
-  const w=280,h=66,pad=8;
+  const w=300,h=64,pad=9;
   const vals=points.map(p=>p.value);
   let min=Math.min(...vals), max=Math.max(...vals);
   if(low!=null)min=Math.min(min,low); if(high!=null)max=Math.max(max,high);
@@ -200,60 +353,106 @@ function sparkline(points, low, high){
   let band='';
   if(low!=null&&high!=null){const y1=Y(high),y2=Y(low);
     band=`<rect x="0" y="${y1.toFixed(1)}" width="${w}" height="${Math.max(0,y2-y1).toFixed(1)}" fill="var(--band)"/>`;}
-  const d=points.map((p,i)=>`${i?'L':'M'}${X(i).toFixed(1)},${Y(p.value).toFixed(1)}`).join(' ');
+  const dLine=points.map((p,i)=>`${i?'L':'M'}${X(i).toFixed(1)},${Y(p.value).toFixed(1)}`).join(' ');
+  const area=`${dLine} L${X(points.length-1).toFixed(1)},${h} L${X(0).toFixed(1)},${h} Z`;
   const last=points[points.length-1];
   const breach=(low!=null&&last.value<low)||(high!=null&&last.value>high);
   const dots=points.map((p,i)=>{const isLast=i===points.length-1;
-    return `<circle cx="${X(i).toFixed(1)}" cy="${Y(p.value).toFixed(1)}" r="${isLast?4:2.4}" fill="${isLast&&breach?'var(--major)':'var(--accent)'}"/>`;}).join('');
-  return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" preserveAspectRatio="none" style="display:block;margin-top:8px">
-    ${band}<path d="${d}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>${dots}</svg>`;
+    return `<circle cx="${X(i).toFixed(1)}" cy="${Y(p.value).toFixed(1)}" r="${isLast?4:2.3}"
+      fill="${isLast&&breach?'var(--major)':'var(--accent)'}"
+      ${isLast?'stroke="var(--panel-2)" stroke-width="2"':''}/>`;}).join('');
+  const gid='g'+Math.random().toString(36).slice(2,7);
+  // approx path length for draw animation
+  let len=0; for(let i=1;i<points.length;i++){const dx=X(i)-X(i-1),dy=Y(points[i].value)-Y(points[i-1].value);len+=Math.hypot(dx,dy);}
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" width="100%" height="${h}" preserveAspectRatio="none" style="display:block">
+    <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="var(--accent)" stop-opacity=".22"/>
+      <stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>
+    ${band}<path d="${area}" fill="url(#${gid})"/>
+    <path class="line" style="--len:${len.toFixed(0)}" d="${dLine}"/>${dots}</svg>`;
 }
 
 function statusOf(s){
-  if(s.high!=null && s.points.at(-1).value>s.high) return ['вище норми','high'];
-  if(s.low!=null && s.points.at(-1).value<s.low) return ['нижче норми','low'];
+  const v=s.points.at(-1).value;
+  if(s.high!=null && v>s.high) return ['вище норми','high'];
+  if(s.low!=null && v<s.low) return ['нижче норми','low'];
   if(s.low!=null||s.high!=null) return ['у нормі','ok'];
   return ['',''];
 }
+function trendOf(s){
+  if(s.points.length<2) return ['','flat'];
+  const a=s.points[0].value, b=s.points.at(-1).value;
+  const pct=a?Math.round((b-a)/Math.abs(a)*100):0;
+  if(b>a) return [`↑ ${pct>0?'+':''}${pct}%`,'up'];
+  if(b<a) return [`↓ ${pct}%`,'down'];
+  return ['→ 0%','flat'];
+}
 
 function render(st){
-  $('#patient').textContent = `Пацієнт: ${st.patient.id} · документів: ${st.document_count}`;
+  const docs=st.document_count||0;
+  $('#patient').innerHTML = docs
+    ? `пацієнт <b>${st.patient.id}</b> · документів <b>${docs}</b>`
+    : 'картка не завантажена';
+
+  // stat strip
+  const nMeas=st.series.reduce((a,s)=>a+s.points.length,0);
+  const langs=new Set();
+  st.series.forEach(s=>s.points.forEach(p=>p.source&&langs.add(langOf(p.source))));
+  const bilingual=langs.has('en')&&langs.has('ua');
+  $('#bi-tag').style.display = bilingual?'inline-block':'none';
+  const nAlerts=st.signals.length;
+  $('#stats').innerHTML = docs ? `
+    <div class="stat"><div class="n">${st.series.length}</div><div class="l">показників у динаміці</div></div>
+    <div class="stat"><div class="n">${nMeas}</div><div class="l">вимірювань на таймлайні</div></div>
+    <div class="stat alert"><div class="n">${nAlerts}</div><div class="l">сигналів безпеки</div></div>
+    <div class="stat bi"><div class="n">${bilingual?'UA+EN':(langs.has('en')?'EN':'UA')}</div><div class="l">мови документів</div></div>
+  ` : '';
 
   // series
   const sEl=$('#series');
-  if(!st.series.length){sEl.innerHTML='<div class="empty">Даних ще немає. Завантажте демо-документи.</div>';}
-  else{sEl.innerHTML=st.series.map(s=>{
-    const last=s.points.at(-1);const [txt,cls]=statusOf(s);
+  if(!st.series.length){sEl.innerHTML='<div class="empty">Даних ще немає. Натисніть «Завантажити демо-картку».</div>';}
+  else{sEl.innerHTML=st.series.map((s,idx)=>{
+    const last=s.points.at(-1);const [txt,cls]=statusOf(s);const [ttxt,tcls]=trendOf(s);
     const ref=(s.low!=null&&s.high!=null)?`норма ${s.low}–${s.high} ${s.unit||''}`:'';
-    return `<div class="metric">
-      <div class="row"><span class="name">${s.keyword}</span>
-        <span class="val">${last.value} ${s.unit||''}</span></div>
-      <div class="row"><span class="src">${ref}</span>
-        <span class="status ${cls}">${txt}</span></div>
+    const srcs=[...new Set(s.points.map(p=>p.source).filter(Boolean))];
+    const langBadges=[...new Set(srcs.map(langOf))].map(l=>`<span class="lang ${l}">${l.toUpperCase()}</span>`).join('');
+    return `<div class="metric" style="animation-delay:${(idx*.05).toFixed(2)}s">
+      <div class="row">
+        <span class="name">${s.keyword}</span>
+        <span class="big"><span class="val">${last.value}</span><span class="unit">${s.unit||''}</span>
+          ${ttxt?`<span class="trend ${tcls}">${ttxt}</span>`:''}</span>
+      </div>
+      <div class="meta"><span class="ref">${ref}</span><span class="status ${cls}">${txt}</span></div>
       ${sparkline(s.points,s.low,s.high)}
-      <div class="src">${s.points.length} вимір. · джерела: ${[...new Set(s.points.map(p=>p.source).filter(Boolean))].join(', ')||'—'}</div>
+      <div class="src">${langBadges}<span>${s.points.length} вимір. · ${srcs.join(', ')||'—'}</span></div>
     </div>`;}).join('');}
 
   // decision
   const d=st.decision;const dEl=$('#decision');
   dEl.className='decision '+(d.escalate?'escalate':'auto');
-  dEl.innerHTML=`<span class="badge" style="background:${d.escalate?'var(--major)':'var(--ok)'};color:#fff">
-    ${d.escalate?'ескалація до людини (L4)':'автоматична обробка'}</span>
+  dEl.innerHTML=`<span class="badge" style="background:${d.escalate?'var(--major)':'var(--ok)'}">
+      ${d.escalate?'ескалація до людини (L4)':'автоматична обробка'}</span>
     <span class="t">${d.route_to}</span>
     <ul class="reasons">${d.reasons.map(r=>`<li>${r}</li>`).join('')}</ul>`;
 
-  // signals
+  // signals — interaction/critical get a pulsing dot
   const sig=$('#signals');
-  if(!st.signals.length){sig.innerHTML='<div class="empty">Сигналів немає — показники в межах, небезпечних взаємодій не виявлено.</div>';}
-  else{sig.innerHTML=st.signals.map(x=>`<div class="sig">
-      <span class="dot" style="background:${SEV[x.severity]||'var(--info)'}"></span>
-      <span><span class="k">${x.layer} · ${x.kind} · ${SEV_UK[x.severity]||x.severity}</span><br>
-      <span class="d">${x.detail}</span></span></div>`).join('');}
+  if(!st.signals.length){sig.innerHTML='<div class="empty">Показники в межах, небезпечних взаємодій не виявлено.</div>';}
+  else{sig.innerHTML=st.signals.map(x=>{
+    const hot=(x.kind==='interaction'||x.severity==='critical'||x.severity==='major');
+    const color=SEV[x.severity]||'var(--info)';
+    return `<div class="sig ${hot?'hot':''}">
+      <span class="dot" style="background:${color};color:${color}"></span>
+      <span><span class="k">${x.layer} · ${x.kind} · ${SEV_UK[x.severity]||x.severity}</span>
+      <span class="d">${x.detail}</span></span></div>`;}).join('');}
 
-  // meds
+  // meds — flag those named in an interaction
+  const interText=st.signals.filter(x=>x.kind==='interaction').map(x=>x.detail.toLowerCase()).join(' ');
   const m=$('#meds');
-  m.innerHTML=st.medications.length?st.medications.map(n=>`<span class="pill">${n}</span>`).join('')
-    :'<div class="empty">Ліків немає.</div>';
+  m.innerHTML=st.medications.length?st.medications.map(n=>{
+    const flagged=interText.includes(n.toLowerCase());
+    return `<span class="pill ${flagged?'flag':''}">${n}${flagged?'<span class="warn">⚠</span>':''}</span>`;
+  }).join(''):'<div class="empty">Ліків немає.</div>';
 }
 
 async function refresh(){try{render(await api('/state'));}catch(e){toast('Помилка: '+e.message);}}
@@ -264,13 +463,13 @@ async function ask(q){
   log.insertAdjacentHTML('beforeend',`<div class="bubble q">${q}</div>`);
   $('#q').value='';log.scrollTop=log.scrollHeight;
   try{const a=await api('/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q})});
-    const src=a.sources&&a.sources.length?`<span class="src">Джерела: ${a.sources.join(', ')}</span>`:'';
+    const src=a.sources&&a.sources.length?`<span class="src">джерела: ${a.sources.join(', ')}</span>`:'';
     log.insertAdjacentHTML('beforeend',`<div class="bubble a">${a.text}${src}</div>`);
     log.scrollTop=log.scrollHeight;
   }catch(e){toast('Помилка: '+e.message);}
 }
 
-$('#btn-samples').onclick=async()=>{await api('/ingest/samples',{method:'POST'});await refresh();toast('Демо-документи оброблено');};
+$('#btn-samples').onclick=async()=>{await api('/ingest/samples',{method:'POST'});await refresh();toast('Демо-картку завантажено');};
 $('#btn-reset').onclick=async()=>{await api('/reset',{method:'POST'});$('#log').innerHTML='';await refresh();toast('Картку скинуто');};
 $('#btn-export').onclick=async()=>{
   const b=await api('/export');
@@ -281,84 +480,42 @@ $('#btn-export').onclick=async()=>{
   toast('FHIR Bundle завантажено');
 };
 $('#btn-add').onclick=()=>$('#add-form').classList.toggle('show');
-const fileInput = $('#add-image');
-const dz = $('#dropzone');
 
-fileInput.onchange = e => {
-  const file = e.target.files[0];
-  if(file){
-    $('#dropzone-text').textContent = 'Вибрано: ' + file.name;
-    $('#add-text').value = '';
-  }
-};
-
-dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
-dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
-dz.addEventListener('drop', e => {
-  e.preventDefault();
-  dz.classList.remove('dragover');
-  if(e.dataTransfer.files.length){
-    fileInput.files = e.dataTransfer.files;
-    $('#dropzone-text').textContent = 'Вибрано: ' + e.dataTransfer.files[0].name;
-    $('#add-text').value = '';
-  }
-});
+const fileInput=$('#add-image'), dz=$('#dropzone');
+fileInput.onchange=e=>{const f=e.target.files[0];if(f){$('#dropzone-text').textContent='Вибрано: '+f.name;$('#add-text').value='';}};
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('dragover');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('dragover'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('dragover');
+  if(e.dataTransfer.files.length){fileInput.files=e.dataTransfer.files;
+    $('#dropzone-text').textContent='Вибрано: '+e.dataTransfer.files[0].name;$('#add-text').value='';}});
 
 $('#add-submit').onclick=async()=>{
-  const text=$('#add-text').value.trim();
-  const file=fileInput.files[0];
-  if(!text && !file){
-    toast('Введіть текст або виберіть фото');
-    return;
-  }
-
-  const btn = $('#add-submit');
-  const originalText = btn.textContent;
-  btn.disabled = true;
-  btn.style.opacity = '0.6';
-
-  try {
+  const text=$('#add-text').value.trim(), file=fileInput.files[0];
+  if(!text&&!file){toast('Введіть текст або виберіть фото');return;}
+  const btn=$('#add-submit'), orig=btn.textContent; btn.disabled=true;
+  try{
     let rep;
     if(file){
-      btn.textContent = 'Зчитування тексту (OCR)...';
-      const base64 = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-      rep = await api('/ingest/image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image_base64: base64, kind: $('#add-kind').value })
-      });
-    } else {
-      btn.textContent = 'Опрацювання...';
-      const doc = { id: 'doc-' + Date.now(), text, kind: $('#add-kind').value };
-      rep = await api('/ingest', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(doc)
-      });
+      btn.textContent='Зчитування (OCR)…';
+      const base64=await new Promise((res,rej)=>{const rd=new FileReader();rd.onload=()=>res(rd.result);rd.onerror=rej;rd.readAsDataURL(file);});
+      rep=await api('/ingest/image',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({image_base64:base64,kind:$('#add-kind').value})});
+    }else{
+      btn.textContent='Опрацювання…';
+      rep=await api('/ingest',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({id:'doc-'+Date.now(),text,kind:$('#add-kind').value})});
     }
-
-    $('#add-text').value = '';
-    fileInput.value = '';
-    $('#dropzone-text').textContent = 'Перетягніть фото сюди або натисніть для вибору';
+    $('#add-text').value='';fileInput.value='';
+    $('#dropzone-text').textContent='Перетягніть фото сюди або натисніть для вибору';
     $('#add-form').classList.remove('show');
     await refresh();
     toast(rep.decision.escalate?'Оброблено · ескалація до людини':'Оброблено · авто');
-  } catch(e) {
-    toast('Помилка: ' + e.message);
-  } finally {
-    btn.disabled = false;
-    btn.style.opacity = '1';
-    btn.textContent = originalText;
-  }
+  }catch(e){toast('Помилка: '+e.message);}
+  finally{btn.disabled=false;btn.textContent=orig;}
 };
+
 $('#ask').onclick=()=>ask();
 $('#q').addEventListener('keydown',e=>{if(e.key==='Enter')ask();});
-
 const CHIPS=['Що з нирками за останній рік?','Який був калій?','Які ліки приймає і чи є взаємодії?','Що з HbA1c?'];
 $('#chips').innerHTML=CHIPS.map(c=>`<button class="chip">${c}</button>`).join('');
 $('#chips').querySelectorAll('.chip').forEach(b=>b.onclick=()=>ask(b.textContent));

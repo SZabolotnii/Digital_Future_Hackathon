@@ -109,6 +109,6 @@ def test_load_missing_file_returns_none(tmp_path):
 def test_audit_log_records_decisions():
     card = _sample_card()
     log = card.audit_log()
-    assert len(log) == 3  # три документи
+    assert len(log) == 4  # чотири документи (UA×3 + EN)
     assert all("route_to" in a and "escalate" in a for a in log)
     assert any(a["escalate"] for a in log)

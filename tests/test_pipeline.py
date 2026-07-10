@@ -40,7 +40,7 @@ def test_qa_kidney_answer_has_sources():
     card = _card_with_samples()
     qa = QA(card.factstore, card.graph, card.current_signals())
     ans = qa.ask("Що з нирками?")
-    assert "121" in ans.text
+    assert "135" in ans.text
     assert ans.sources  # має посилання на документи-джерела
 
 

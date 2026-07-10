@@ -49,21 +49,21 @@ def test_oversized_document_rejected_413(client):
 
 def test_samples_flow_signals_metrics_audit(client):
     reports = client.post("/ingest/samples").json()
-    assert len(reports) == 3
+    assert len(reports) == 4
     assert client.get("/signals").json()  # тренд/межі/взаємодія на демо-даних
     m = client.get("/metrics").json()
-    assert m["documents"] == 3 and m["decisions"] == 3
+    assert m["documents"] == 4 and m["decisions"] == 4
     assert m["escalated"] + m["auto"] == m["decisions"]
     assert m["escalated"] >= 1
     audit = client.get("/audit").json()
-    assert len(audit) == 3
+    assert len(audit) == 4
     assert all(set(a) >= {"ts", "route_to", "escalate"} for a in audit)
 
 
 def test_ask_grounded_with_sources(client):
     client.post("/ingest/samples")
     ans = client.post("/ask", json={"question": "Що з нирками?"}).json()
-    assert "121" in ans["text"]
+    assert "135" in ans["text"]
     assert ans["sources"]
 
 
@@ -101,4 +101,4 @@ def test_concurrent_mixed_requests_stay_consistent(client):
         codes = list(ex.map(call, range(24)))
     assert all(c == 200 for c in codes)
     # Кожен запит атомарний під локом → фінальний стан або порожній, або 3 демо-доки.
-    assert client.get("/state").json()["document_count"] in (0, 3)
+    assert client.get("/state").json()["document_count"] in (0, 4)
