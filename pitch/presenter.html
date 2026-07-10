@@ -1,0 +1,401 @@
+<title>LiveMedCard — Пульт презентера</title>
+<style>
+  /* Presenter console / teleprompter for a second screen. Deliberate single
+     dark identity (darkened room), matching the deck. Information design:
+     glanceable type, timecodes as anchors, spoken vs action vs safety colour-coded. */
+  :root{
+    --ink:#0a0e12; --panel:#111820; --panel-2:#0d141b; --line:#1e2a33; --line-soft:#172029;
+    --fg:#eef4f7; --muted:#93a4b1; --muted-2:#6a7b88;
+    --accent:#2dd4bf; --accent-deep:#14b8a6;
+    --danger:#fb5a72; --danger-bg:rgba(251,90,114,.10);
+    --warn:#f5b544; --warn-bg:rgba(245,181,68,.10);
+    --say:#f4f9fb;
+    --mono:ui-monospace,"SF Mono",Menlo,"Roboto Mono",monospace;
+    --sans:"Helvetica Neue","Segoe UI",system-ui,-apple-system,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{background:var(--ink)}
+  body{font-family:var(--sans);color:var(--fg);line-height:1.5;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+    background:
+      radial-gradient(900px 500px at 90% -10%, rgba(45,212,191,.08), transparent 60%),
+      var(--ink);
+    min-height:100vh;padding-bottom:80px}
+  .num{font-variant-numeric:tabular-nums}
+
+  /* ---- sticky header: brand · stopwatch · tabs ---- */
+  header{position:sticky;top:0;z-index:20;background:rgba(10,14,18,.92);
+    backdrop-filter:blur(10px);border-bottom:1px solid var(--line);
+    padding:14px clamp(16px,4vw,40px)}
+  .hrow{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
+    max-width:1080px;margin:0 auto}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;letter-spacing:-.01em}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--accent);
+    box-shadow:0 0 10px rgba(45,212,191,.8)}
+  .brand small{font-family:var(--mono);font-weight:400;font-size:12px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--muted-2)}
+  .watch{display:flex;align-items:center;gap:10px}
+  .clock{font-family:var(--mono);font-size:30px;font-weight:600;letter-spacing:.02em;color:var(--fg);
+    min-width:104px;text-align:center;padding:2px 12px;border:1px solid var(--line);border-radius:10px;
+    background:var(--panel-2)}
+  .clock.warn{color:var(--warn);border-color:rgba(245,181,68,.5)}
+  .clock.over{color:var(--danger);border-color:rgba(251,90,114,.55);animation:pulse 1s infinite}
+  @keyframes pulse{50%{background:var(--danger-bg)}}
+  @media (prefers-reduced-motion:reduce){.clock.over{animation:none}}
+  .btn{font-family:var(--sans);font-size:14px;font-weight:600;color:var(--fg);cursor:pointer;
+    background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:8px 13px}
+  .btn:hover{border-color:var(--accent);color:var(--accent)}
+  .btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .btn.primary{background:var(--accent);color:#04120f;border-color:var(--accent)}
+  .btn.primary:hover{background:var(--accent-deep);color:#04120f}
+  .tabs{display:flex;gap:6px;margin:12px auto 0;max-width:1080px}
+  .tab{font-family:var(--mono);font-size:13px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--muted);cursor:pointer;background:transparent;border:1px solid transparent;
+    border-radius:8px;padding:8px 14px}
+  .tab:hover{color:var(--fg)}
+  .tab[aria-selected="true"]{color:var(--accent);border-color:rgba(45,212,191,.34);background:rgba(45,212,191,.07)}
+  .tab:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  main{max-width:1080px;margin:0 auto;padding:22px clamp(16px,4vw,40px) 0}
+  .view{display:none;flex-direction:column;gap:16px}
+  .view.on{display:flex}
+
+  /* ---- slide card ---- */
+  .card{background:var(--panel-2);border:1px solid var(--line-soft);border-radius:14px;
+    display:grid;grid-template-columns:118px 1fr;overflow:hidden}
+  .rail{background:linear-gradient(180deg,var(--panel),var(--panel-2));border-right:1px solid var(--line-soft);
+    padding:18px 14px;display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+  .rail .n{font-family:var(--mono);font-size:34px;font-weight:700;color:var(--accent);line-height:1}
+  .rail .kick{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted-2)}
+  .rail .budget{margin-top:auto;font-family:var(--mono);font-size:12px;color:var(--muted)}
+  .rail .cum{font-family:var(--mono);font-size:12px;color:var(--accent);font-weight:600}
+  .cbody{padding:18px 22px 20px;display:flex;flex-direction:column;gap:12px}
+  .cbody h3{font-size:22px;font-weight:700;letter-spacing:-.01em;color:var(--fg)}
+  .say{list-style:none;display:flex;flex-direction:column;gap:11px}
+  .say li{font-size:21px;line-height:1.46;color:var(--say);padding-left:20px;position:relative}
+  .say li::before{content:"";position:absolute;left:0;top:13px;width:9px;height:2px;background:var(--accent);border-radius:2px}
+  .say li em{color:var(--accent);font-style:normal;font-weight:600}
+  .say li.key{border-left:3px solid var(--danger);background:var(--danger-bg);border-radius:0 8px 8px 0;
+    padding:9px 14px 9px 16px}
+  .say li.key::before{display:none}
+  .say li.key em{color:var(--danger)}
+  .cue{display:flex;gap:10px;align-items:flex-start;font-family:var(--mono);font-size:13.5px;
+    color:var(--warn);background:var(--warn-bg);border:1px solid rgba(245,181,68,.24);
+    border-radius:9px;padding:9px 13px;line-height:1.5}
+  .cue b{color:var(--warn);font-weight:700}
+
+  /* ---- demo timeline ---- */
+  .demohead{font-size:15px;color:var(--muted);line-height:1.5;background:var(--panel-2);
+    border:1px solid var(--line-soft);border-radius:12px;padding:15px 20px}
+  .demohead b{color:var(--fg)}
+  .step{display:grid;grid-template-columns:78px 1fr;gap:0;background:var(--panel-2);
+    border:1px solid var(--line-soft);border-radius:12px;overflow:hidden}
+  .tc{background:var(--panel);border-right:1px solid var(--line-soft);padding:16px 12px;
+    font-family:var(--mono);font-size:17px;font-weight:600;color:var(--accent);text-align:center}
+  .sbody{padding:15px 20px;display:flex;flex-direction:column;gap:9px}
+  .lab{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11px;
+    letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:2px 0}
+  .lab.do{color:var(--accent)} .lab.say{color:var(--say)} .lab.safe{color:var(--danger)}
+  .lab .sq{width:8px;height:8px;border-radius:2px}
+  .lab.do .sq{background:var(--accent)} .lab.say .sq{background:var(--say)} .lab.safe .sq{background:var(--danger)}
+  .sbody .txt{font-size:18px;line-height:1.45;color:var(--fg)}
+  .sbody .txt.spoken{color:var(--say);font-size:19px}
+  .sbody .txt em{color:var(--accent);font-style:normal;font-weight:600}
+  .sbody .safeline{font-size:18px;line-height:1.45;color:var(--say);border-left:3px solid var(--danger);
+    background:var(--danger-bg);border-radius:0 8px 8px 0;padding:8px 14px}
+  .sbody .safeline em{color:var(--danger);font-weight:600;font-style:normal}
+
+  /* ---- checklist / fallback ---- */
+  .block{background:var(--panel-2);border:1px solid var(--line-soft);border-radius:14px;padding:20px 24px}
+  .block h2{font-family:var(--mono);font-size:13px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--accent);margin-bottom:14px}
+  .check{list-style:none;display:flex;flex-direction:column;gap:2px}
+  .check li{display:flex;gap:13px;align-items:flex-start;font-size:17px;line-height:1.5;
+    color:var(--fg);padding:9px 4px;border-bottom:1px solid var(--line-soft);cursor:pointer}
+  .check li:last-child{border-bottom:0}
+  .check li .box{flex:0 0 auto;width:22px;height:22px;border:2px solid var(--muted-2);border-radius:6px;
+    margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--accent);
+    transition:border-color .15s}
+  .check li.done .box{border-color:var(--accent);background:rgba(45,212,191,.12)}
+  .check li.done{color:var(--muted)}
+  .check li.done .tx{text-decoration:line-through;text-decoration-color:var(--muted-2)}
+  .check code{font-family:var(--mono);font-size:14.5px;color:var(--accent);background:rgba(45,212,191,.08);
+    padding:1px 6px;border-radius:5px}
+  .fallback{width:100%;border-collapse:collapse;margin-top:2px}
+  .fallback td{padding:11px 14px;border-bottom:1px solid var(--line-soft);font-size:15.5px;vertical-align:top}
+  .fallback tr td:first-child{color:var(--danger);font-weight:600;white-space:nowrap;width:44%}
+  .fallback tr:last-child td{border-bottom:0}
+  .gold{margin-top:14px;font-size:15px;line-height:1.5;color:var(--muted);border-top:1px dashed var(--line);padding-top:14px}
+  .gold b{color:var(--accent)}
+  .legend{display:flex;flex-wrap:wrap;gap:16px;font-family:var(--mono);font-size:12.5px;color:var(--muted);
+    padding:2px 2px 0}
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+  .legend .sq{width:9px;height:9px;border-radius:2px}
+  footer{max-width:1080px;margin:22px auto 0;padding:0 clamp(16px,4vw,40px);
+    font-family:var(--mono);font-size:12px;color:var(--muted-2);text-align:center}
+</style>
+
+<header>
+  <div class="hrow">
+    <div class="brand"><span class="dot"></span>LiveMedCard <small>Пульт презентера</small></div>
+    <div class="watch">
+      <span class="clock num" id="clock">0:00</span>
+      <button class="btn primary" id="toggle">Старт</button>
+      <button class="btn" id="reset">Скид</button>
+    </div>
+  </div>
+  <div class="tabs" role="tablist" aria-label="Режим">
+    <button class="tab" role="tab" aria-selected="true" data-view="slides">Слайди</button>
+    <button class="tab" role="tab" aria-selected="false" data-view="demo">Демо</button>
+    <button class="tab" role="tab" aria-selected="false" data-view="pre">Чеклист</button>
+  </div>
+</header>
+
+<main>
+  <!-- ============ SLIDES ============ -->
+  <section class="view on" id="slides">
+    <div class="legend">
+      <span><span class="sq" style="background:var(--say)"></span>що кажу</span>
+      <span><span class="sq" style="background:var(--accent)"></span>наголос</span>
+      <span><span class="sq" style="background:var(--danger)"></span>ключова захищена теза</span>
+      <span><span class="sq" style="background:var(--warn)"></span>підказка / темп</span>
+    </div>
+
+    <div class="card">
+      <div class="rail"><div class="n">01</div><div class="kick">Гак</div><div class="budget">~30 c</div><div class="cum">0:30</div></div>
+      <div class="cbody">
+        <h3>Проблема</h3>
+        <ul class="say">
+          <li>Уявіть: ваша мама приймає <em>сім препаратів від чотирьох лікарів</em>.</li>
+          <li>Жоден не бачить, що призначили інші.</li>
+          <li>Небезпечну взаємодію помітять уже в лікарні. А можна — <em>сьогодні, вдома</em>.</li>
+        </ul>
+        <div class="cue"><b>ТЕМП:</b> повільно, це емоційний гак. Пауза після «в лікарні».</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="rail"><div class="n">02</div><div class="kick">Чому AI</div><div class="budget">~30 c</div><div class="cum">1:00</div></div>
+      <div class="cbody">
+        <h3>Чому зараз і чому AI</h3>
+        <ul class="say">
+          <li>Стара картка — це пасивний архів паперів і людська пам'ять.</li>
+          <li>Тисячі форматів виписок, рукописні дози — <em>правилами не розпарсити</em>. Тільки мовна модель.</li>
+          <li>Ми перетворюємо картку з <em>об'єкта</em> — на <em>агента здоров'я</em>.</li>
+          <li>Показати стрічку <em>L1→L4</em> внизу: «чотири шари TRACE — далі я на них посилаюсь. L1 — детермінований якір (правила), L2 — розуміння/витяг за схемою, <em>L3 — де живе генеративний AI і де ми вимірюємо довіру</em>, L4 — людина».</li>
+        </ul>
+        <div class="cue"><b>МІСТОК:</b> «і ось як це виглядає» → перемикаюсь на демо.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="rail"><div class="n">03</div><div class="kick">Живе демо</div><div class="budget">~100 c</div><div class="cum">2:40</div></div>
+      <div class="cbody">
+        <h3>Демо — деталі у вкладці «Демо»</h3>
+        <ul class="say">
+          <li>Це <em>справжній прототип</em>, він зараз онлайн.</li>
+          <li class="key">Сигнал варфарин+аспірин порахований детерміновано — <em>це не галюцинація моделі</em>.</li>
+        </ul>
+        <div class="cue"><b>ПЕРЕМКНИ</b> на вкладку «Демо» (таймкоди 0:00–1:25). Головне — посадити тезу про детермінізм.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="rail"><div class="n">04</div><div class="kick">Moat</div><div class="budget">~35 c</div><div class="cum">3:15</div></div>
+      <div class="cbody">
+        <h3>Чому це не обгортка над ChatGPT</h3>
+        <ul class="say">
+          <li>Дані <em>не покидають пристрій</em>. Шар безпеки <em>детермінований</em> — не галюцинує.</li>
+          <li>Модель <em>власна, on-device</em>. Плюс фреймворк TRACE.</li>
+          <li class="key">Довіру ми <em>вимірюємо, а не декларуємо</em>: кожне рішення несе вектор довіри — сигнал безпеки <em>confidence 1.00</em> (детермінований), впевненість витягу ∈ [0,1], частка ескалацій — живі на <em>/metrics</em> та в аудиті. Це операціоналізує EU AI Act ст.14/15.</li>
+          <li class="key">Разом це <em>технічно неможливо повторити хмарною обгорткою</em>.</li>
+        </ul>
+        <div class="cue"><b>АКЦЕНТ:</b> «AI як ключова складова» + <b>вимірювана довіра</b> — якщо журі спитає про метрику, показати /metrics і аудит рішень.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="rail"><div class="n">05</div><div class="kick">Ринок</div><div class="budget">~35 c</div><div class="cum">3:50</div></div>
+      <div class="cbody">
+        <h3>Ринок і клин входу</h3>
+        <ul class="say">
+          <li>Платник — не літня людина. Це її <em>доросла дитина, 40–60</em>: дохід і тривога за батьків.</li>
+          <li>Aging &amp; Longevity — глобальний мегатренд.</li>
+          <li>Дистрибуція — <em>там, де сім'ї вже є</em>: Telegram, Viber, поверх застосунку.</li>
+          <li>Freemium, преміум <em>5–9 € / міс</em>.</li>
+        </ul>
+        <div class="cue"><b>НЕ КАЗАТИ</b> точних $ TAM — «уточнюємо на customer-discovery». Не вигадувати цифри.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="rail"><div class="n">06</div><div class="kick">Роадмап</div><div class="budget">~30 c</div><div class="cum">4:20</div></div>
+      <div class="cbody">
+        <h3>Роадмап і межа відповідальності</h3>
+        <ul class="say">
+          <li>Три горизонти: демо → пілот із родинами → клінічна версія.</li>
+          <li class="key">Чесна межа: структуруємо факти й формуємо питання до лікаря — <em>не ставимо діагнозів</em>.</li>
+          <li>Це свідомий регуляторний рубіж, поза MDR.</li>
+        </ul>
+        <div class="cue"><b>ТОН:</b> впевнено — це зрілість, а не слабкість.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="rail"><div class="n">07</div><div class="kick">Команда · Ask</div><div class="budget">~30 c</div><div class="cum">4:50</div></div>
+      <div class="cbody">
+        <h3>Команда і запит</h3>
+        <ul class="say">
+          <li>Я — <em>технічний і домен-moat</em>: д.т.н., автор методів, робочий продукт.</li>
+          <li>І я <em>свідомо шукаю co-founder</em> на go-to-market.</li>
+          <li>Прошу <em>тиждень customer discovery</em> і доступ до сегмента родин-опікунів.</li>
+          <li>Дякую.</li>
+        </ul>
+        <div class="cue"><b>КІНЦІВКА:</b> чіткий ask + пауза. QR на слайді — можна відкрити демо.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ DEMO ============ -->
+  <section class="view" id="demo">
+    <div class="demohead">Демо триває <b>~90–120 c</b> усередині слайда 3. Довести три речі:
+      <b>(1)</b> працює сьогодні · <b>(2)</b> AI структурує реальний документ · <b>(3)</b> сигнали безпеки детерміновані.
+      Живий шлях — завжди <b>детермінований stub</b>; NuExtract3 — записаним кліпом.</div>
+
+    <div class="step">
+      <div class="tc">0:00</div>
+      <div class="sbody">
+        <span class="lab do"><span class="sq"></span>Дія</span>
+        <div class="txt">Відкрити хостовану картку. Показати таймлайн — <em>Креатинін 88 → 104 → 121 → 135</em>, бейджі UA/EN на рядах.</div>
+        <span class="lab say"><span class="sq"></span>Кажу</span>
+        <div class="txt spoken">«Це справжній прототип, зараз онлайн. Картка мами, 70 років — виписки й аналізи з різних джерел, українські та англомовні, зведені в <em>один таймлайн</em>.»</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="tc">0:20</div>
+      <div class="sbody">
+        <span class="lab do"><span class="sq"></span>Дія</span>
+        <div class="txt">Навести на червону панель безпеки.</div>
+        <span class="lab safe"><span class="sq"></span>Ключова теза</span>
+        <div class="safeline">«Система сама помітила: <em>Варфарин + Аспірин</em> — небезпечна взаємодія, ризик кровотечі. І це <em>не галюцинація</em> — сигнал порахований детерміновано, шар L1. Плюс перевищена доза метформіну й тренд креатиніну вгору.»</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="tc">0:45</div>
+      <div class="sbody">
+        <span class="lab do"><span class="sq"></span>Дія</span>
+        <div class="txt">Показати фото бланку (<em>lab_report_ua.jpg</em>) → запустити кліп/інференс: фото→markdown (~17 c), markdown→факти (~8 c: креатинін 135, калій 5.1, глюкоза 6.8, HbA1c 7.6).</div>
+        <span class="lab say"><span class="sq"></span>Кажу</span>
+        <div class="txt spoken">«А тепер найважче — витягнути це зі <em>справжнього документа</em>. Модель локальна, on-device. Вона лише <em>витягує факти</em> — висновки про безпеку робить детермінований шар, не вона.»</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="tc">1:10</div>
+      <div class="sbody">
+        <span class="lab do"><span class="sq"></span>Дія</span>
+        <div class="txt">У полі Q&amp;A спитати: <em>«Який останній креатинін?»</em> → показати відповідь із посиланням на джерело.</div>
+        <span class="lab say"><span class="sq"></span>Кажу</span>
+        <div class="txt spoken">«Відповідь заземлена на факти, з провенансом, і мовою питання — спитаєш англійською, відповість англійською.»</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="tc">1:25</div>
+      <div class="sbody">
+        <span class="lab do"><span class="sq"></span>Дія</span>
+        <div class="txt">Клік <em>«Експорт FHIR»</em>.</div>
+        <span class="lab say"><span class="sq"></span>Кажу</span>
+        <div class="txt spoken">«Стандартний FHIR-Bundle — картку можна передати лікарю чи в eHealth. <em>Локально. Детерміновано на безпеці. Працює вже сьогодні.</em>»</div>
+      </div>
+    </div>
+
+    <div class="block">
+      <h2>Межа детермінізму — якщо журі спитає</h2>
+      <div class="txt" style="font-size:16px;line-height:1.55;color:var(--muted)">Модель лише <b style="color:var(--fg)">витягує факти</b> → впливає на <b style="color:var(--fg)">recall</b>. Сигнали безпеки (взаємодії, дози, тренди) рахуються <b style="color:var(--accent)">детерміновано на FactStore</b>. Тому «більше даних» = більше recall, але безпека <b style="color:var(--fg)">не залежить від того, чи галюцинує модель</b>.</div>
+    </div>
+
+    <div class="block">
+      <h2>«На чому це працює?» — якщо журі спитає</h2>
+      <div class="txt" style="font-size:16px;line-height:1.55;color:var(--muted)">Шар <b style="color:var(--fg)">безпеки — featherweight</b> (чистий Python), іде навіть на телефоні. Лише <b style="color:var(--fg)">розуміння</b> потребує 4B-моделі: <b style="color:var(--accent)">від 8 ГБ RAM</b> на ноутбуці/міні-ПК (CPU, 4B Q4 GGUF), комфортно — Apple Silicon M1+ або GPU ≥6 ГБ. On-device (продукт): флагман-смартфон. <b style="color:var(--fg)">Повна безпека — на будь-якому залізі.</b></div>
+    </div>
+
+    <div class="block">
+      <h2>ZeroGPU Lab — якщо журі спитає про хмару</h2>
+      <div class="txt" style="font-size:16px;line-height:1.55;color:var(--muted)">Хмарний <b style="color:var(--accent)">ZeroGPU-трек уже працює</b> (окремий Space, доведено E2E) — це <b style="color:var(--fg)">roadmap-доказ, не сценічний шлях</b>. На сцені — <b style="color:var(--fg)">локальний кліп</b> (нуль квоти, нуль cold-start). Продукт local-first; хмара — opt-in dev-sandbox для синтетики.</div>
+    </div>
+  </section>
+
+  <!-- ============ PRE-FLIGHT ============ -->
+  <section class="view" id="pre">
+    <div class="block">
+      <h2>Перед-польотний чеклист · за 10 хв до пітчу</h2>
+      <ul class="check" id="chk">
+        <li><span class="box"></span><span class="tx">Хостована картка <b>тепла</b>: <code>docua-livemedcard.hf.space</code> показує заповнену картку (4 док., 8 сигналів)</span></li>
+        <li><span class="box"></span><span class="tx">Локальний NuExtract3 живий: <code>curl http://127.0.0.1:1299/v1/models</code></span></li>
+        <li><span class="box"></span><span class="tx">Кліп NuExtract3 готовий (на випадок, якщо не робити live-інференс)</span></li>
+        <li><span class="box"></span><span class="tx">Вкладки: (1) хостована картка, (2) кліп/відео. Зайве закрити</span></li>
+        <li><span class="box"></span><span class="tx">Zoom: демо-екран перевірено, шрифт UI читабельний на проєкторі</span></li>
+        <li><span class="box"></span><span class="tx">Fallback напохваті: записаний відео-дубль демо + хостований <code>stub</code></span></li>
+        <li><span class="box"></span><span class="tx">Секундомір вгорі → <b>Старт</b> на першому слові. Жовтий після 4:30, червоний після 5:00</span></li>
+      </ul>
+    </div>
+
+    <div class="block">
+      <h2>План відмов · нічого не має зламати демо</h2>
+      <table class="fallback">
+        <tr><td>Хостована картка гальмує/впала</td><td>Локальний <code>stub</code> Space або записаний відео-дубль</td></tr>
+        <tr><td>NuExtract3 :1299 недоступний</td><td>Показати записаний кліп — не робити live</td></tr>
+        <tr><td>Немає мережі взагалі</td><td>Локальний <code>stub</code> + кліп; усе відтворювано офлайн</td></tr>
+        <tr><td>Бракує часу</td><td>Пропустити 1:10–1:25, лишити картку + сигнал (0:00–0:45)</td></tr>
+      </table>
+      <div class="gold"><b>Золоте правило:</b> живий шлях — завжди на детермінованому <b>stub</b> (100% відтворювано); NuExtract3 — «вишенька» через записаний кліп. Нуль хмарної залежності у критичні 5 хвилин.</div>
+    </div>
+  </section>
+</main>
+
+<footer>Тримається офлайн — відкрий цей файл із <span style="color:var(--muted)">pitch/presenter.html</span>. Мова пітчу — українська · додаток білінгвальний.</footer>
+
+<script>
+(function(){
+  // ---- tabs ----
+  var tabs=[].slice.call(document.querySelectorAll('.tab'));
+  var views={slides:document.getElementById('slides'),demo:document.getElementById('demo'),pre:document.getElementById('pre')};
+  tabs.forEach(function(t){
+    t.addEventListener('click',function(){
+      tabs.forEach(function(x){x.setAttribute('aria-selected','false');});
+      t.setAttribute('aria-selected','true');
+      Object.keys(views).forEach(function(k){views[k].classList.remove('on');});
+      views[t.dataset.view].classList.add('on');
+      window.scrollTo({top:0,behavior:'instant' in window?'instant':'auto'});
+    });
+  });
+
+  // ---- stopwatch ----
+  var clock=document.getElementById('clock'), toggle=document.getElementById('toggle'), reset=document.getElementById('reset');
+  var t0=0, elapsed=0, running=false, tid=null;
+  function fmt(ms){var s=Math.floor(ms/1000);return Math.floor(s/60)+':'+('0'+(s%60)).slice(-2);}
+  function tick(){
+    var ms=elapsed+(running?Date.now()-t0:0);
+    clock.textContent=fmt(ms);
+    clock.classList.toggle('warn',ms>=270000&&ms<300000);
+    clock.classList.toggle('over',ms>=300000);
+  }
+  toggle.addEventListener('click',function(){
+    if(running){elapsed+=Date.now()-t0;running=false;clearInterval(tid);toggle.textContent='Продовжити';toggle.classList.remove('primary');}
+    else{t0=Date.now();running=true;tid=setInterval(tick,200);toggle.textContent='Пауза';toggle.classList.add('primary');}
+    tick();
+  });
+  reset.addEventListener('click',function(){
+    running=false;clearInterval(tid);elapsed=0;toggle.textContent='Старт';toggle.classList.add('primary');tick();
+  });
+  tick();
+
+  // ---- checklist toggle ----
+  document.getElementById('chk').addEventListener('click',function(e){
+    var li=e.target.closest('li'); if(li) li.classList.toggle('done');
+  });
+})();
+</script>
