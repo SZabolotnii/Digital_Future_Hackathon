@@ -36,8 +36,10 @@ model = AutoModelForImageTextToText.from_pretrained(
 ).eval()
 
 
-@spaces.GPU(duration=120)
-def _run(messages: list, chat_template_kwargs: dict) -> str:
+# duration тримаємо помірним: ZeroGPU резервує ~1.5× від нього з денної квоти,
+# тож нижчий cap дає більше викликів на добу (факти коротші за markdown).
+@spaces.GPU(duration=75)
+def _run(messages: list, chat_template_kwargs: dict, max_new_tokens: int = 2048) -> str:
     """Одна генерація NuExtract (image або text) → сирий рядок."""
     model.to("cuda")
     inputs = processor.apply_chat_template(
@@ -49,7 +51,7 @@ def _run(messages: list, chat_template_kwargs: dict) -> str:
         **chat_template_kwargs,
     ).to(model.device)
     with torch.inference_mode():
-        generated = model.generate(**inputs, max_new_tokens=4096, do_sample=False)
+        generated = model.generate(**inputs, max_new_tokens=max_new_tokens, do_sample=False)
     generated = generated[:, inputs.input_ids.shape[1]:]
     return processor.batch_decode(
         generated, skip_special_tokens=True, clean_up_tokenization_spaces=False
@@ -84,22 +86,22 @@ def _parse_facts(raw: str) -> list[dict]:
 
 # ── програмні примітиви (дзеркало l2b_nuextract) ─────────────────────────────
 def image_to_markdown(image) -> str:
-    """Stage 1: зображення → markdown."""
+    """Stage 1: зображення → markdown (довший вихід — більший ліміт)."""
     if image is None:
         raise gr.Error("Порожнє зображення.")
-    return _run(_img_messages(image), {"enable_thinking": False, "mode": "markdown"})
+    return _run(_img_messages(image), {"enable_thinking": False, "mode": "markdown"}, 3072)
 
 
 def extract_facts(text: str) -> dict:
-    """Stage 2: текст/markdown → сирі KVT-факти {"facts": [...]}"""
+    """Stage 2: текст/markdown → сирі KVT-факти {"facts": [...]} (компактний вихід)."""
     if not (text or "").strip():
         return {"facts": []}
-    raw = _run(_txt_messages(text), {"enable_thinking": False, "template": TEMPLATE_JSON})
+    raw = _run(_txt_messages(text), {"enable_thinking": False, "template": TEMPLATE_JSON}, 1024)
     return {"facts": _parse_facts(raw)}
 
 
 def _facts_from_image(image) -> list[dict]:
-    raw = _run(_img_messages(image), {"enable_thinking": False, "template": TEMPLATE_JSON})
+    raw = _run(_img_messages(image), {"enable_thinking": False, "template": TEMPLATE_JSON}, 1024)
     return _parse_facts(raw)
 
 
@@ -120,7 +122,7 @@ def extract(image, mode: str, source_document_id: str):
         raw_facts = _facts_from_image(image)
     elif mode == "Full":
         raw_facts = _parse_facts(
-            _run(_txt_messages(markdown), {"enable_thinking": False, "template": TEMPLATE_JSON})
+            _run(_txt_messages(markdown), {"enable_thinking": False, "template": TEMPLATE_JSON}, 1024)
         )
 
     facts = normalize(raw_facts, src)
