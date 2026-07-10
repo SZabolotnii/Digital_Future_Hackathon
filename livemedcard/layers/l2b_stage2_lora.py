@@ -44,6 +44,8 @@ _KEYWORD_LOINC: dict[str, tuple[str, str]] = {
     "натрій": ("2951-2", "Sodium"),
     "hemoglobin": ("718-7", "Hemoglobin"),
     "гемоглобін": ("718-7", "Hemoglobin"),
+    "hba1c": ("4548-4", "Hemoglobin A1c"),
+    "глікований гемоглобін": ("4548-4", "Hemoglobin A1c"),
     "hematocrit": ("4544-3", "Hematocrit"),
     "гематокрит": ("4544-3", "Hematocrit"),
     "wbc": ("6690-2", "Leukocytes"),
@@ -69,12 +71,24 @@ _CGM_LOINC: list[tuple[tuple[str, ...], str, str]] = [
 ]
 
 
+_TRAIL_PAREN_RE = re.compile(r"\s*\([^()]*\)\s*$")
+
+
 def _resolve_loinc(keyword: str) -> tuple[str, str] | None:
-    """LOINC для keyword: точний збіг (лаби) → substring (CGM) → None (free-form)."""
-    low = keyword.lower()
+    """LOINC для keyword: точний збіг → зняти кінцеве уточнення в дужках і точний
+    збіг (напр. «калій (K+)» → «калій») → CGM substring → None (free-form).
+
+    Свідомо БЕЗ fuzzy-substring по лабах, щоб «глікований гемоглобін» не колапсував
+    у «гемоглобін». Той самий resolver дзеркалить cloud-шлях (kvt4.resolve_loinc)."""
+    low = keyword.lower().strip()
     exact = _KEYWORD_LOINC.get(low)
     if exact is not None:
         return exact
+    stripped = _TRAIL_PAREN_RE.sub("", low).strip()
+    if stripped != low:
+        exact = _KEYWORD_LOINC.get(stripped)
+        if exact is not None:
+            return exact
     for toks, code, display in _CGM_LOINC:
         if any(t in low for t in toks):
             return code, display

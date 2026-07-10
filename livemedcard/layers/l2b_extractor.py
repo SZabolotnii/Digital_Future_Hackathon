@@ -32,9 +32,9 @@ from ..fhir import (
     Reference,
     Sys,
 )
-from ..config import NUEXTRACT_MODEL, NUEXTRACT_URL
+from ..config import NUEXTRACT_MODEL, NUEXTRACT_URL, OCRLAB_SPACE
 from ..reference import load_vocab
-from . import l2b_nuextract, l2b_stage1, l2b_stage2_lora
+from . import l2b_nuextract, l2b_ocrlab, l2b_stage1, l2b_stage2_lora
 
 _T = TypeVar("_T")
 
@@ -371,6 +371,31 @@ class NuExtractExtractor:
         kvt = l2b_nuextract.extract_facts(doc.text, url=self._url, model=self._model)
         observations = l2b_stage2_lora.to_observations(
             kvt, doc, patient_id, extracted_by="NuExtract3"
+        )
+        return ExtractionResult(
+            observations=observations,
+            mean_confidence=STUB_CONFIDENCE if observations else 0.0,
+            document_reference=_build_docref(doc, doc.text, patient_id),
+        )
+
+
+class OcrLabExtractor:
+    """L2b через хмарний OCR Lab (ZeroGPU NuExtract3) — opt-in cloud-варіант.
+
+    Дзеркалить `NuExtractExtractor`, але текст→факти йде через `gradio_client` до
+    окремого Space (Spec.md FR-MODEL-004: різниця лише в транспорті). Для зображень
+    Stage 1 (image→markdown) робить `/ingest/image` через `l2b_ocrlab.image_to_markdown`,
+    тож сюди приходить markdown у `doc.text`. Observations будує той самий
+    `to_observations` — межа детермінізму збережена.
+    """
+
+    def __init__(self, *, space: str | None = OCRLAB_SPACE) -> None:
+        self._space = space
+
+    def extract(self, doc: Document, patient_id: str) -> ExtractionResult:
+        kvt = l2b_ocrlab.extract_facts(doc.text, space=self._space)
+        observations = l2b_stage2_lora.to_observations(
+            kvt, doc, patient_id, extracted_by="NuExtract3/ZeroGPU"
         )
         return ExtractionResult(
             observations=observations,

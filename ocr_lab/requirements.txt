@@ -1,0 +1,9 @@
+# ZeroGPU базовий образ дає CUDA-torch 2.11.0. torchvision потрібен процесору
+# Qwen3-VL (image/video); пінимо під torch 2.11 (0.26.0), щоб не тягнути інший torch.
+spaces
+transformers>=5.0
+accelerate
+qwen-vl-utils
+torchvision==0.26.0
+pillow
+pydantic>=2

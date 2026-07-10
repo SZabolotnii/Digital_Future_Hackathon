@@ -17,6 +17,11 @@ dev = [
     "httpx>=0.27",
     "ruff>=0.4",
 ]
+# Хмарний OCR Lab (opt-in): клієнт до ZeroGPU NuExtract3 Space. Не потрібен для
+# дефолтного local-first / stub-режиму.
+cloud = [
+    "gradio_client>=1.3",
+]
 
 [project.scripts]
 livemedcard-demo = "livemedcard.demo:main"

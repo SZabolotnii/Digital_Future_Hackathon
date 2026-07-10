@@ -45,11 +45,13 @@ from .config import (
 from .dto import Document, DocKind
 from .fhir import Patient
 from .layers import l3_router
-from .layers import l2b_nuextract
+from .layers import l2b_nuextract, l2b_ocrlab
+from .layers.l2b_ocrlab import OcrLabError
 from .layers.l2b_extractor import (
     Extractor,
     LoraStage2Extractor,
     NuExtractExtractor,
+    OcrLabExtractor,
     StubExtractor,
     TwoStageExtractor,
 )
@@ -71,7 +73,9 @@ def _new_patient() -> Patient:
 
 
 def _make_extractor() -> Extractor:
-    """Екстрактор L2b: 'nuextract' | 'two_stage_lora' | 'two_stage' | 'stub'."""
+    """Екстрактор L2b: 'ocrlab' | 'nuextract' | 'two_stage_lora' | 'two_stage' | 'stub'."""
+    if EXTRACTOR == "ocrlab":
+        return OcrLabExtractor()
     if EXTRACTOR == "nuextract":
         return NuExtractExtractor()
     if EXTRACTOR == "two_stage_lora":
@@ -143,14 +147,17 @@ def ingest_image(req: ImageIngestRequest):
             detail="Зображення порожнє або некоректне",
         )
 
-    # У режимі nuextract зображення читає сам NuExtract (image→markdown), тож
-    # окремий OCR не потрібен — уникаємо накопичення помилок OCR→summary→extract.
+    # У режимах nuextract/ocrlab зображення читає сам NuExtract (image→markdown),
+    # тож окремий OCR не потрібен — уникаємо накопичення помилок OCR→summary→extract.
+    # ocrlab робить image→markdown на хмарному ZeroGPU Space (opt-in).
     try:
-        if EXTRACTOR == "nuextract":
+        if EXTRACTOR == "ocrlab":
+            text = l2b_ocrlab.image_to_markdown(req.image_base64)
+        elif EXTRACTOR == "nuextract":
             text = l2b_nuextract.image_to_markdown(req.image_base64)
         else:
             text = OcrService.perform_ocr(req.image_base64)
-    except (OcrError, LLMError) as exc:
+    except (OcrError, LLMError, OcrLabError) as exc:
         raise HTTPException(
             status_code=503,
             detail=str(exc),
