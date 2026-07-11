@@ -1,0 +1,32 @@
+{
+  "libreview": {
+    "title": "CGM AGP-звіт (LibreView) — числа в графіку таблиці TIR",
+    "kind": "друкований, щільна таблиця",
+    "values": ["204", "8.2", "32.0", "34%", "24%", "37%", "38%", "1%", "0%"]
+  },
+  "xerox-01": {
+    "title": "EHR clinical summary — ліки з дозами, багатоколонковий",
+    "kind": "друкований, щільний, 2 колонки",
+    "values": ["aspirin", "81 mg", "cetirizine", "escitalopram", "10 mg",
+               "Ryaltris", "665-25", "Prothrombin gene mutation",
+               "Obstructive sleep apnea", "Hypercholesterolemia",
+               "Impaired glucose tolerance", "9/15/2016"]
+  },
+  "pdf12-01": {
+    "title": "Progress note — діагнози й призначення",
+    "kind": "друкований, чистий",
+    "values": ["12/29/2025", "Belching", "Indigestion",
+               "Gastroesophageal reflux disease without esophagitis",
+               "hiatal hernia", "RUQ pain", "XR Abdomen 1 View",
+               "Tissue Transglutaminase", "Liver Function Panel",
+               "CBC with Differential"]
+  },
+  "officenotes": {
+    "title": "Holter-звіт — шумний факс-скан + рукописна резолюція лікаря",
+    "kind": "деградований скан + рукопис",
+    "values": ["182 bpm", "46 bpm", "63 bpm", "114 bpm", "118 bpm",
+               "60-182", "15.5%", "28601", "3381", "626", "3678", "6.9 s",
+               "Palpitations", "44"],
+    "handwriting": ["Refer", "EP", "daughter", "8/22/22"]
+  }
+}

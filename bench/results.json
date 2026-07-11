@@ -1,0 +1,100 @@
+{
+  "libreview": {
+    "vision": {
+      "hit": 9,
+      "total": 9,
+      "sec": 2,
+      "miss": [],
+      "hand": "—"
+    },
+    "hunyuan": {
+      "hit": 9,
+      "total": 9,
+      "sec": 10,
+      "miss": [],
+      "hand": "—"
+    },
+    "nuextract": {
+      "hit": 9,
+      "total": 9,
+      "sec": 28,
+      "miss": [],
+      "hand": "—"
+    }
+  },
+  "xerox-01": {
+    "vision": {
+      "hit": 12,
+      "total": 12,
+      "sec": 1,
+      "miss": [],
+      "hand": "—"
+    },
+    "hunyuan": {
+      "hit": 12,
+      "total": 12,
+      "sec": 7,
+      "miss": [],
+      "hand": "—"
+    },
+    "nuextract": {
+      "hit": 12,
+      "total": 12,
+      "sec": 22,
+      "miss": [],
+      "hand": "—"
+    }
+  },
+  "pdf12-01": {
+    "vision": {
+      "hit": 10,
+      "total": 10,
+      "sec": 1,
+      "miss": [],
+      "hand": "—"
+    },
+    "hunyuan": {
+      "hit": 10,
+      "total": 10,
+      "sec": 6,
+      "miss": [],
+      "hand": "—"
+    },
+    "nuextract": {
+      "hit": 10,
+      "total": 10,
+      "sec": 13,
+      "miss": [],
+      "hand": "—"
+    }
+  },
+  "officenotes": {
+    "vision": {
+      "hit": 12,
+      "total": 14,
+      "sec": 1,
+      "miss": [
+        "118 bpm",
+        "6.9 s"
+      ],
+      "hand": "3/4"
+    },
+    "hunyuan": {
+      "hit": 12,
+      "total": 14,
+      "sec": 15,
+      "miss": [
+        "118 bpm",
+        "Palpitations"
+      ],
+      "hand": "2/4"
+    },
+    "nuextract": {
+      "hit": 14,
+      "total": 14,
+      "sec": 36,
+      "miss": [],
+      "hand": "4/4"
+    }
+  }
+}
