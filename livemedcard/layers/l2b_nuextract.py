@@ -14,10 +14,17 @@ import json
 from ..config import NUEXTRACT_MODEL, NUEXTRACT_URL
 from ..llm_client import chat_completions
 
-# Шаблон KVT-фактів (leaf-значення = типи NuExtract).
+# Шаблон KVT-фактів (leaf-значення = типи NuExtract). Одиниця — ОКРЕМЕ поле, як у
+# хмарного Lab: без неї значення приходить голим числом, і шар L2a не може
+# порівняти його з референсними межами (натомість чесно піднімає unit_mismatch).
 _FACTS_TEMPLATE = {
     "facts": [
-        {"keyword": "verbatim-string", "value": "verbatim-string", "timestamp": "verbatim-string"}
+        {
+            "keyword": "verbatim-string",
+            "value": "verbatim-string",
+            "unit": "verbatim-string",
+            "timestamp": "verbatim-string",
+        }
     ]
 }
 _TEMPLATE_JSON = json.dumps(_FACTS_TEMPLATE, indent=2)

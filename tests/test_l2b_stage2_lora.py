@@ -67,6 +67,52 @@ def test_fact_without_date_is_marked_not_stated():
     assert by_kw["Creatinine"].provenance.date_stated is True
 
 
+def test_dates_and_identifiers_are_not_measurements():
+    """Бланк несе «Report No. 2024-10-15/0412» і «Collected: 2024-10-15». Без
+    захисту вони ставали фактами «2024.0» — числовим сміттям у картці."""
+    sv = l2b_stage2_lora._split_value
+    assert sv("2024-10-15") == (None, None)
+    assert sv("2024-10-15/0412") == (None, None)
+    assert sv("06/13/2025") == (None, None)
+    assert sv("135 µmol/L") == (135.0, "µmol/L")     # справжнє вимірювання лишається
+    assert sv("7.6") == (7.6, None)
+
+
+def test_document_date_dates_facts_that_carry_none():
+    """Табличний бланк не повторює дату в кожному рядку — вона в шапці, і модель
+    віддає її окремим фактом («Collected»). Значення документа мають датуватися
+    нею, а не датою завантаження: ця дата ЗАЯВЛЕНА в документі."""
+    from livemedcard.dto import Document
+
+    doc = Document(id="lab", text="...", kind="lab_report", received_at=_RECEIVED)
+    kvt = [
+        {"keyword": "Collected", "value": "2024-10-15", "timestamp": None},
+        {"keyword": "Reported", "value": "2024-10-16", "timestamp": None},
+        {"keyword": "Creatinine", "value": "135", "unit": "µmol/L", "timestamp": None},
+    ]
+    obs = l2b_stage2_lora.to_observations(kvt, doc, "mom-001", extracted_by="t")
+    creat = next(o for o in obs if o.code.text == "Creatinine")
+    assert creat.effectiveDateTime == datetime(2024, 10, 15, tzinfo=timezone.utc)
+    assert creat.provenance.date_stated is True
+    assert creat.valueQuantity.unit == "µmol/L"
+
+
+def test_reported_date_alone_does_not_date_the_facts():
+    """«Reported» — коли лабораторія видала бланк, а не коли взяли кров. Датувати
+    ним показник хибно, тож без дати забору лишається fallback і чесна позначка."""
+    from livemedcard.dto import Document
+
+    doc = Document(id="lab2", text="...", kind="lab_report", received_at=_RECEIVED)
+    kvt = [
+        {"keyword": "Reported", "value": "2024-10-16", "timestamp": None},
+        {"keyword": "Creatinine", "value": "135", "unit": "µmol/L", "timestamp": None},
+    ]
+    obs = l2b_stage2_lora.to_observations(kvt, doc, "mom-001", extracted_by="t")
+    creat = next(o for o in obs if o.code.text == "Creatinine")
+    assert creat.effectiveDateTime == _RECEIVED
+    assert creat.provenance.date_stated is False
+
+
 def test_extract_json_array_strips_thought_tokens_and_fences():
     raw = "<unused95>thought\nlet me think\n```json\n" + _KVT_JSON + "\n```"
     facts = l2b_stage2_lora._extract_json_array(raw)

@@ -1,30 +1,80 @@
 [
   {
-    "cluster": "lab",
+    "keyword": "Report No.",
+    "value": "2024-10-15/0412",
+    "unit": null,
+    "timestamp": null
+  },
+  {
+    "keyword": "Collected",
+    "value": "2024-10-15",
+    "unit": null,
+    "timestamp": null
+  },
+  {
+    "keyword": "Reported",
+    "value": "2024-10-16",
+    "unit": null,
+    "timestamp": null
+  },
+  {
+    "keyword": "Patient",
+    "value": "Demonstration sample",
+    "unit": null,
+    "timestamp": null
+  },
+  {
+    "keyword": "Sex",
+    "value": "Female",
+    "unit": null,
+    "timestamp": null
+  },
+  {
+    "keyword": "Age",
+    "value": "70 years",
+    "unit": null,
+    "timestamp": null
+  },
+  {
+    "keyword": "Record No.",
+    "value": "DEMO-001",
+    "unit": null,
+    "timestamp": null
+  },
+  {
+    "keyword": "Referred by",
+    "value": "Family physician",
+    "unit": null,
+    "timestamp": null
+  },
+  {
+    "keyword": "Specimen",
+    "value": "Venous blood",
+    "unit": null,
+    "timestamp": null
+  },
+  {
     "keyword": "Creatinine",
     "value": "135",
     "unit": "μmol/L",
-    "timestamp": "2024-10-15"
+    "timestamp": null
   },
   {
-    "cluster": "vital",
-    "keyword": "Potassium (K⁺)",
+    "keyword": "Potassium (K+)",
     "value": "5.1",
     "unit": "mmol/L",
-    "timestamp": "2024-10-15"
+    "timestamp": null
   },
   {
-    "cluster": "vital",
     "keyword": "Fasting glucose",
     "value": "6.8",
     "unit": "mmol/L",
-    "timestamp": "2024-10-15"
+    "timestamp": null
   },
   {
-    "cluster": "vital",
     "keyword": "Hemoglobin A1c (HbA1c)",
     "value": "7.6",
     "unit": "%",
-    "timestamp": "2024-10-15"
+    "timestamp": null
   }
 ]

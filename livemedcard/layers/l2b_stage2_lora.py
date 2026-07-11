@@ -102,6 +102,8 @@ def _resolve_loinc(keyword: str) -> tuple[str, str] | None:
 
 _THOUGHT_TOKEN_RE = re.compile(r"<unused\d+>", re.IGNORECASE)
 _VALUE_NUM_RE = re.compile(r"^\s*(-?\d+(?:[.,]\d+)?)\s*(.*)$")
+# Дата або ідентифікатор: два розділювачі поспіль («2024-10-15», «06/13/2025»).
+_DATE_LIKE_RE = re.compile(r"^\s*\d{1,4}[-/.]\d{1,2}[-/.]\d{2,4}")
 _TS_DATE_FORMATS = ("%Y-%m-%d", "%d.%m.%Y", "%m/%d/%Y", "%B %d, %Y", "%b %d, %Y")
 
 
@@ -139,8 +141,15 @@ def _extract_json_array(text: str) -> list[dict]:
 
 
 def _split_value(value: object) -> tuple[Optional[float], Optional[str]]:
-    """'204 mg/dL' → (204.0, 'mg/dL'); '34%' → (34.0, '%'); 'Yes' → (None, None)."""
-    m = _VALUE_NUM_RE.match(str(value))
+    """'204 mg/dL' → (204.0, 'mg/dL'); '34%' → (34.0, '%'); 'Yes' → (None, None).
+
+    Дати й ідентифікатори — НЕ вимірювання: «2024-10-15» інакше стало б фактом
+    «2024.0 -10-15», а «2024-10-15/0412» — номером бланка в таймлайні.
+    """
+    s = str(value)
+    if _DATE_LIKE_RE.match(s):
+        return None, None
+    m = _VALUE_NUM_RE.match(s)
     if m is None:
         return None, None
     num = float(m.group(1).replace(",", "."))
@@ -189,11 +198,36 @@ def extract_facts(summary_text: str, *, url: str | None = None, model: str | Non
     return _extract_json_array(raw)
 
 
+# Keywords, під якими модель віддає дату ЗАБОРУ матеріалу — тобто дату, на яку
+# виміряні значення документа. Свідомо вузько: «reported»/«issued» — це коли
+# лабораторія видала бланк, а не коли взяли кров, і датувати ним показник хибно.
+_DOC_DATE_KEYWORDS = frozenset({
+    "collected", "collection date", "date collected", "specimen collected",
+    "дата забору", "забір матеріалу", "дата взяття",
+})
+
+
+def _document_date(kvt: list[dict]) -> Optional[datetime]:
+    """Дата документа з ЙОГО Ж витягу (напр. «Collected: 2024-10-15»).
+
+    Табличні бланки не повторюють дату в кожному рядку — вона стоїть у шапці, і
+    модель віддає її окремим фактом. Тоді значення документа датуються нею: це
+    дата, ЗАЯВЛЕНА в документі, а не здогад (на відміну від дати завантаження).
+    """
+    for item in kvt:
+        if str(item.get("keyword", "")).strip().lower() in _DOC_DATE_KEYWORDS:
+            ts, ok = _parse_timestamp(item.get("value"), None)
+            if ok:
+                return ts
+    return None
+
+
 def to_observations(
     kvt: list[dict], doc: Document, patient_id: str, *, extracted_by: str
 ) -> list[Observation]:
     """KVT4 → FHIR Observations (лише числові; часті лаби мостяться у LOINC)."""
     subject = Reference(reference=f"Patient/{patient_id}")
+    doc_date = _document_date(kvt)
     observations: list[Observation] = []
     seen: set[str] = set()
     for item in kvt:
@@ -209,7 +243,11 @@ def to_observations(
         if unit is None:
             raw_unit = str(item.get("unit") or "").strip()
             unit = raw_unit or None
-        eff, date_stated = _parse_timestamp(item.get("timestamp"), doc.received_at)
+        eff, date_stated = _parse_timestamp(item.get("timestamp"), None)
+        if not date_stated:
+            # дата на факт відсутня → дата документа; лише потім — дата завантаження
+            eff = doc_date or doc.received_at
+            date_stated = doc_date is not None
         bridge = _resolve_loinc(keyword)
         coding = (
             [Coding(system=Sys.LOINC, code=bridge[0], display=bridge[1])]
