@@ -64,3 +64,23 @@ def test_run_combines_both_checks():
     signals = run([warfarin, aspirin, metformin])
     kinds = [s.kind for s in signals]
     assert kinds == ["interaction", "dose_limit"]
+
+
+def test_interaction_english_detail():
+    """lang='en' → механізм із detail_en, назви — з display coding (EN)."""
+    warfarin = _med("m1", "11289", "Warfarin")
+    aspirin = _med("m2", "1191", "Aspirin")
+    signals = check_interactions([warfarin, aspirin], lang="en")
+    assert len(signals) == 1
+    assert signals[0].detail == (
+        "Warfarin + Aspirin: additive antithrombotic effect, increased bleeding risk"
+    )
+
+
+def test_dose_limit_english_detail():
+    metformin = _med("m1", "6809", "Metformin", dose_mg_per_day=3000)
+    signals = check_dose_limits([metformin], lang="en")
+    assert len(signals) == 1
+    assert signals[0].detail == (
+        "Metformin: daily dose 3000 mg exceeds the daily limit of 2550 mg"
+    )

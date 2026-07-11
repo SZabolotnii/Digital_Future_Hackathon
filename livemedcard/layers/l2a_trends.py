@@ -17,7 +17,16 @@ def _fmt(v: float) -> str:
     return f"{v:g}"
 
 
-def detect_trends(store: FactStore) -> list[Signal]:
+def _keyword_for(loinc: str, fallback: str, lang: str) -> str:
+    """Назва показника мовою відповіді: keyword_en з довідника меж, інакше — з факту."""
+    if lang == "en":
+        ref = range_for(loinc, None)
+        if ref is not None and ref.keyword_en:
+            return ref.keyword_en
+    return fallback
+
+
+def detect_trends(store: FactStore, lang: str = "uk") -> list[Signal]:
     """Стійкий монотонний тренд (>=3 вимірювань, всі зростають або всі спадають)."""
     signals: list[Signal] = []
     for loinc in store.loincs():
@@ -31,13 +40,22 @@ def detect_trends(store: FactStore) -> list[Signal]:
         falling = all(a >= b for a, b in zip(values, values[1:])) and values[-1] < values[0]
         if not (rising or falling):
             continue
-        direction = "зростає" if rising else "знижується"
         first, last = series[0], series[-1]
-        detail = (
-            f"{first.keyword} {direction} {len(series)} вимірювань поспіль: "
-            f"{_fmt(first.value)}→{_fmt(last.value)} "
-            f"({first.ts.date().isoformat()}..{last.ts.date().isoformat()})"
-        )
+        keyword = _keyword_for(loinc, first.keyword, lang)
+        if lang == "en":
+            direction = "rising" if rising else "falling"
+            detail = (
+                f"{keyword} {direction} {len(series)} measurements in a row: "
+                f"{_fmt(first.value)}→{_fmt(last.value)} "
+                f"({first.ts.date().isoformat()}..{last.ts.date().isoformat()})"
+            )
+        else:
+            direction = "зростає" if rising else "знижується"
+            detail = (
+                f"{keyword} {direction} {len(series)} вимірювань поспіль: "
+                f"{_fmt(first.value)}→{_fmt(last.value)} "
+                f"({first.ts.date().isoformat()}..{last.ts.date().isoformat()})"
+            )
         signals.append(
             Signal(
                 layer="L2a",
@@ -51,7 +69,9 @@ def detect_trends(store: FactStore) -> list[Signal]:
     return signals
 
 
-def detect_range_breaches(store: FactStore, sex: Optional[str] = None) -> list[Signal]:
+def detect_range_breaches(
+    store: FactStore, sex: Optional[str] = None, lang: str = "uk"
+) -> list[Signal]:
     """Останнє значення показника поза референсною межею (з урахуванням статі)."""
     signals: list[Signal] = []
     for loinc in store.loincs():
@@ -65,14 +85,15 @@ def detect_range_breaches(store: FactStore, sex: Optional[str] = None) -> list[S
         # останній доданий), щоб L2a і Q&A узгоджено бачили те саме значення.
         latest = series[-1]
         if latest.value < ref.low:
-            direction = "нижче норми"
+            direction = "below range" if lang == "en" else "нижче норми"
         elif latest.value > ref.high:
-            direction = "вище норми"
+            direction = "above range" if lang == "en" else "вище норми"
         else:
             continue
         unit = latest.unit or ref.unit or ""
+        keyword = (ref.keyword_en if lang == "en" and ref.keyword_en else ref.keyword)
         detail = (
-            f"{ref.keyword} {_fmt(latest.value)} {unit} {direction} "
+            f"{keyword} {_fmt(latest.value)} {unit} {direction} "
             f"({_fmt(ref.low)}–{_fmt(ref.high)})"
         )
         signals.append(
@@ -88,6 +109,6 @@ def detect_range_breaches(store: FactStore, sex: Optional[str] = None) -> list[S
     return signals
 
 
-def run(store: FactStore, sex: Optional[str] = None) -> list[Signal]:
+def run(store: FactStore, sex: Optional[str] = None, lang: str = "uk") -> list[Signal]:
     """Усі сигнали L2a: тренди + порушення референсних меж."""
-    return detect_trends(store) + detect_range_breaches(store, sex)
+    return detect_trends(store, lang) + detect_range_breaches(store, sex, lang)

@@ -25,6 +25,7 @@ class Interaction(FrozenModel):
     b: str  # RxNorm
     severity: Severity
     detail: str
+    detail_en: str = ""  # англомовний механізм (для /state?lang=en)
 
     def pair(self) -> frozenset[str]:
         return frozenset((self.a, self.b))
@@ -46,6 +47,7 @@ class RangeSpec(FrozenModel):
     """Референсні межі показника з опціональними варіантами за статтю."""
 
     keyword: str
+    keyword_en: str = ""  # англомовна назва показника (для /state?lang=en)
     unit: str
     default: Bounds
     by_sex: dict[str, Bounds] = {}
@@ -53,7 +55,7 @@ class RangeSpec(FrozenModel):
     def resolve(self, sex: Optional[str]) -> "RefRange":
         bounds = self.by_sex.get(sex or "", self.default)
         return RefRange(
-            keyword=self.keyword, unit=self.unit,
+            keyword=self.keyword, keyword_en=self.keyword_en, unit=self.unit,
             low=bounds.low, high=bounds.high,
             sex=sex if (sex and sex in self.by_sex) else None,
         )
@@ -63,6 +65,7 @@ class RefRange(FrozenModel):
     """Розвʼязані межі для конкретного пацієнта (стать враховано)."""
 
     keyword: str
+    keyword_en: str = ""
     unit: str
     low: float
     high: float

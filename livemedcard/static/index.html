@@ -113,6 +113,23 @@
   button.ghost{background:transparent}
   button:disabled{opacity:.55;cursor:default;transform:none}
 
+  /* ── story ribbon (investor orientation; shown only with an interaction alert) */
+  .story{display:none;align-items:flex-start;gap:12px;margin:0 0 4px;padding:13px 16px;
+    background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--major);
+    border-radius:13px;box-shadow:var(--shadow);animation:rise .5s .1s both}
+  .story.show{display:flex}
+  .story .txt{font-size:13.5px;line-height:1.55}
+  .story b{color:var(--major)}
+  .story .x{flex:0 0 auto;margin-left:auto;background:none;border:none;color:var(--faint);
+    font-size:17px;line-height:1;padding:2px 6px;cursor:pointer}
+  .story .x:hover{color:var(--ink);transform:none}
+
+  /* ── trust strip + footer links ─────────────────────── */
+  .trust{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:28px}
+  .trust span{font:600 11px/1 var(--mono);color:var(--muted);border:1px solid var(--line);
+    border-radius:999px;padding:6px 12px;background:var(--panel)}
+  .flinks{margin-top:10px;font-family:var(--mono);font-size:11.5px}
+
   /* ── layout ─────────────────────────────────────────── */
   .grid{display:grid;grid-template-columns:1fr;gap:18px}
   @media(min-width:900px){.grid{grid-template-columns:1.18fr .82fr}}
@@ -145,6 +162,9 @@
   .status{font-size:11.5px;font-weight:700}
   .status.ok{color:var(--ok)} .status.high{color:var(--major)} .status.low{color:var(--moderate)}
   .metric .src{color:var(--faint);font-size:11px;margin-top:7px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+  .srcchip{font:600 10.5px/1 var(--mono);color:var(--muted);background:transparent;
+    border:1px solid var(--line);border-radius:999px;padding:3px 9px;cursor:pointer;transition:.14s}
+  .srcchip:hover{color:var(--accent);border-color:var(--accent);transform:none}
   .lang{font:700 10px/1 var(--mono);padding:2px 5px;border-radius:5px;border:1px solid var(--line)}
   .lang.ua{color:var(--accent)} .lang.en{color:#5e9dff}
   .spark{margin-top:9px}
@@ -163,8 +183,20 @@
     font-size:12px;font-weight:700;color:#fff}
   .decision .t{font:600 12.5px/1 var(--mono);color:var(--muted);margin-left:auto}
   .reasons{margin:8px 0 0;padding-left:18px;color:var(--muted);font-size:12.5px;flex-basis:100%}
-  .sig{display:flex;gap:11px;padding:12px 0;border-top:1px solid var(--line)}
-  .sig:first-of-type{border-top:none;padding-top:2px}
+  .sig{display:flex;gap:11px;padding:12px 0}
+  .sig + .sig{border-top:1px solid var(--line)}
+  .siggroup{font:600 10px/1 var(--mono);color:var(--faint);text-transform:uppercase;
+    letter-spacing:.08em;margin:12px 0 3px;padding-top:10px;border-top:1px solid var(--line)}
+  .sig.headline{border:1px solid color-mix(in srgb,var(--major) 45%,var(--line));
+    border-left:4px solid var(--major);border-radius:12px;padding:13px 14px;margin-bottom:6px;
+    background:color-mix(in srgb,var(--major) 8%,transparent);
+    animation:rise .45s .5s both, alertland 1.4s 1s 1}
+  .sig.headline + .sig{border-top:none}
+  .sig.headline .d{font-size:14.5px;font-weight:600}
+  @keyframes alertland{
+    0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--major) 45%,transparent)}
+    60%{box-shadow:0 0 0 13px transparent}
+    100%{box-shadow:0 0 0 0 transparent}}
   .sig .dot{flex:0 0 auto;width:11px;height:11px;border-radius:50%;margin-top:4px;position:relative}
   .sig.hot .dot::after{content:"";position:absolute;inset:-4px;border-radius:50%;
     border:2px solid currentColor;opacity:.5;animation:ping 1.8s cubic-bezier(0,0,.2,1) infinite}
@@ -214,8 +246,31 @@
     text-align:center;font-size:13px;color:var(--muted)}
   .dropzone:hover,.dropzone.dragover{border-color:var(--accent);background:var(--accent-soft);color:var(--ink)}
 
-  footer{color:var(--faint);font-size:12px;margin-top:30px;text-align:center;line-height:1.6}
+  footer{color:var(--faint);font-size:12px;margin-top:14px;text-align:center;line-height:1.6}
   footer b{color:var(--muted)}
+
+  /* ── provenance drawer (click a value → the exact sentence in its source) */
+  .drawer-back{position:fixed;inset:0;background:rgba(4,9,13,.5);opacity:0;pointer-events:none;
+    transition:.25s;z-index:60}
+  .drawer-back.show{opacity:1;pointer-events:auto}
+  .drawer{position:fixed;top:0;right:0;bottom:0;width:min(480px,94vw);background:var(--panel);
+    border-left:1px solid var(--line);box-shadow:-18px 0 50px rgba(0,0,0,.35);z-index:61;
+    transform:translateX(103%);transition:transform .3s cubic-bezier(.2,.7,.2,1);
+    display:flex;flex-direction:column}
+  .drawer.show{transform:none}
+  .drawer .head{display:flex;align-items:center;gap:10px;padding:15px 18px;
+    border-bottom:1px solid var(--line)}
+  .drawer .head h3{margin:0;font:600 13.5px/1.3 var(--mono);color:var(--ink);word-break:break-all}
+  .drawer .close{margin-left:auto;flex:0 0 auto;background:none;border:1px solid var(--line);
+    border-radius:9px;width:32px;height:32px;color:var(--muted);font-size:15px;line-height:1;
+    cursor:pointer;display:grid;place-items:center}
+  .drawer .close:hover{color:var(--ink);border-color:var(--accent);transform:none}
+  .drawer .cap{padding:10px 18px 0;color:var(--faint);font-size:11.5px}
+  .drawer .body{padding:14px 18px 20px;overflow:auto;white-space:pre-wrap;
+    font-size:13.5px;line-height:1.75;color:var(--muted)}
+  .drawer .body mark{background:color-mix(in srgb,var(--accent) 26%,transparent);color:var(--ink);
+    border-radius:4px;padding:1px 3px;font-weight:650;
+    box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 45%,transparent)}
   .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(8px);
     background:var(--ink);color:var(--bg);padding:11px 18px;border-radius:11px;font-weight:600;font-size:13.5px;
     box-shadow:0 10px 30px rgba(0,0,0,.35);opacity:0;transition:.28s;pointer-events:none;z-index:50}
@@ -288,6 +343,11 @@
     </div>
   </div>
 
+  <div class="story" id="story" role="note">
+    <span class="txt" id="story-text"></span>
+    <button class="x" id="story-x" aria-label="Dismiss">×</button>
+  </div>
+
   <div class="grid" style="margin-top:18px">
     <section class="panel d1">
       <h2><span id="h-series">Metrics timeline</span> <span class="tag" id="bi-tag" style="display:none">bilingual · UA + EN</span></h2>
@@ -317,9 +377,19 @@
     <div class="chips" id="chips"></div>
   </section>
 
+  <div class="trust" id="trust"></div>
   <footer id="site-footer">Prototype for <b>Digital Future Hackathon</b> · Aging &amp; Longevity track.<br>
     The system structures facts and shows trends — <b>it does not diagnose or prescribe treatment</b>.</footer>
 </div>
+<div class="drawer-back" id="drawer-back"></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+  <div class="head">
+    <h3 id="drawer-title"></h3>
+    <button class="close" id="drawer-close" aria-label="Close">×</button>
+  </div>
+  <div class="cap" id="drawer-cap"></div>
+  <div class="body" id="drawer-body"></div>
+</aside>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -332,6 +402,19 @@ const SEV = {critical:'var(--critical)',major:'var(--major)',moderate:'var(--mod
 const LANG_KEY='lmc_lang';
 let LANG = localStorage.getItem(LANG_KEY) || 'en';
 let lastState = null;
+
+/* Назви показників за LOINC (таймлайн локалізується на клієнті; /state віддає loinc) */
+const LOINC_LABEL = {
+  '2160-0':{en:'Creatinine',ua:'Креатинін'},
+  '2823-3':{en:'Potassium',ua:'Калій'},
+  '4548-4':{en:'HbA1c',ua:'Глікований гемоглобін'},
+  '2345-7':{en:'Glucose',ua:'Глюкоза'},
+  '718-7':{en:'Hemoglobin',ua:'Гемоглобін'},
+  '2951-2':{en:'Sodium',ua:'Натрій'},
+  '8480-6':{en:'Systolic BP',ua:'Систолічний тиск'},
+  '1742-6':{en:'ALT',ua:'АЛТ'},
+  '2093-3':{en:'Total cholesterol',ua:'Холестерин загальний'},
+};
 
 const I18N = {
   en: {
@@ -369,6 +452,12 @@ const I18N = {
     errorPrefix:'Error: ', selected:name=>`Selected: ${name}`,
     chips:['What about kidneys over the last year?','What was potassium?',
       'What medications and any interactions?','What about HbA1c?'],
+    story:(docs,pair)=>`One timeline from ${docs} documents in two languages. The card flagged a dangerous combination — <b>${pair}</b> — deterministically, by safety rules, not by AI guess. See the red alert in the Safety panel.`,
+    groupL1:'L1 · deterministic rules', groupL2a:'L2a · trends & reference ranges',
+    trust:['No cloud LLM','Deterministic safety rules (L1)','FHIR export','Local-first by design'],
+    drawerTitle:id=>`Source · ${id}`,
+    drawerCap:'The extracted fact is highlighted in the source document.',
+    srcTitle:'Show source document',
   },
   ua: {
     htmlLang:'uk', title:'LiveMedCard — жива медична картка',
@@ -405,6 +494,12 @@ const I18N = {
     errorPrefix:'Помилка: ', selected:name=>`Вибрано: ${name}`,
     chips:['Що з нирками за останній рік?','Який був калій?',
       'Які ліки приймає і чи є взаємодії?','Що з HbA1c?'],
+    story:(docs,pair)=>`Один таймлайн із ${docs} документів двома мовами. Картка помітила небезпечну комбінацію — <b>${pair}</b> — детерміновано, правилами безпеки, а не «на думку» ШІ. Дивіться червоний сигнал у панелі безпеки.`,
+    groupL1:'L1 · детерміновані правила', groupL2a:'L2a · тренди й референсні межі',
+    trust:['Без хмарної LLM','Детерміновані правила безпеки (L1)','Експорт FHIR','Local-first за дизайном'],
+    drawerTitle:id=>`Джерело · ${id}`,
+    drawerCap:'Витягнутий факт підсвічено в документі-джерелі.',
+    srcTitle:'Показати документ-джерело',
   },
 };
 
@@ -443,7 +538,11 @@ function applyLang(lang){
   $('#qa-tag').textContent = t.qaTag;
   $('#q').placeholder = t.qPlaceholder;
   $('#ask').textContent = t.ask;
-  $('#site-footer').innerHTML = `${t.footer1}<br>${t.footer2}`;
+  $('#trust').innerHTML = t.trust.map(x=>`<span>${x}</span>`).join('');
+  $('#site-footer').innerHTML = `${t.footer1}<br>${t.footer2}
+    <div class="flinks"><a href="https://github.com/SZabolotnii/Digital_Future_Hackathon" target="_blank" rel="noopener">GitHub</a> ·
+    <a href="https://traces.solutions" target="_blank" rel="noopener">traces.solutions</a> ·
+    <a href="https://arxiv.org/abs/2605.03838" target="_blank" rel="noopener">TRACE (arXiv)</a></div>`;
   buildChips();
   if(lastState) render(lastState);
 }
@@ -460,7 +559,7 @@ function applyLang(lang){
 
 $('#langsw').addEventListener('click', e=>{
   const btn=e.target.closest('button[data-lang]'); if(!btn) return;
-  if(btn.dataset.lang!==LANG) applyLang(btn.dataset.lang);
+  if(btn.dataset.lang!==LANG){applyLang(btn.dataset.lang);refresh();}
 });
 
 function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');
@@ -545,23 +644,39 @@ function render(st){
     <div class="stat bi"><div class="n">${bilingual?'UA+EN':(langs.has('en')?'EN':'UA')}</div><div class="l">${t.statLangs}</div></div>
   ` : '';
 
+  // story ribbon — investor orientation, only when a drug interaction was caught
+  const inter=st.signals.filter(x=>x.kind==='interaction');
+  const storyEl=$('#story');
+  if(inter.length && !localStorage.getItem('lmc_story_off')){
+    const pair=inter[0].detail.split(':')[0];
+    $('#story-text').innerHTML=t.story(docs, pair);
+    storyEl.classList.add('show');
+  }else{storyEl.classList.remove('show');}
+
   // series
   const sEl=$('#series');
   if(!st.series.length){sEl.innerHTML=`<div class="empty">${t.seriesEmpty}</div>`;}
   else{sEl.innerHTML=st.series.map((s,idx)=>{
     const last=s.points.at(-1);const [txt,cls]=statusOf(s);const [ttxt,tcls]=trendOf(s);
+    const name=(LOINC_LABEL[s.loinc]||{})[LANG]||s.keyword;
     const ref=(s.low!=null&&s.high!=null)?`${t.range} ${s.low}–${s.high} ${s.unit||''}`:'';
     const srcs=[...new Set(s.points.map(p=>p.source).filter(Boolean))];
     const langBadges=[...new Set(srcs.map(langOf))].map(l=>`<span class="lang ${l}">${l.toUpperCase()}</span>`).join('');
+    const chips=srcs.map(src=>{
+      // span останньої точки з цього документа — якір для drawer-підсвітки
+      const pt=[...s.points].reverse().find(p=>p.source===src);
+      const span=pt&&pt.span?`${pt.span[0]}-${pt.span[1]}`:'';
+      return `<button class="srcchip" data-doc="${src}" data-span="${span}" title="${t.srcTitle}">${src}</button>`;
+    }).join('');
     return `<div class="metric" style="animation-delay:${(idx*.05).toFixed(2)}s">
       <div class="row">
-        <span class="name">${s.keyword}</span>
+        <span class="name">${name}</span>
         <span class="big"><span class="val">${last.value}</span><span class="unit">${s.unit||''}</span>
           ${ttxt?`<span class="trend ${tcls}">${ttxt}</span>`:''}</span>
       </div>
       <div class="meta"><span class="ref">${ref}</span><span class="status ${cls}">${txt}</span></div>
       ${sparkline(s.points,s.low,s.high)}
-      <div class="src">${langBadges}<span>${t.meas(s.points.length)} · ${srcs.join(', ')||'—'}</span></div>
+      <div class="src">${langBadges}<span>${t.meas(s.points.length)}</span>${chips}</div>
     </div>`;}).join('');}
 
   // decision
@@ -572,16 +687,25 @@ function render(st){
     <span class="t">${d.route_to}</span>
     <ul class="reasons">${d.reasons.map(r=>`<li>${r}</li>`).join('')}</ul>`;
 
-  // signals — interaction/critical get a pulsing dot
+  // signals — headline: спіймана взаємодія; далі групи за шаром TRACE (L1 / L2a)
   const sig=$('#signals');
   if(!st.signals.length){sig.innerHTML=`<div class="empty">${t.signalsEmpty}</div>`;}
-  else{sig.innerHTML=st.signals.map(x=>{
-    const hot=(x.kind==='interaction'||x.severity==='critical'||x.severity==='major');
-    const color=SEV[x.severity]||'var(--info)';
-    return `<div class="sig ${hot?'hot':''}">
-      <span class="dot" style="background:${color};color:${color}"></span>
-      <span><span class="k">${x.layer} · ${x.kind} · ${t.sevLabel[x.severity]||x.severity}</span>
-      <span class="d">${x.detail}</span></span></div>`;}).join('');}
+  else{
+    const row=(x,headline)=>{
+      const hot=(x.kind==='interaction'||x.severity==='critical'||x.severity==='major');
+      const color=SEV[x.severity]||'var(--info)';
+      return `<div class="sig ${hot?'hot':''} ${headline?'headline':''}">
+        <span class="dot" style="background:${color};color:${color}"></span>
+        <span><span class="k">${x.layer} · ${x.kind} · ${t.sevLabel[x.severity]||x.severity}</span>
+        <span class="d">${x.detail}</span></span></div>`;
+    };
+    const rest=st.signals.filter(x=>x.kind!=='interaction');
+    const l1=rest.filter(x=>x.layer==='L1'), l2a=rest.filter(x=>x.layer==='L2a');
+    sig.innerHTML =
+      inter.map(x=>row(x,true)).join('') +
+      (l1.length?`<div class="siggroup">${t.groupL1}</div>`+l1.map(x=>row(x)).join(''):'') +
+      (l2a.length?`<div class="siggroup">${t.groupL2a}</div>`+l2a.map(x=>row(x)).join(''):'');
+  }
 
   // meds — flag those named in an interaction
   const interText=st.signals.filter(x=>x.kind==='interaction').map(x=>x.detail.toLowerCase()).join(' ');
@@ -592,7 +716,39 @@ function render(st){
   }).join(''):`<div class="empty">${t.medsEmpty}</div>`;
 }
 
-async function refresh(){try{render(await api('/state'));}catch(e){toast(I18N[LANG].errorPrefix+e.message);}}
+async function refresh(){
+  // lang → бекенд локалізує тексти сигналів/причин (той самий детермінований каталог)
+  try{render(await api('/state?lang='+(LANG==='ua'?'uk':'en')));}
+  catch(e){toast(I18N[LANG].errorPrefix+e.message);}
+}
+
+/* ── provenance drawer: клік по документу-джерелу → речення з фактом ── */
+function escHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+async function openDoc(docId, span){
+  const t=I18N[LANG];
+  try{
+    const d=await api('/document/'+encodeURIComponent(docId));
+    $('#drawer-title').textContent=t.drawerTitle(docId);
+    $('#drawer-cap').textContent=span?t.drawerCap:'';
+    const body=$('#drawer-body');
+    body.innerHTML=span
+      ? escHtml(d.text.slice(0,span[0]))+'<mark>'+escHtml(d.text.slice(span[0],span[1]))+'</mark>'+escHtml(d.text.slice(span[1]))
+      : escHtml(d.text);
+    $('#drawer').classList.add('show');$('#drawer-back').classList.add('show');
+    const mk=body.querySelector('mark');
+    if(mk)setTimeout(()=>mk.scrollIntoView({block:'center',behavior:'smooth'}),180);
+  }catch(e){toast(t.errorPrefix+e.message);}
+}
+function closeDoc(){$('#drawer').classList.remove('show');$('#drawer-back').classList.remove('show');}
+$('#drawer-close').onclick=closeDoc;
+$('#drawer-back').onclick=closeDoc;
+addEventListener('keydown',e=>{if(e.key==='Escape')closeDoc();});
+$('#series').addEventListener('click',e=>{
+  const chip=e.target.closest('.srcchip'); if(!chip)return;
+  const span=chip.dataset.span?chip.dataset.span.split('-').map(Number):null;
+  openDoc(chip.dataset.doc, span);
+});
+$('#story-x').onclick=()=>{localStorage.setItem('lmc_story_off','1');$('#story').classList.remove('show');};
 
 async function ask(q){
   q=(q||$('#q').value).trim(); if(!q)return;

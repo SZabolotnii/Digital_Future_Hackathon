@@ -58,3 +58,12 @@ def test_no_signals_high_confidence_does_not_escalate():
     assert decision.escalate is False
     assert decision.route_to == "auto"
     assert decision.reasons
+
+
+def test_reasons_english():
+    decision = route(
+        [_major_signal()], extraction_confidence=0.95, doc_kind="lab_report", lang="en"
+    )
+    assert decision.escalate is True
+    assert any("human decision required" in r for r in decision.reasons)
+    assert decision.reasons[-1] == "Document type: lab_report"

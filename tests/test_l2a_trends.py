@@ -108,3 +108,25 @@ def test_flat_within_range_no_trend_no_breach():
     )
     assert detect_trends(store) == []
     assert detect_range_breaches(store) == []
+
+
+def test_rising_trend_english_detail():
+    store = FactStore()
+    store.add_observations(
+        [
+            _obs("o1", "2160-0", 88, "2023-05-01"),
+            _obs("o2", "2160-0", 104, "2023-10-01"),
+            _obs("o3", "2160-0", 121, "2024-04-09"),
+        ]
+    )
+    signals = detect_trends(store, lang="en")
+    assert len(signals) == 1
+    assert "Creatinine rising 3 measurements in a row" in signals[0].detail
+
+
+def test_range_breach_english_detail():
+    store = FactStore()
+    store.add_observations([_obs("o1", "2160-0", 121, "2023-05-01")])
+    signals = detect_range_breaches(store, lang="en")
+    assert len(signals) == 1
+    assert "Creatinine 121 µmol/L above range" in signals[0].detail

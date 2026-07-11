@@ -21,18 +21,20 @@ def _pair_map() -> dict[frozenset[str], Interaction]:
     return {entry.pair(): entry for entry in load_interactions()}
 
 
-def _display_name(m: MedicationRequest) -> str:
-    """Назва препарату для тексту сигналу: text CodeableConcept → display coding → RxNorm-код."""
+def _display_name(m: MedicationRequest, lang: str = "uk") -> str:
+    """Назва препарату для тексту сигналу.
+
+    uk: text CodeableConcept (мова документа) → display coding → RxNorm-код.
+    en: display coding (у vocab він англомовний) → text → RxNorm-код.
+    """
     cc = m.medicationCodeableConcept
-    if cc.text:
-        return cc.text
-    for c in cc.coding:
-        if c.display:
-            return c.display
-    return rxnorm_of(m) or m.id
+    display = next((c.display for c in cc.coding if c.display), None)
+    if lang == "en":
+        return display or cc.text or rxnorm_of(m) or m.id
+    return cc.text or display or rxnorm_of(m) or m.id
 
 
-def check_interactions(meds: list[MedicationRequest]) -> list[Signal]:
+def check_interactions(meds: list[MedicationRequest], lang: str = "uk") -> list[Signal]:
     """Перевірка кожної неупорядкованої пари ліків на відому взаємодію (RxNorm)."""
     pair_map = _pair_map()
     signals: list[Signal] = []
@@ -43,13 +45,14 @@ def check_interactions(meds: list[MedicationRequest]) -> list[Signal]:
         entry = pair_map.get(frozenset((rx1, rx2)))
         if entry is None:
             continue
-        name1, name2 = _display_name(m1), _display_name(m2)
+        name1, name2 = _display_name(m1, lang), _display_name(m2, lang)
+        mechanism = entry.detail_en if lang == "en" and entry.detail_en else entry.detail
         signals.append(
             Signal(
                 layer="L1",
                 kind="interaction",
                 severity=entry.severity,
-                detail=f"{name1} + {name2}: {entry.detail}",
+                detail=f"{name1} + {name2}: {mechanism}",
                 subjects=[f"MedicationRequest/{m1.id}", f"MedicationRequest/{m2.id}"],
                 confidence=1.0,
             )
@@ -57,7 +60,7 @@ def check_interactions(meds: list[MedicationRequest]) -> list[Signal]:
     return signals
 
 
-def check_dose_limits(meds: list[MedicationRequest]) -> list[Signal]:
+def check_dose_limits(meds: list[MedicationRequest], lang: str = "uk") -> list[Signal]:
     """Перевірка кожних ліків на перевищення максимальної добової дози (RxNorm)."""
     limits = load_dose_limits()
     signals: list[Signal] = []
@@ -69,16 +72,24 @@ def check_dose_limits(meds: list[MedicationRequest]) -> list[Signal]:
             continue
         limit = limits[rx]
         if m.dose_mg_per_day > limit.max_daily:
+            if lang == "en":
+                detail = (
+                    f"{_display_name(m, 'en')}: daily dose {m.dose_mg_per_day:g} "
+                    f"{limit.unit} exceeds the daily limit of "
+                    f"{limit.max_daily:g} {limit.unit}"
+                )
+            else:
+                detail = (
+                    f"{limit.name}: добова доза {m.dose_mg_per_day:g} "
+                    f"{limit.unit} — перевищено добову межу "
+                    f"{limit.max_daily:g} {limit.unit}"
+                )
             signals.append(
                 Signal(
                     layer="L1",
                     kind="dose_limit",
                     severity="major",
-                    detail=(
-                        f"{limit.name}: добова доза {m.dose_mg_per_day:g} "
-                        f"{limit.unit} — перевищено добову межу "
-                        f"{limit.max_daily:g} {limit.unit}"
-                    ),
+                    detail=detail,
                     subjects=[f"MedicationRequest/{m.id}"],
                     confidence=1.0,
                 )
@@ -86,6 +97,6 @@ def check_dose_limits(meds: list[MedicationRequest]) -> list[Signal]:
     return signals
 
 
-def run(meds: list[MedicationRequest]) -> list[Signal]:
+def run(meds: list[MedicationRequest], lang: str = "uk") -> list[Signal]:
     """Повний прогін L1: взаємодії + межі доз, у стабільному порядку."""
-    return check_interactions(meds) + check_dose_limits(meds)
+    return check_interactions(meds, lang) + check_dose_limits(meds, lang)

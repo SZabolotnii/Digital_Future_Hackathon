@@ -1,13 +1,17 @@
 {
-  "_note": "Демо-підмножина взаємодій. У проді — відкрита БД RxNorm/NLM. Коди RxNorm. Поле detail — лише механізм; назви препаратів додає L1 з фактичних ресурсів.",
+  "_note": "Демо-підмножина взаємодій. У проді — відкрита БД RxNorm/NLM. Коди RxNorm. Поля detail/detail_en — лише механізм (UA/EN); назви препаратів додає L1 з фактичних ресурсів.",
   "pairs": [
     {"a": "11289", "b": "1191", "severity": "major",
-     "detail": "сумація антитромботичного ефекту, підвищений ризик кровотечі"},
+     "detail": "сумація антитромботичного ефекту, підвищений ризик кровотечі",
+     "detail_en": "additive antithrombotic effect, increased bleeding risk"},
     {"a": "11289", "b": "703", "severity": "major",
-     "detail": "аміодарон інгібує метаболізм варфарину, ризик кровотечі"},
+     "detail": "аміодарон інгібує метаболізм варфарину, ризик кровотечі",
+     "detail_en": "amiodarone inhibits warfarin metabolism, bleeding risk"},
     {"a": "11289", "b": "5640", "severity": "major",
-     "detail": "підвищений ризик шлунково-кишкової кровотечі"},
+     "detail": "підвищений ризик шлунково-кишкової кровотечі",
+     "detail_en": "increased risk of gastrointestinal bleeding"},
     {"a": "5640", "b": "29046", "severity": "moderate",
-     "detail": "зниження антигіпертензивного ефекту та ризик для нирок"}
+     "detail": "зниження антигіпертензивного ефекту та ризик для нирок",
+     "detail_en": "reduced antihypertensive effect and risk to the kidneys"}
   ]
 }

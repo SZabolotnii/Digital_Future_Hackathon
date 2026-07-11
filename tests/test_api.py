@@ -102,3 +102,37 @@ def test_concurrent_mixed_requests_stay_consistent(client):
     assert all(c == 200 for c in codes)
     # Кожен запит атомарний під локом → фінальний стан або порожній, або 3 демо-доки.
     assert client.get("/state").json()["document_count"] in (0, 4)
+
+
+def test_state_lang_en_localizes_signals_and_reasons(client):
+    client.post("/ingest/samples")
+    body = client.get("/state?lang=en").json()
+    joined = " ".join(s["detail"] for s in body["signals"])
+    assert "Warfarin + Aspirin" in joined
+    assert "above range" in joined
+    # Жодної кирилиці в EN-сигналах і причинах рішення.
+    all_text = joined + " ".join(body["decision"]["reasons"])
+    assert not any("Ѐ" <= ch <= "ӿ" for ch in all_text)
+    # Дефолт (uk) незмінний — зворотна сумісність.
+    uk = client.get("/state").json()
+    assert any("вище норми" in s["detail"] for s in uk["signals"])
+
+
+def test_state_points_carry_span_and_document_endpoint(client):
+    client.post("/ingest", json={
+        "id": "t-span", "text": "Креатинін 121 µmol/L.", "kind": "lab_report",
+        "received_at": "2024-03-01T00:00:00",
+    })
+    series = client.get("/state").json()["series"]
+    pt = next(s for s in series if s["loinc"] == "2160-0")["points"][0]
+    assert pt["source"] == "t-span"
+    assert pt["span"] is not None
+    doc = client.get("/document/t-span")
+    assert doc.status_code == 200
+    text = doc.json()["text"]
+    start, end = pt["span"]
+    assert "121" in text[start:end]
+
+
+def test_document_endpoint_404_for_unknown(client):
+    assert client.get("/document/no-such-doc").status_code == 404

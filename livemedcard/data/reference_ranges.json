@@ -1,21 +1,21 @@
 {
-  "_note": "Референсні межі показників. Коди LOINC. default — загальні межі; by_sex — уточнення за статтю.",
+  "_note": "Референсні межі показників. Коди LOINC. keyword/keyword_en — назва UA/EN. default — загальні межі; by_sex — уточнення за статтю.",
   "ranges": {
     "2160-0": {
-      "keyword": "Креатинін", "unit": "µmol/L",
+      "keyword": "Креатинін", "keyword_en": "Creatinine", "unit": "µmol/L",
       "default": {"low": 44, "high": 106},
       "by_sex": {"female": {"low": 44, "high": 90}, "male": {"low": 62, "high": 106}}
     },
-    "4548-4": {"keyword": "HbA1c", "unit": "%", "default": {"low": 4.0, "high": 6.0}},
-    "2823-3": {"keyword": "Калій", "unit": "mmol/L", "default": {"low": 3.5, "high": 5.1}},
-    "8480-6": {"keyword": "Систолічний тиск", "unit": "mmHg", "default": {"low": 90, "high": 140}},
-    "2345-7": {"keyword": "Глюкоза", "unit": "mmol/L", "default": {"low": 3.9, "high": 6.1}},
+    "4548-4": {"keyword": "HbA1c", "keyword_en": "HbA1c", "unit": "%", "default": {"low": 4.0, "high": 6.0}},
+    "2823-3": {"keyword": "Калій", "keyword_en": "Potassium", "unit": "mmol/L", "default": {"low": 3.5, "high": 5.1}},
+    "8480-6": {"keyword": "Систолічний тиск", "keyword_en": "Systolic BP", "unit": "mmHg", "default": {"low": 90, "high": 140}},
+    "2345-7": {"keyword": "Глюкоза", "keyword_en": "Glucose", "unit": "mmol/L", "default": {"low": 3.9, "high": 6.1}},
     "718-7": {
-      "keyword": "Гемоглобін", "unit": "g/L",
+      "keyword": "Гемоглобін", "keyword_en": "Hemoglobin", "unit": "g/L",
       "default": {"low": 120, "high": 160},
       "by_sex": {"female": {"low": 120, "high": 150}, "male": {"low": 130, "high": 170}}
     },
-    "1742-6": {"keyword": "АЛТ", "unit": "U/L", "default": {"low": 0, "high": 41}},
-    "2093-3": {"keyword": "Холестерин загальний", "unit": "mmol/L", "default": {"low": 0, "high": 5.2}}
+    "1742-6": {"keyword": "АЛТ", "keyword_en": "ALT", "unit": "U/L", "default": {"low": 0, "high": 41}},
+    "2093-3": {"keyword": "Холестерин загальний", "keyword_en": "Total cholesterol", "unit": "mmol/L", "default": {"low": 0, "high": 5.2}}
   }
 }

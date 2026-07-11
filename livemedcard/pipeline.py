@@ -98,10 +98,10 @@ class LiveMedCard:
             self._docref_ids.add(dref.id)
 
     # ── L1 + L2a на поточному стані сховищ ────────────────────────────────────
-    def current_signals(self) -> list[Signal]:
-        """Детерміновані сигнали над усім накопиченим станом."""
-        return l1_safety.run(self._medications) + l2a_trends.run(
-            self.factstore, self.patient.gender
+    def current_signals(self, lang: str = "uk") -> list[Signal]:
+        """Детерміновані сигнали над усім накопиченим станом (тексти — UA/EN)."""
+        return l1_safety.run(self._medications, lang) + l2a_trends.run(
+            self.factstore, self.patient.gender, lang
         )
 
     def ingest(self, doc: Document) -> TraceReport:

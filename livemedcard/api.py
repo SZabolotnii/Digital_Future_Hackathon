@@ -266,14 +266,26 @@ def signals():
         return _state.card.current_signals()
 
 
+@app.get("/document/{doc_id}")
+def document(doc_id: str):
+    """Free-text іпостась документа (вузол графа) — для span-провенансу в UI."""
+    with _state.lock:
+        node = _state.card.graph.g.nodes.get(f"Document/{doc_id}")
+        if node is None or "text" not in node:
+            raise HTTPException(status_code=404, detail=f"Документ {doc_id} не знайдено")
+        return {"id": doc_id, "text": node["text"]}
+
+
 @app.get("/state")
-def state():
-    """Агрегований знімок картки для інтерфейсу."""
+def state(lang: str = "uk"):
+    """Агрегований знімок картки для інтерфейсу (`lang=uk|en` — мова текстів сигналів)."""
+    lang = "en" if lang == "en" else "uk"
     with _state.lock:
         card = _state.card
-        sigs = card.current_signals()
+        sigs = card.current_signals(lang)
         # Рішення L3 над поточним станом (сигнали детерміновані → впевненість 1.0).
-        decision = l3_router.route(sigs, 1.0, "стан картки")
+        doc_kind = "card state" if lang == "en" else "стан картки"
+        decision = l3_router.route(sigs, 1.0, doc_kind, lang)
         sex = card.patient.gender
 
         series = []
@@ -287,7 +299,8 @@ def state():
                 "low": ref.low if ref else None,
                 "high": ref.high if ref else None,
                 "points": [
-                    {"ts": p.ts.date().isoformat(), "value": p.value, "source": p.source_doc_id}
+                    {"ts": p.ts.date().isoformat(), "value": p.value,
+                     "source": p.source_doc_id, "span": p.source_span}
                     for p in pts
                 ],
             })
