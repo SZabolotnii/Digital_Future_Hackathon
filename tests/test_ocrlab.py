@@ -18,18 +18,29 @@ from livemedcard.layers.l2b_ocrlab import OcrLabError, extract_facts
 
 
 class FakeClient:
-    def __init__(self, md: str = "", facts=None, raise_on: str | None = None) -> None:
+    def __init__(
+        self,
+        md: str = "",
+        facts=None,
+        raise_on: str | None = None,
+        image_facts=None,
+    ) -> None:
         self._md = md
         self._facts = facts if facts is not None else []
+        self._image_facts = image_facts if image_facts is not None else []
         self._raise = raise_on
+        self.calls: list[str] = []
 
     def predict(self, *args, api_name=None):
+        self.calls.append(api_name)
         if self._raise == api_name:
             raise RuntimeError("boom")
         if api_name == "/image_to_markdown":
             return self._md
         if api_name == "/extract_facts":
             return {"facts": self._facts}
+        if api_name == "/facts_from_image":
+            return {"facts": self._image_facts}
         raise AssertionError(f"unexpected api_name {api_name}")
 
 
@@ -81,6 +92,42 @@ def test_ocrlab_extractor_builds_observations(monkeypatch):
     assert by_code["2160-0"].valueQuantity.value == 135.0        # креатинін
     assert by_code["4548-4"].valueQuantity.value == 7.6          # HbA1c → НЕ 718-7
     assert ext.document_reference is not None                     # free-text іпостась
+
+
+def test_extractor_falls_back_to_image_when_text_yields_no_facts(
+    monkeypatch, fake_gradio_client
+):
+    """Обірвана транскрипція → нуль фактів із тексту → добираємо їх із самого фото."""
+    fc = FakeClient(
+        facts=[],  # markdown вийшов неповним — витягати нема з чого
+        image_facts=[{"keyword": "Креатинін", "value": "135 мкмоль/л",
+                      "timestamp": "2024-10-15"}],
+    )
+    _use(monkeypatch, fc)
+    b64 = base64.b64encode(b"fake-jpeg-bytes").decode()
+    doc = Document(id="ocr-fb", text="# AGP Report\n&nbsp;&nbsp;", kind="lab_report")
+
+    ext = OcrLabExtractor(image_base64=b64).extract(doc, "mom-001")
+
+    assert fc.calls == ["/extract_facts", "/facts_from_image"]  # спершу текст, тоді фото
+    assert len(ext.observations) == 1
+    assert ext.observations[0].valueQuantity.value == 135.0
+
+
+def test_extractor_skips_image_fallback_when_text_yields_facts(monkeypatch):
+    """Факти з тексту є → зайвого (і дорогого) проходу по зображенню не робимо."""
+    fc = FakeClient(
+        facts=[{"keyword": "Креатинін", "value": "135 мкмоль/л", "timestamp": "2024-10-15"}],
+        image_facts=[{"keyword": "Калій", "value": "5.1 ммоль/л", "timestamp": "2024-10-15"}],
+    )
+    _use(monkeypatch, fc)
+    b64 = base64.b64encode(b"fake-jpeg-bytes").decode()
+    doc = Document(id="ocr-ok", text="Креатинін 135", kind="lab_report")
+
+    ext = OcrLabExtractor(image_base64=b64).extract(doc, "mom-001")
+
+    assert fc.calls == ["/extract_facts"]
+    assert len(ext.observations) == 1
 
 
 def test_image_to_markdown(monkeypatch, fake_gradio_client):

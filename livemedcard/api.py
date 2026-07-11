@@ -204,7 +204,9 @@ def ingest_image(req: ImageIngestRequest, state: _State = Depends(_get_state)):
     try:
         if img_backend == "ocrlab":
             text = l2b_ocrlab.image_to_markdown(req.image_base64)
-            img_extractor = OcrLabExtractor()
+            # Зображення передаємо в екстрактор: якщо транскрипція вийшла неповною
+            # і фактів у ній нема, він добере їх прямо з фото (запасний шлях).
+            img_extractor = OcrLabExtractor(image_base64=req.image_base64)
         elif img_backend == "nuextract":
             text = l2b_nuextract.image_to_markdown(req.image_base64)
             img_extractor = NuExtractExtractor()

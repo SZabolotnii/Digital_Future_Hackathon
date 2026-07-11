@@ -449,6 +449,7 @@ const I18N = {
     toastExport:'FHIR bundle downloaded', toastNeedInput:'Enter text or choose a photo',
     ocrReading:'Reading (OCR)…', processing:'Processing…',
     toastEscalated:'Processed · escalated to human', toastAuto:'Processed · auto',
+    toastNoFacts:'Document saved, but no measurements were extracted',
     errorPrefix:'Error: ', selected:name=>`Selected: ${name}`,
     chips:['What about kidneys over the last year?','What was potassium?',
       'What medications and any interactions?','What about HbA1c?'],
@@ -491,6 +492,7 @@ const I18N = {
     toastExport:'FHIR Bundle завантажено', toastNeedInput:'Введіть текст або виберіть фото',
     ocrReading:'Зчитування (OCR)…', processing:'Опрацювання…',
     toastEscalated:'Оброблено · ескалація до людини', toastAuto:'Оброблено · авто',
+    toastNoFacts:'Документ збережено, але жодного показника не витягнуто',
     errorPrefix:'Помилка: ', selected:name=>`Вибрано: ${name}`,
     chips:['Що з нирками за останній рік?','Який був калій?',
       'Які ліки приймає і чи є взаємодії?','Що з HbA1c?'],
@@ -803,7 +805,10 @@ $('#add-submit').onclick=async()=>{
     $('#dropzone-text').textContent=t.dropzoneDefault;
     $('#add-form').classList.remove('show');
     await refresh();
-    toast(rep.decision.escalate?t.toastEscalated:t.toastAuto);
+    // Нуль фактів — не помилка конвеєра (документ збережено як текст), але й не
+    // успіх: мовчати про це не можна, інакше «оброблено» приховує порожній витяг.
+    const got=(rep.extraction&&rep.extraction.observations||[]).length;
+    toast(got?(rep.decision.escalate?t.toastEscalated:t.toastAuto):t.toastNoFacts);
   }catch(e){toast(t.errorPrefix+e.message);}
   finally{btn.disabled=false;btn.textContent=orig;}
 };

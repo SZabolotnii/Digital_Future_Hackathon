@@ -407,11 +407,21 @@ class OcrLabExtractor:
     `to_observations` — межа детермінізму збережена.
     """
 
-    def __init__(self, *, space: str | None = OCRLAB_SPACE) -> None:
+    def __init__(
+        self, *, space: str | None = OCRLAB_SPACE, image_base64: str | None = None
+    ) -> None:
         self._space = space
+        # Зображення-джерело (коли документ прийшов із фото): дає запасний шлях,
+        # якщо з markdown-транскрипції не вийшло витягти жодного факту.
+        self._image_base64 = image_base64
 
     def extract(self, doc: Document, patient_id: str) -> ExtractionResult:
         kvt = l2b_ocrlab.extract_facts(doc.text, space=self._space)
+        if not kvt and self._image_base64:
+            # Транскрипція буває неповною (модель може обірвати широку таблицю на
+            # пів-документі) — тоді фактів у тексті просто немає. Беремо їх прямо
+            # із зображення одним проходом; free-text іпостась лишається тією ж.
+            kvt = l2b_ocrlab.facts_from_image(self._image_base64, space=self._space)
         observations = l2b_stage2_lora.to_observations(
             kvt, doc, patient_id, extracted_by="NuExtract3/ZeroGPU"
         )
