@@ -45,6 +45,15 @@ def test_qa_english_lab_answers_in_english():
     assert "120" in ans.text
 
 
+def test_qa_english_answer_has_no_ukrainian_metric_name():
+    """EN-відповідь не має починатися українською назвою показника з довідника."""
+    card = _card_en()
+    qa = QA(card.factstore, card.graph, card.current_signals(), sex="female")
+    ans = qa.ask("What is my creatinine?")
+    assert ans.text.startswith("Creatinine")
+    assert not any("Ѐ" <= ch <= "ӿ" for ch in ans.text)
+
+
 def test_qa_english_meds_and_interactions():
     card = _card_en()
     qa = QA(card.factstore, card.graph, card.current_signals(), sex="female")

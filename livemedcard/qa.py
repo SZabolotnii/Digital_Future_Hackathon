@@ -171,7 +171,12 @@ class QA:
         m = _MSG[lang]
         series = self.factstore.series(loinc)
         ref = range_for(loinc, self.sex)
-        name = ref.keyword if ref else (series[0].keyword if series else loinc)
+        # Назва показника — з довідника мовою питання (той самий каталог, що й у
+        # сигналів). Без цього EN-відповідь починалася українською назвою.
+        if ref:
+            name = (ref.keyword_en or ref.keyword) if lang == "en" else ref.keyword
+        else:
+            name = series[0].keyword if series else loinc
         if not series:
             return Answer(text=m["lab_none"].format(name=name))
 
