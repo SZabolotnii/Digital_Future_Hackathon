@@ -264,8 +264,9 @@ def ingest_image(req: ImageIngestRequest, state: _State = Depends(_get_state)):
 
 
 @app.post("/ingest/samples")
-def ingest_samples(state: _State = Depends(_get_state)):
-    docs = [Document(**d) for d in load_sample_docs()]
+def ingest_samples(lang: str = "uk", state: _State = Depends(_get_state)):
+    """Демо-документи мовою `lang` (`uk`|`en`) — набори дзеркальні за значеннями."""
+    docs = [Document(**d) for d in load_sample_docs(lang)]
     with state.lock:
         reports = state.card.ingest_all(docs)
         state.autosave()
@@ -349,6 +350,31 @@ def document(doc_id: str, state: _State = Depends(_get_state)):
         return {"id": doc_id, "text": node["text"]}
 
 
+@app.get("/graph")
+def graph(state: _State = Depends(_get_state)):
+    """Граф контексту як вузли/ребра — для візуалізації провенансу в інтерфейсі.
+
+    Віддає те, що вже є в networkx-графі; нічого не рахує. Вузол `Document` несе
+    лише мітку (сам текст — за `/document/{id}`), щоб відповідь лишалась легкою.
+    """
+    with state.lock:
+        g = state.card.graph.g
+        nodes = [
+            {
+                "id": n,
+                "type": d.get("type", "?"),
+                # у вузла-документа мітки немає — показуємо його id
+                "label": d.get("label") or n.split("/", 1)[-1],
+            }
+            for n, d in g.nodes(data=True)
+        ]
+        edges = [
+            {"source": u, "target": v, "rel": d.get("rel", "")}
+            for u, v, d in g.edges(data=True)
+        ]
+        return {"nodes": nodes, "edges": edges}
+
+
 @app.get("/state")
 def get_state_endpoint(lang: str = "uk", state: _State = Depends(_get_state)):
     """Агрегований знімок картки для інтерфейсу (`lang=uk|en` — мова текстів сигналів)."""
@@ -389,14 +415,19 @@ def get_state_endpoint(lang: str = "uk", state: _State = Depends(_get_state)):
             for f in card.factstore.uncoded()
         ]
 
-        # Мова документа — з його ТЕКСТУ (detect_lang), а не з назви файлу. Якщо
-        # тексту немає, документ не потрапляє сюди взагалі: інтерфейс краще
-        # покаже відсутність бейджа, ніж навмання «UA» (detect_lang("") == "uk").
+        # Подані документи: тип, дата, мова, розмір. Мова — з ТЕКСТУ (detect_lang),
+        # а не з назви файлу; без тексту lang=None, і інтерфейс краще не покаже
+        # бейджа взагалі, ніж навмання «UA» (detect_lang("") == "uk").
         docs = {}
-        for n in card.graph.nodes_of_type("Document"):
-            text = (card.graph.g.nodes[n].get("text") or "").strip()
-            if text:
-                docs[n.split("/", 1)[1]] = {"lang": detect_lang(text)}
+        for d in card.document_references:
+            did = d.provenance.source_doc_id if d.provenance else d.id
+            text = d.content.data or ""
+            docs[did] = {
+                "lang": detect_lang(text) if text.strip() else None,
+                "kind": d.type.text if d.type else None,
+                "date": d.date.date().isoformat() if d.date else None,
+                "chars": len(text),
+            }
 
         seen: dict[str, None] = {}
         for n in card.graph.nodes_of_type("MedicationRequest"):

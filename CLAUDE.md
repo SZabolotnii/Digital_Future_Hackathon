@@ -45,12 +45,20 @@ LMC_PERSIST_PATH=~/lmc.json uv run uvicorn livemedcard.api:app  # з перси�
 ```
 
 Веб-інтерфейс (`livemedcard/static/index.html`) — самодостатня SPA, яку віддає
-FastAPI за `/`: таймлайн показників зі спарклайнами, панель безпеки TRACE
-(сигнали + рішення L3), список ліків, grounded Q&A і експорт FHIR. Ендпойнти:
-`/state`, `/ingest`, `/ingest/image` (OCR зображення → текст → `ingest`),
-`/ingest/samples`, `/reset`, `/timeline/{loinc}`, `/signals`, `/ask`,
-`/export` (FHIR Bundle), `/import`, `/audit`, `/metrics`. Персистентність —
-через env `LMC_PERSIST_PATH` (local-first JSON-знімок).
+FastAPI за `/`: таймлайн показників зі спарклайнами, секція «витягнуто, без
+стандартного коду» (факти без LOINC — показані, але без меж і сигналів), панель
+безпеки TRACE (сигнали + рішення L3), список ліків, **список поданих документів**
+(клік → оригінал), **граф знань** (модалка), білінгвальна **довідка**, grounded
+Q&A і експорт FHIR. Ендпойнти: `/state?lang=`, `/ingest`, `/ingest/image` (OCR
+зображення → текст → `ingest`), `/ingest/samples?lang=uk|en`, `/document/{id}`,
+`/graph`, `/reset`, `/timeline/{loinc}`, `/signals`, `/ask`, `/export`
+(FHIR Bundle), `/import`, `/audit`, `/metrics`. Персистентність — через env
+`LMC_PERSIST_PATH` (local-first JSON-знімок).
+
+**Демо-документи** (`data/sample_docs.json`) — два **дзеркальні** набори, `uk` і
+`en`: ті самі значення й призначення, тож сигнали безпеки збігаються, різниця лише
+в мові. Картка стартує **порожньою**; набір вантажиться кнопкою й **за мовою
+інтерфейсу** (`LMC_SEED_SAMPLES` лишається як опція для локального сіду).
 
 **OCR через локальну LLM:** `/ingest/image` вимагає запущеного LM Studio (або
 іншого OpenAI-сумісного сервера) з завантаженою vision-моделлю. Налаштування —

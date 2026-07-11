@@ -4,11 +4,12 @@
 # — реальний OCR через хмарний ZeroGPU Lab (NuExtract3), лише синтетичні документи.
 FROM python:3.12-slim
 
+# Картка стартує ПОРОЖНЬОЮ (без LMC_SEED_SAMPLES): демо-документи вантажаться лише
+# кнопкою — і набором тієї мови, якою відкрито інтерфейс.
 ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     LMC_EXTRACTOR=stub \
-    LMC_IMAGE_OCR=ocrlab \
-    LMC_SEED_SAMPLES=1
+    LMC_IMAGE_OCR=ocrlab
 
 WORKDIR /app
 

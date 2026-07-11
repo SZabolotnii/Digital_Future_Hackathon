@@ -1,6 +1,6 @@
 {
-  "_note": "Білінгвальний демо-таймлайн однієї пацієнтки (mom-001): українські виписки + англомовний lab-report приватної лабораторії на ОДНОМУ таймлайні. Формат тексту імітує витяг фото документа.",
-  "documents": [
+  "_note": "Демо-таймлайн однієї пацієнтки (mom-001) у двох дзеркальних наборах: 'uk' і 'en'. Набори несуть ТІ САМІ значення й ті самі призначення, тож сигнали безпеки збігаються — різниця лише в мові документів. Завантажується той набір, що відповідає мові інтерфейсу. Формат тексту імітує витяг фото документа.",
+  "uk": [
     {
       "id": "doc-2023-05",
       "kind": "discharge_summary",
@@ -18,6 +18,32 @@
       "kind": "discharge_summary",
       "received_at": "2024-04-09T14:15:00",
       "text": "Виписний епікриз. Скарги на набряки. Артеріальна гіпертензія. Креатинін 121 µmol/L, глікований гемоглобін 7.2 %. Призначено: аспірин 100 мг на добу, метформін 3000 мг на добу."
+    },
+    {
+      "id": "doc-2024-10",
+      "kind": "lab_report",
+      "received_at": "2024-10-15T11:00:00",
+      "text": "Приватна лабораторія. Біохімічна панель. Креатинін 135 µmol/L. Калій 5.1 mmol/L. Глюкоза 6.8 mmol/L. Глікований гемоглобін 7.6 %."
+    }
+  ],
+  "en": [
+    {
+      "id": "doc-2023-05-en",
+      "kind": "discharge_summary",
+      "received_at": "2023-05-01T10:00:00",
+      "text": "Discharge summary. Female patient, 69 years old. Diagnosis: atrial fibrillation. Labs: creatinine 88 µmol/L, potassium 4.6 mmol/L. Prescribed: warfarin 5 mg per day under INR control."
+    },
+    {
+      "id": "doc-2023-11-en",
+      "kind": "lab_report",
+      "received_at": "2023-11-03T09:30:00",
+      "text": "Blood biochemistry. Creatinine 104 µmol/L. Potassium 4.9 mmol/L. Glycated hemoglobin 6.4 %."
+    },
+    {
+      "id": "doc-2024-04-en",
+      "kind": "discharge_summary",
+      "received_at": "2024-04-09T14:15:00",
+      "text": "Discharge summary. Complaints of oedema. Hypertension. Creatinine 121 µmol/L, glycated hemoglobin 7.2 %. Prescribed: aspirin 100 mg per day, metformin 3000 mg per day."
     },
     {
       "id": "doc-2024-10-en",

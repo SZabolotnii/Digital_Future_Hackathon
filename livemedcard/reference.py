@@ -73,6 +73,11 @@ def load_vocab() -> Vocab:
     )
 
 
-def load_sample_docs() -> list[dict]:
-    """Демо-документи (український текст) для E2E. Щоразу свіжа копія."""
-    return json.loads(json.dumps(_raw("sample_docs.json")["documents"]))
+def load_sample_docs(lang: str = "uk") -> list[dict]:
+    """Демо-документи мовою ``lang`` (``uk``|``en``). Щоразу свіжа копія.
+
+    Набори дзеркальні: ті самі значення й ті самі призначення, тож сигнали
+    безпеки збігаються — демо не залежить від того, якою мовою його дивляться.
+    """
+    key = "en" if lang == "en" else "uk"
+    return json.loads(json.dumps(_raw("sample_docs.json")[key]))

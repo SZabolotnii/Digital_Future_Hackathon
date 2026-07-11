@@ -220,6 +220,19 @@
   .sig .k{font:600 10.5px/1.3 var(--mono);color:var(--faint);text-transform:uppercase;letter-spacing:.05em}
   .sig .d{font-size:13.5px;margin-top:3px;display:block}
 
+  /* ── подані документи ───────────────────────────────── */
+  .docs{display:flex;flex-direction:column}
+  .docrow{display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:10px 0;
+    background:none;border:0;border-bottom:1px solid var(--line);cursor:pointer;transition:.14s}
+  .docs .docrow:last-child{border-bottom:0}
+  .docrow:hover{transform:none}
+  .docrow:hover .id{color:var(--accent)}
+  .docrow .id{font:600 12px/1 var(--mono);color:var(--ink);transition:.14s}
+  .docrow .kind{font-size:12px;color:var(--muted)}
+  .docrow .d{margin-left:auto;font:11.5px/1 var(--mono);color:var(--faint);white-space:nowrap}
+  .graph-tag{cursor:pointer;border:1px solid var(--line);background:var(--panel-2)}
+  .graph-tag:hover{color:var(--accent);border-color:var(--accent);transform:none}
+
   .meds{display:flex;flex-wrap:wrap;gap:8px}
   .pill{background:var(--panel-2);border:1px solid var(--line);color:var(--ink);border-radius:999px;
     padding:6px 13px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:7px}
@@ -282,6 +295,51 @@
     cursor:pointer;display:grid;place-items:center}
   .drawer .close:hover{color:var(--ink);border-color:var(--accent);transform:none}
   .drawer .cap{padding:10px 18px 0;color:var(--faint);font-size:11.5px}
+
+  /* ── довідка ────────────────────────────────────────── */
+  .help-btn{margin-left:auto}
+  .help{position:fixed;z-index:61;top:50%;left:50%;transform:translate(-50%,-46%) scale(.98);
+    width:min(760px,94vw);max-height:86vh;background:var(--panel);border:1px solid var(--line);
+    border-radius:18px;box-shadow:0 24px 70px rgba(0,0,0,.4);display:flex;flex-direction:column;
+    opacity:0;pointer-events:none;transition:opacity .22s,transform .22s cubic-bezier(.2,.7,.2,1)}
+  .help.show{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}
+  .help .head{display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid var(--line)}
+  .help .head h3{margin:0;font-size:16px;font-weight:700;color:var(--ink)}
+  .help .close{margin-left:auto;flex:0 0 auto;background:none;border:1px solid var(--line);
+    border-radius:9px;width:32px;height:32px;color:var(--muted);font-size:15px;line-height:1;
+    cursor:pointer;display:grid;place-items:center}
+  .help .close:hover{color:var(--ink);border-color:var(--accent);transform:none}
+  .help .body{padding:6px 20px 22px;overflow:auto}
+  .help section{padding:16px 0;border-bottom:1px solid var(--line)}
+  .help section:last-child{border-bottom:0}
+  .help h4{margin:0 0 7px;font-size:14px;font-weight:700;color:var(--ink)}
+  .help p{margin:0 0 8px;font-size:13.5px;line-height:1.62;color:var(--muted)}
+  .help p:last-child{margin-bottom:0}
+  .help ul{margin:0;padding-left:18px;color:var(--muted);font-size:13.5px;line-height:1.62}
+  .help li + li{margin-top:5px}
+  .help b{color:var(--ink)}
+  .help code{font:600 12px/1 var(--mono);background:var(--panel-2);border:1px solid var(--line);
+    border-radius:5px;padding:2px 5px;color:var(--ink)}
+  @media (max-width:520px){ .help-btn{margin-left:0} }
+
+  /* ── граф знань ─────────────────────────────────────── */
+  .graph-modal{width:min(940px,96vw)}
+  .graph-modal .gcap{margin:14px 0 0;font-size:12.5px;line-height:1.6;color:var(--muted)}
+  .glegend{display:flex;flex-wrap:wrap;gap:12px;margin:12px 0 4px}
+  .glegend span{display:inline-flex;align-items:center;gap:6px;font:11px/1 var(--mono);color:var(--faint)}
+  .glegend i{width:9px;height:9px;border-radius:50%;display:inline-block}
+  .gwrap{overflow:auto;margin-top:6px}
+  .gwrap svg{display:block}
+  .gwrap .edge{stroke:var(--line);stroke-width:1.2;fill:none;transition:.16s}
+  .gwrap .edge.prov{stroke-dasharray:3 3}
+  .gwrap .node{cursor:pointer}
+  .gwrap .node text{font:11px/1 var(--mono);fill:var(--muted);transition:.16s}
+  .gwrap .node:hover text{fill:var(--ink)}
+  .gwrap.sel .edge{opacity:.12}
+  .gwrap.sel .edge.on{opacity:1;stroke:var(--accent);stroke-width:2}
+  .gwrap.sel .node{opacity:.3}
+  .gwrap.sel .node.on{opacity:1}
+  .gwrap.sel .node.on text{fill:var(--ink);font-weight:700}
   .drawer .body{padding:14px 18px 20px;overflow:auto;white-space:pre-wrap;
     font-size:13.5px;line-height:1.75;color:var(--muted)}
   /* ── cloud consent (photo leaves the device — say so before it does) ── */
@@ -349,6 +407,7 @@
     <button class="ghost" id="btn-add">+ Add document</button>
     <button class="ghost" id="btn-export">Export FHIR</button>
     <button class="ghost" id="btn-reset">Reset</button>
+    <button class="ghost help-btn" id="btn-help">Help</button>
   </div>
 
   <div class="add" id="add-form">
@@ -396,6 +455,11 @@
         <h2><span id="h-meds">Prescribed medications</span></h2>
         <div class="meds" id="meds"><div class="empty">No medications.</div></div>
       </section>
+      <section class="panel d3">
+        <h2><span id="h-docs">Submitted documents</span>
+          <button class="tag graph-tag" id="btn-graph" type="button">Knowledge graph</button></h2>
+        <div class="docs" id="docs"><div class="empty">No documents.</div></div>
+      </section>
     </div>
   </div>
 
@@ -422,6 +486,28 @@
   <div class="cap" id="drawer-cap"></div>
   <div class="body" id="drawer-body"></div>
 </aside>
+<div class="drawer-back" id="graph-back"></div>
+<aside class="help graph-modal" id="graphm" role="dialog" aria-modal="true" aria-labelledby="graph-title">
+  <div class="head">
+    <h3 id="graph-title"></h3>
+    <button class="close" id="graph-close" aria-label="Close">×</button>
+  </div>
+  <div class="body">
+    <p class="gcap" id="graph-cap"></p>
+    <div class="glegend" id="graph-legend"></div>
+    <div class="gwrap" id="graph-wrap"></div>
+  </div>
+</aside>
+
+<div class="drawer-back" id="help-back"></div>
+<aside class="help" id="help" role="dialog" aria-modal="true" aria-labelledby="help-title">
+  <div class="head">
+    <h3 id="help-title"></h3>
+    <button class="close" id="help-close" aria-label="Close">×</button>
+  </div>
+  <div class="body" id="help-body"></div>
+</aside>
+
 <div class="drawer-back" id="consent-back"></div>
 <div class="consent" id="consent" role="dialog" aria-modal="true" aria-labelledby="consent-title">
   <h3 id="consent-title"></h3>
@@ -476,6 +562,13 @@ const I18N = {
     hSafety:'Safety — TRACE layer',
     signalsEmpty:'Values in range, no dangerous interactions found.',
     hMeds:'Prescribed medications', medsEmpty:'No medications.',
+    hDocs:'Submitted documents', docsEmpty:'No documents. Load the demo card or add one.',
+    docKind:{discharge_summary:'discharge summary',lab_report:'lab report',prescription:'prescription',note:'note'},
+    btnGraph:'Knowledge graph',
+    graphTitle:'Knowledge graph',
+    graphCap:'Every fact points back to the document it came from (<code>derived_from</code>). This is what makes an answer traceable — and what the safety layer computes on. Click a node to see its links.',
+    graphLegend:{Patient:'patient',Document:'document',Observation:'measurement',Condition:'condition',MedicationRequest:'medication'},
+    graphEmpty:'The card is empty — load documents first.',
     hQa:'Ask the card', qaTag:'grounded · with source reference',
     qPlaceholder:'e.g.: What about kidneys over the last year?', ask:'Ask',
     footer1:'Prototype for <b>Digital Future Hackathon</b> · Aging &amp; Longevity track.',
@@ -499,7 +592,7 @@ const I18N = {
     errorPrefix:'Error: ', selected:name=>`Selected: ${name}`,
     chips:['What about kidneys over the last year?','What was potassium?',
       'What medications and any interactions?','What about HbA1c?'],
-    story:(docs,pair)=>`One timeline from ${docs} documents in two languages. The card flagged a dangerous combination — <b>${pair}</b> — deterministically, by safety rules, not by AI guess. See the red alert in the Safety panel.`,
+    story:(docs,pair)=>`One timeline from ${docs} documents. The card flagged a dangerous combination — <b>${pair}</b> — deterministically, by safety rules, not by AI guess. See the red alert in the Safety panel.`,
     groupL1:'L1 · deterministic rules', groupL2a:'L2a · trends & reference ranges',
     trust:['No LLM in safety decisions','Deterministic safety rules (L1)','FHIR export','Local-first by design'],
     trustPhotoCloud:'Photo OCR → cloud lab',
@@ -511,6 +604,42 @@ const I18N = {
     consentBody:'To read the photo, this public demo sends it to a cloud OCR lab (Hugging Face ZeroGPU). Text you type, the demo card and every safety decision stay on the server and never go to an LLM.\n\nUpload synthetic or fully de-identified documents only — never real personal medical data.',
     consentOk:'Send the photo',
     consentCancel:'Cancel',
+    btnHelp:'Help',
+    help:{
+      title:'How to use LiveMedCard',
+      sections:[
+        {h:'What this is',
+         p:['LiveMedCard turns scattered medical documents — discharge summaries, lab reports, prescriptions, in any mix of languages — into <b>one timeline</b>, watches it for danger, and answers questions about it. Every fact keeps a link back to the sentence it came from.',
+            'It structures facts and shows trends. It <b>does not diagnose and does not prescribe treatment</b>.']},
+        {h:'Getting started',
+         li:['<b>Load demo card</b> — four documents (Ukrainian and English) of a 70-year-old patient. The fastest way to see everything at once.',
+             '<b>+ Add document</b> — paste the text of a document, or upload a photo of one. Pick the document type, then process it.',
+             '<b>Ask the card</b> — type a question in the field at the bottom, or click one of the suggested ones.',
+             '<b>Export FHIR</b> — download the whole card as a standard FHIR Bundle.',
+             '<b>Reset</b> — empty the card and start over. Your card is yours alone: every visitor gets a separate copy.']},
+        {h:'How a document is read',
+         p:['A language model reads the document and <b>extracts facts</b> — that is all it does. The safety layer then computes signals <b>deterministically</b>, by rules, on those facts: drug interactions and dose limits (L1), trends and reference ranges (L2a). A router (L3) decides whether the result can be processed automatically or must go to a human (L4).',
+            'This boundary matters. The model <b>cannot invent</b> an interaction — interactions are checked by rules, not guessed. But if it <b>misses</b> a drug, the rules have no pair to check. That is why extraction from a photo is marked unverified and escalated to a human, instead of pretending to be confident.']},
+        {h:'Reading the timeline',
+         li:['Each card shows the <b>latest value</b>, its <b>measurement date</b>, the <b>reference range</b>, the trend, and whether the value is in range.',
+             'The <b>UA / EN</b> badge is the language of the source document, detected from its text.',
+             'Click a <b>document chip</b> under a metric to open the source and see the exact sentence the number came from, highlighted.',
+             '<b>“no date in document”</b> means the document never stated a date for that value, so the upload date is shown. A last-year report must not silently pose as today’s measurement.',
+             '<b>“Extracted · no standard code”</b> lists facts that were extracted but have no LOINC code — so they have no reference range and raise no automatic signal. They are shown rather than hidden: a fact that was extracted and made invisible looks exactly like one that was never extracted.']},
+        {h:'The safety panel',
+         li:['<b>interaction</b> — a dangerous drug pair (e.g. warfarin + aspirin).',
+             '<b>dose_limit</b> — the daily dose exceeds the limit for that drug.',
+             '<b>trend</b> — a value moves in one direction across several measurements.',
+             '<b>range_breach</b> — the latest value is outside the reference range.',
+             '<b>unit_mismatch</b> — the value’s units do not match the reference, so the range check was <b>not performed</b>. A wrong signal is worse than a missing one, so nothing is converted or assumed.'],
+         p:['At the top, the router states its decision: <b>automatic processing</b>, or <b>escalated to human (L4)</b> when a serious signal fired or the extraction is unverified.']},
+        {h:'Asking the card',
+         p:['Answers are grounded in the facts on the card and always cite their sources. Ask in English or Ukrainian — the answer comes back in the language of the question. If the card holds no fact to answer with, it says so instead of guessing.']},
+        {h:'Photos and privacy',
+         p:['In this public demo, the text you type, the card itself and <b>every safety decision</b> stay on the server and never reach a language model. A <b>photo</b> is different: it is sent to a cloud OCR lab, so the app asks for your consent first and reading takes up to ~90 seconds.',
+            '<b>Upload synthetic or fully de-identified documents only</b> — never real personal medical data. Run the project yourself and everything, including OCR, stays on your machine.']},
+      ],
+    },
   },
   ua: {
     htmlLang:'uk', title:'LiveMedCard — жива медична картка',
@@ -530,6 +659,13 @@ const I18N = {
     hSafety:'Безпека — шар TRACE',
     signalsEmpty:'Показники в межах, небезпечних взаємодій не виявлено.',
     hMeds:'Призначені ліки', medsEmpty:'Ліків немає.',
+    hDocs:'Подані документи', docsEmpty:'Документів немає. Завантажте демо-картку або додайте свій.',
+    docKind:{discharge_summary:'виписний епікриз',lab_report:'лабораторний звіт',prescription:'рецепт',note:'нотатка'},
+    btnGraph:'Граф знань',
+    graphTitle:'Граф знань',
+    graphCap:'Кожен факт вказує на документ, з якого його взято (<code>derived_from</code>). Саме це робить відповідь простежуваною — і саме на цьому рахує шар безпеки. Натисніть вузол, щоб побачити його зв’язки.',
+    graphLegend:{Patient:'пацієнт',Document:'документ',Observation:'вимірювання',Condition:'стан',MedicationRequest:'препарат'},
+    graphEmpty:'Картка порожня — спершу завантажте документи.',
     hQa:'Запитати картку', qaTag:'grounded · з посиланням на джерело',
     qPlaceholder:'Напр.: Що з нирками за останній рік?', ask:'Спитати',
     footer1:'Прототип для <b>Digital Future Hackathon</b> · ніша Aging &amp; Longevity.',
@@ -553,7 +689,7 @@ const I18N = {
     errorPrefix:'Помилка: ', selected:name=>`Вибрано: ${name}`,
     chips:['Що з нирками за останній рік?','Який був калій?',
       'Які ліки приймає і чи є взаємодії?','Що з HbA1c?'],
-    story:(docs,pair)=>`Один таймлайн із ${docs} документів двома мовами. Картка помітила небезпечну комбінацію — <b>${pair}</b> — детерміновано, правилами безпеки, а не «на думку» ШІ. Дивіться червоний сигнал у панелі безпеки.`,
+    story:(docs,pair)=>`Один таймлайн із ${docs} документів. Картка помітила небезпечну комбінацію — <b>${pair}</b> — детерміновано, правилами безпеки, а не «на думку» ШІ. Дивіться червоний сигнал у панелі безпеки.`,
     groupL1:'L1 · детерміновані правила', groupL2a:'L2a · тренди й референсні межі',
     trust:['Жодної LLM у рішеннях безпеки','Детерміновані правила безпеки (L1)','Експорт FHIR','Local-first за дизайном'],
     trustPhotoCloud:'OCR фото → хмарний лаб',
@@ -565,6 +701,42 @@ const I18N = {
     consentBody:'Щоб прочитати фото, це публічне демо надсилає його в хмарний OCR-лаб (Hugging Face ZeroGPU). Введений текст, демо-картка й усі рішення безпеки лишаються на сервері й до жодної LLM не потрапляють.\n\nЗавантажуйте лише синтетичні або повністю деідентифіковані документи — ніколи не справжні персональні медичні дані.',
     consentOk:'Надіслати фото',
     consentCancel:'Скасувати',
+    btnHelp:'Довідка',
+    help:{
+      title:'Як користуватися LiveMedCard',
+      sections:[
+        {h:'Що це',
+         p:['LiveMedCard зводить розкидані медичні документи — виписки, аналізи, рецепти, будь-якими мовами — в <b>один таймлайн</b>, стежить за небезпеками й відповідає на питання про нього. Кожен факт зберігає посилання на речення, з якого його взято.',
+            'Система структурує факти й показує динаміку. Вона <b>не ставить діагнозів і не призначає лікування</b>.']},
+        {h:'З чого почати',
+         li:['<b>Завантажити демо-картку</b> — чотири документи (українські та англійські) пацієнтки 70 років. Найшвидший спосіб побачити все одразу.',
+             '<b>+ Додати документ</b> — вставте текст документа або завантажте його фото. Виберіть тип документа й обробіть.',
+             '<b>Запитати картку</b> — введіть питання в полі внизу або натисніть одну із запропонованих підказок.',
+             '<b>Експорт FHIR</b> — завантажити всю картку як стандартний FHIR Bundle.',
+             '<b>Скинути</b> — очистити картку й почати спочатку. Ваша картка лише ваша: кожен відвідувач отримує окрему копію.']},
+        {h:'Як читається документ',
+         p:['Мовна модель читає документ і <b>витягує факти</b> — і більше нічого. Далі шар безпеки рахує сигнали <b>детерміновано</b>, правилами, на цих фактах: взаємодії ліків і дозові межі (L1), тренди й референсні межі (L2a). Роутер (L3) вирішує, чи можна обробити результат автоматично, чи він має піти до людини (L4).',
+            'Ця межа принципова. Модель <b>не може вигадати</b> взаємодію — взаємодії перевіряються правилами, а не «на думку» ШІ. Але якщо вона <b>не витягла</b> препарат, у правил просто немає пари для перевірки. Саме тому витяг із фото позначається як неперевірений і йде до людини, а не вдає впевненість.']},
+        {h:'Як читати таймлайн',
+         li:['На картці показника видно <b>останнє значення</b>, <b>дату вимірювання</b>, <b>референсні межі</b>, тренд і те, чи значення в нормі.',
+             'Бейдж <b>UA / EN</b> — мова документа-джерела, визначена за його текстом.',
+             'Натисніть <b>чип документа</b> під показником, щоб відкрити джерело й побачити підсвічене речення, з якого взято число.',
+             '<b>«дати немає в документі»</b> означає, що документ не подав дати для цього значення, тож показано дату завантаження. Торішній аналіз не має тихо видавати себе за сьогоднішнє вимірювання.',
+             '<b>«Витягнуто · без стандартного коду»</b> — факти, які витягнуто, але вони не мають LOINC-коду, а отже ані референсних меж, ані автоматичного сигналу. Ми їх показуємо, а не ховаємо: витягнутий і невидимий факт виглядає точно так само, як невитягнутий.']},
+        {h:'Панель безпеки',
+         li:['<b>interaction</b> — небезпечна пара ліків (напр. варфарин + аспірин).',
+             '<b>dose_limit</b> — добова доза перевищує межу для цього препарату.',
+             '<b>trend</b> — показник кілька вимірювань поспіль рухається в один бік.',
+             '<b>range_breach</b> — останнє значення поза референсними межами.',
+             '<b>unit_mismatch</b> — одиниці значення не збігаються з референсними, тож перевірку меж <b>не виконано</b>. Хибний сигнал гірший за відсутній, тому ми нічого не конвертуємо й не додумуємо.'],
+         p:['Угорі роутер називає своє рішення: <b>автоматична обробка</b> або <b>ескалація до людини (L4)</b> — коли спрацював серйозний сигнал чи витяг неперевірений.']},
+        {h:'Питання до картки',
+         p:['Відповіді заземлені на фактах картки й завжди супроводжуються джерелами. Питайте українською або англійською — відповідь буде мовою питання. Якщо в картці немає факту для відповіді, вона так і скаже, а не вигадає.']},
+        {h:'Фото і приватність',
+         p:['У цьому публічному демо введений текст, сама картка й <b>усі рішення безпеки</b> лишаються на сервері й до мовної моделі не потрапляють. З <b>фото</b> інакше: воно вирушає в хмарний OCR-лаб, тож застосунок спершу питає вашої згоди, а зчитування триває до ~90 секунд.',
+            '<b>Завантажуйте лише синтетичні або повністю деідентифіковані документи</b> — ніколи не справжні персональні медичні дані. Якщо запустити проєкт у себе, все, включно з OCR, лишається на вашій машині.']},
+      ],
+    },
   },
 };
 
@@ -587,6 +759,10 @@ function applyLang(lang){
   $('#btn-add').textContent = t.btnAdd;
   $('#btn-export').textContent = t.btnExport;
   $('#btn-reset').textContent = t.btnReset;
+  $('#btn-help').textContent = t.btnHelp;
+  $('#btn-graph').textContent = t.btnGraph;
+  $('#h-docs').textContent = t.hDocs;
+  renderHelp();                      // довідка йде за мовою, навіть якщо відкрита
   $('#add-text').placeholder = t.addPlaceholder;
   $('#or-photo').textContent = t.orPhoto;
   if(!fileInput.files.length) $('#dropzone-text').textContent = t.dropzoneDefault;
@@ -791,6 +967,18 @@ function render(st){
     }).join('');
   }
 
+  // подані документи — оригінал за один клік (той самий drawer, що й для span-провенансу)
+  const dEntries=Object.entries(st.docs||{});
+  const dcEl=$('#docs');
+  if(!dEntries.length){dcEl.innerHTML=`<div class="empty">${t.docsEmpty}</div>`;}
+  else{dcEl.innerHTML=dEntries.map(([id,d])=>{
+    const lang=d.lang?`<span class="lang ${d.lang==='en'?'en':'ua'}">${d.lang.toUpperCase()}</span>`:'';
+    const kind=(t.docKind[d.kind]||d.kind||'');
+    return `<button class="docrow" data-doc="${id}">
+      ${lang}<span class="id">${id}</span><span class="kind">${kind}</span>
+      <span class="d">${d.date||''}</span></button>`;
+  }).join('');}
+
   // decision
   const d=st.decision;const dEl=$('#decision');
   dEl.className='decision '+(d.escalate?'escalate':'auto');
@@ -854,8 +1042,102 @@ async function openDoc(docId, span){
 function closeDoc(){$('#drawer').classList.remove('show');$('#drawer-back').classList.remove('show');}
 $('#drawer-close').onclick=closeDoc;
 $('#drawer-back').onclick=closeDoc;
-addEventListener('keydown',e=>{if(e.key==='Escape')closeDoc();});
-$('#series').addEventListener('click',e=>{
+addEventListener('keydown',e=>{if(e.key==='Escape'){closeDoc();closeHelp();closeGraph();}});
+
+// ── довідка ───────────────────────────────────────────────
+function renderHelp(){
+  const h=I18N[LANG].help;
+  $('#help-title').textContent=h.title;
+  $('#help-body').innerHTML=h.sections.map(s=>`<section>
+    <h4>${s.h}</h4>
+    ${(s.li?`<ul>${s.li.map(x=>`<li>${x}</li>`).join('')}</ul>`:'')}
+    ${(s.p||[]).map(x=>`<p>${x}</p>`).join('')}
+  </section>`).join('');
+}
+// ── граф знань ────────────────────────────────────────────
+// Шари зліва направо: пацієнт → факти → документи. Саме такий і сенс графа:
+// кожен факт зрештою впирається в документ, з якого його взято (derived_from).
+const GCOLOR={Patient:'var(--accent)',Observation:'#3aa6a0',Condition:'#e0a23c',
+  MedicationRequest:'#5e9dff',Document:'#8a94a6'};
+const GORDER=['Observation','MedicationRequest','Condition'];
+
+function drawGraph(g){
+  const t=I18N[LANG], wrap=$('#graph-wrap');
+  if(!g.nodes.length){wrap.innerHTML=`<div class="empty">${t.graphEmpty}</div>`;$('#graph-legend').innerHTML='';return;}
+  $('#graph-legend').innerHTML=Object.entries(t.graphLegend)
+    .map(([k,v])=>`<span><i style="background:${GCOLOR[k]}"></i>${v}</span>`).join('');
+
+  const byType=ty=>g.nodes.filter(n=>n.type===ty);
+  const facts=GORDER.flatMap(byType);
+  const docs=byType('Document'), pats=byType('Patient');
+  const rows=Math.max(facts.length,docs.length,pats.length);
+  const H=Math.max(240,rows*24+40), W=880, X=[70,380,700];
+  const pos={};
+  const place=(list,x)=>list.forEach((n,i)=>{
+    pos[n.id]={x,y:(H/(list.length+1))*(i+1)};
+  });
+  place(pats,X[0]); place(facts,X[1]); place(docs,X[2]);
+
+  const edges=g.edges.filter(e=>pos[e.source]&&pos[e.target]).map((e,i)=>{
+    const a=pos[e.source],b=pos[e.target],mx=(a.x+b.x)/2;
+    return `<path class="edge ${e.rel==='derived_from'?'prov':''}" id="e${i}"
+      data-a="${e.source}" data-b="${e.target}"
+      d="M${a.x},${a.y} C${mx},${a.y} ${mx},${b.y} ${b.x},${b.y}"/>`;
+  }).join('');
+
+  const nodes=g.nodes.filter(n=>pos[n.id]).map(n=>{
+    const p=pos[n.id], right=p.x===X[2];
+    const label=n.label.length>26?n.label.slice(0,25)+'…':n.label;
+    return `<g class="node" data-id="${n.id}">
+      <circle cx="${p.x}" cy="${p.y}" r="5.5" fill="${GCOLOR[n.type]||'#888'}"/>
+      <text x="${right?p.x+11:p.x-11}" y="${p.y+4}" text-anchor="${right?'start':'end'}">${label}</text>
+    </g>`;
+  }).join('');
+
+  wrap.innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">${edges}${nodes}</svg>`;
+  wrap.querySelectorAll('.node').forEach(el=>{
+    el.onclick=()=>{
+      const id=el.dataset.id, on=wrap.classList.contains('sel')&&el.classList.contains('on');
+      wrap.classList.remove('sel');
+      wrap.querySelectorAll('.on').forEach(x=>x.classList.remove('on'));
+      if(on)return;                       // повторний клік — зняти виділення
+      wrap.classList.add('sel'); el.classList.add('on');
+      wrap.querySelectorAll('.edge').forEach(e=>{
+        if(e.dataset.a===id||e.dataset.b===id){
+          e.classList.add('on');
+          const other=e.dataset.a===id?e.dataset.b:e.dataset.a;
+          wrap.querySelector(`.node[data-id="${CSS.escape(other)}"]`)?.classList.add('on');
+        }
+      });
+    };
+  });
+}
+
+async function openGraph(){
+  const t=I18N[LANG];
+  $('#graph-title').textContent=t.graphTitle;
+  $('#graph-cap').innerHTML=t.graphCap;
+  $('#graphm').classList.add('show');$('#graph-back').classList.add('show');
+  try{drawGraph(await api('/graph'));}catch(e){toast(t.errorPrefix+e.message);}
+}
+function closeGraph(){$('#graphm').classList.remove('show');$('#graph-back').classList.remove('show');}
+$('#btn-graph').onclick=openGraph;
+$('#graph-close').onclick=closeGraph;
+$('#graph-back').onclick=closeGraph;
+
+function openHelp(){renderHelp();$('#help').classList.add('show');$('#help-back').classList.add('show');$('#help-close').focus();}
+function closeHelp(){$('#help').classList.remove('show');$('#help-back').classList.remove('show');}
+$('#btn-help').onclick=openHelp;
+$('#help-close').onclick=closeHelp;
+$('#help-back').onclick=closeHelp;
+// Рядок у списку поданих документів → відкрити оригінал (без підсвітки span).
+document.addEventListener('click',e=>{
+  const row=e.target.closest('.docrow'); if(!row)return;
+  openDoc(row.dataset.doc, null);
+});
+
+// Делегат на всю ліву колонку: чипи джерел є і в таймлайні, і серед некодованих фактів.
+document.addEventListener('click',e=>{
   const chip=e.target.closest('.srcchip'); if(!chip)return;
   const span=chip.dataset.span?chip.dataset.span.split('-').map(Number):null;
   openDoc(chip.dataset.doc, span);
@@ -874,7 +1156,11 @@ async function ask(q){
   }catch(e){toast(I18N[LANG].errorPrefix+e.message);}
 }
 
-$('#btn-samples').onclick=async()=>{await api('/ingest/samples',{method:'POST'});await refresh();toast(I18N[LANG].toastSamples);};
+// Демо-документи — мовою інтерфейсу (набори дзеркальні: ті самі значення, ті самі сигнали).
+$('#btn-samples').onclick=async()=>{
+  await api(`/ingest/samples?lang=${LANG==='ua'?'uk':'en'}`,{method:'POST'});
+  await refresh();toast(I18N[LANG].toastSamples);
+};
 $('#btn-reset').onclick=async()=>{await api('/reset',{method:'POST'});$('#log').innerHTML='';await refresh();toast(I18N[LANG].toastReset);};
 $('#btn-export').onclick=async()=>{
   const b=await api('/export');

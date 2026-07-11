@@ -45,9 +45,15 @@ _T = TypeVar("_T")
 # тиск забирав би значення калію, а варфарин — дозу аспірину).
 _SEP = r"[\s:=–—-]*"
 _LAB_VALUE_RE = re.compile(_SEP + r"(\d+(?:\.\d+)?)")
-_DOSE_MG_RE = re.compile(_SEP + r"(\d+(?:\.\d+)?)\s*мг")
-# Кратність прийому: «×2», «x2», «2 рази», «двічі», «тричі» → множник за добу.
-_FREQ_RE = re.compile(r"[×xх]\s*(\d+)|(\d+)\s*раз|(двіч)|(тріч)", re.IGNORECASE)
+_DOSE_MG_RE = re.compile(_SEP + r"(\d+(?:\.\d+)?)\s*(?:мг|mg)\b", re.IGNORECASE)
+# Кратність прийому: «×2», «x2», «2 рази», «двічі», «тричі», «twice», «3 times»
+# → множник за добу. Словник білінгвальний, тож і доза має читатися двома мовами:
+# інакше в англомовному документі доза просто не знаходиться, і сигнал
+# перевищення добової межі (L1) тихо не спрацьовує.
+_FREQ_RE = re.compile(
+    r"[×xх]\s*(\d+)|(\d+)\s*раз|(двіч)|(тріч)|(\d+)\s*times|(twice)|(three times)",
+    re.IGNORECASE,
+)
 # Дата вимірювання на факт: ISO «2024-03-15» або «15.03.2024» у тому самому рядку.
 _DATE_RE = re.compile(r"\b(\d{4})-(\d{2})-(\d{2})\b|\b(\d{2})\.(\d{2})\.(\d{4})\b")
 
@@ -104,6 +110,12 @@ def _parse_daily_dose_mg(text: str, pos: int) -> Optional[float]:
             freq = 2  # двічі
         elif fm.group(4):
             freq = 3  # тричі
+        elif fm.group(5):
+            freq = int(fm.group(5))  # «2 times»
+        elif fm.group(6):
+            freq = 2  # twice
+        elif fm.group(7):
+            freq = 3  # three times
     return single * freq
 
 

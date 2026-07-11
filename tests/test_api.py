@@ -60,6 +60,36 @@ def test_samples_flow_signals_metrics_audit(client):
     assert all(set(a) >= {"ts", "route_to", "escalate"} for a in audit)
 
 
+def test_sample_sets_mirror_each_other_across_languages(client):
+    """Демо-набір іде за мовою інтерфейсу, але картка має бути ТА САМА: ті самі
+    значення → ті самі сигнали. Інакше журі бачить різний продукт залежно від мови."""
+    en = TestClient(api_module.app)
+    client.post("/ingest/samples?lang=uk")
+    en.post("/ingest/samples?lang=en")
+
+    uk_state, en_state = client.get("/state").json(), en.get("/state?lang=en").json()
+    def sig(s):
+        return sorted((x["layer"], x["kind"], x["severity"]) for x in s["signals"])
+
+    assert sig(uk_state) == sig(en_state)          # 8 однакових сигналів
+    assert len(en_state["signals"]) == 8
+    # доза метформіну «3000 mg per day» має читатися так само, як «3000 мг на добу»
+    assert any(x["kind"] == "dose_limit" for x in en_state["signals"])
+
+    assert {d["lang"] for d in uk_state["docs"].values()} == {"uk"}
+    assert {d["lang"] for d in en_state["docs"].values()} == {"en"}
+
+
+def test_graph_endpoint_exposes_provenance_edges(client):
+    client.post("/ingest/samples")
+    g = client.get("/graph").json()
+    types = {n["type"] for n in g["nodes"]}
+    assert {"Patient", "Document", "Observation", "MedicationRequest"} <= types
+    # факт → документ: провенанс, який і візуалізуємо
+    assert any(e["rel"] == "derived_from" for e in g["edges"])
+    assert all(n["label"] for n in g["nodes"])     # без None-міток
+
+
 def test_state_document_language_comes_from_text_not_from_id(client):
     """Мову документа визначає його ТЕКСТ. Раніше інтерфейс вгадував її за назвою
     (`-en` у doc_id) — і англомовне фото, завантажене як `doc-ocr-<hash>`,
