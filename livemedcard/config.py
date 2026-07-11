@@ -11,8 +11,24 @@ from pathlib import Path
 DATA_DIR = Path(__file__).parent / "data"
 STATIC_DIR = Path(__file__).parent / "static"
 
-# Поріг впевненості витягу L2b, нижче якого документ іде на перегляд людиною (L3).
-LOW_CONFIDENCE = float(os.getenv("LMC_LOW_CONFIDENCE", "0.6"))
+# ── Економіка рішень (виводить поріг ескалації; див. economics.py) ────────────
+# Поріг L3 більше не константа: він рахується як c* = 1 - C_human/(π·C_harm).
+# Числа нижче — робочі ПРИПУЩЕННЯ, не дані; перед клінічним використанням
+# замінити на citable (AHRQ HCUP для вартості ADE-госпіталізації тощо).
+COST_HUMAN_REVIEW = float(os.getenv("LMC_COST_HUMAN_REVIEW", "5"))          # перевірка людиною
+COST_HARM_MEDICATION = float(os.getenv("LMC_COST_HARM_MEDICATION", "15000"))  # ADE-госпіталізація
+COST_HARM_MEASUREMENT = float(os.getenv("LMC_COST_HARM_MEASUREMENT", "500"))  # пропущений тренд
+HAZARD_PRIOR_MEDICATION = float(os.getenv("LMC_HAZARD_PRIOR_MEDICATION", "0.01"))
+HAZARD_PRIOR_MEASUREMENT = float(os.getenv("LMC_HAZARD_PRIOR_MEASUREMENT", "0.05"))
+# Ймовірність, що знайдена (детерміновано!) небезпека таки нашкодить, якщо документ
+# не проглянула людина: родина може не зрозуміти сигналу або не дійти до лікаря.
+P_UNADDRESSED = float(os.getenv("LMC_P_UNADDRESSED", "0.2"))
+
+# Явний адміністративний override порога (env `LMC_LOW_CONFIDENCE`). Порожньо →
+# поріг виводиться з вартостей. Лишається для тестів і для випадку, коли оператор
+# свідомо задає поріг вручну.
+_low_conf_env = os.getenv("LMC_LOW_CONFIDENCE", "")
+LOW_CONFIDENCE_OVERRIDE: float | None = float(_low_conf_env) if _low_conf_env else None
 
 # Впевненість, яку StubExtractor приписує кожному словниковому збігу.
 # Реальний екстрактор (MedGemma) має ставити модельну впевненість замість цієї.

@@ -92,3 +92,10 @@ class AuditEntry(BaseModel):
     n_signals: int
     route_to: Literal["auto", "L4_human"]
     escalate: bool
+    # Чим ризикував документ — від цього залежав поріг ескалації (economics).
+    # Дефолт зберігає сумісність зі старими знімками.
+    hazard: str = "medication"
+    # Чи на момент рішення був детермінований сигнал major/critical. Це ДРУГЕ,
+    # незалежне джерело вартості: небезпека вже знайдена, і питання лише в тому,
+    # чи її хтось прогляне.
+    high_risk: bool = False

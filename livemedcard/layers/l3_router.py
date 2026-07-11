@@ -13,10 +13,10 @@ from __future__ import annotations
 
 from typing import Optional
 
-from ..config import LOW_CONFIDENCE
 from ..dto import Decision, Severity, Signal, severity_rank
+from ..economics import Hazard, escalation_threshold
 
-__all__ = ["route", "LOW_CONFIDENCE"]
+__all__ = ["route"]
 
 
 def route(
@@ -24,15 +24,22 @@ def route(
     extraction_confidence: float,
     doc_kind: str,
     lang: str = "uk",
+    hazard: Hazard = "medication",
 ) -> Decision:
-    """Приймає рішення про маршрут документа: "auto" чи "L4_human"."""
+    """Приймає рішення про маршрут документа: "auto" чи "L4_human".
+
+    Поріг впевненості не константа: він виводиться з вартостей (`economics`) і
+    залежить від того, чим ризикує документ. Пропуск препарату коштує дорожче за
+    пропущений тренд, тож і планка довіри для нього вища.
+    """
     top: Optional[Signal] = max(
         signals, key=lambda s: severity_rank(s.severity), default=None
     )
     high_risk = top is not None and severity_rank(top.severity) >= severity_rank(
         _MAJOR
     )
-    low_confidence = extraction_confidence < LOW_CONFIDENCE
+    threshold = escalation_threshold(hazard)
+    low_confidence = extraction_confidence < threshold
     escalate = high_risk or low_confidence
 
     en = lang == "en"
@@ -47,10 +54,12 @@ def route(
         )
     if low_confidence:
         reasons.append(
-            f"Low extraction confidence ({extraction_confidence:.2f}) — "
-            f"human review required"
+            f"Extraction confidence {extraction_confidence:.2f} < {threshold:.2f} — "
+            f"the threshold follows from the cost of a missed fact, not a tuned "
+            f"hyperparameter — human review required"
             if en else
-            f"Низька впевненість витягу ({extraction_confidence:.2f}) — "
+            f"Впевненість витягу {extraction_confidence:.2f} < {threshold:.2f} — "
+            f"поріг виведено з вартості пропущеного факту, а не підібрано — "
             f"потрібна перевірка людиною"
         )
     if not escalate:

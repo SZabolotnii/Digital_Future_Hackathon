@@ -270,7 +270,7 @@
         </div>
         <div class="pillar">
           <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="6" cy="6" r="2.4" stroke="#2dd4bf" stroke-width="1.7"/><circle cx="18" cy="7" r="2.4" stroke="#2dd4bf" stroke-width="1.7"/><circle cx="10" cy="18" r="2.4" stroke="#2dd4bf" stroke-width="1.7"/><path d="M8.1 7.2l7.6.6M8.4 15.8l7.4-6.4" stroke="#2dd4bf" stroke-width="1.6"/></svg></div>
-          <div class="bd"><div class="t">Вимірювана довіра (TRACE)</div><div class="d">кожне рішення несе вектор довіри: безпека — <b>confidence 1.00</b> (детермінована), впевненість витягу ∈ [0,1], частка ескалацій — живі на <b>/metrics</b> + аудит. Генеративний AI — на L3, вимірюваний. EU AI Act ст.14/15</div></div>
+          <div class="bd"><div class="t">Вимірювана довіра (TRACE)</div><div class="d">безпека — <b>confidence 1.00</b> (детермінована). <b>Поріг ескалації виведений із вартостей</b>, а не підібраний: c* = 1 − C_людини/(π·C_шкоди) → <b>0.97</b> для ліків, <b>0.8</b> для показників. Живе на <b>/metrics</b>. EU AI Act ст.14</div></div>
         </div>
       </div>
       <p class="moatline"><b>Конкурентне поле:</b> CommonHealth — local-first, без AI-екстракції · Fasten — FHIR, але self-hosting і без шару безпеки · Medisafe — взаємодії в хмарі й <b>з 2026 платно</b> · Ianacare/Caily — опікун у центрі, без медичного інтелекту. Жоден не поєднує чотири речі разом: local-first + детермінована безпека ліків + опікун-платник + FHIR. <b>Apple Health і Fasten — не конкуренти, а джерела:</b> вони віддають FHIR — ми його імпортуємо.</p>
