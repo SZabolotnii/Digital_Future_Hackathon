@@ -47,6 +47,7 @@ from .config import (
 )
 from .dto import Document, DocKind
 from .fhir import Patient
+from .lang import detect_lang
 from .layers import l3_router
 from .layers import l2b_nuextract, l2b_ocrlab
 from .layers.l2b_ocrlab import OcrLabError
@@ -372,10 +373,30 @@ def get_state_endpoint(lang: str = "uk", state: _State = Depends(_get_state)):
                 "high": ref.high if ref else None,
                 "points": [
                     {"ts": p.ts.date().isoformat(), "value": p.value,
-                     "source": p.source_doc_id, "span": p.source_span}
+                     "source": p.source_doc_id, "span": p.source_span,
+                     "dated": p.date_stated}
                     for p in pts
                 ],
             })
+
+        # Факти без LOINC: витягнуті, але некодовані (напр. TIR-бари AGP-звіту).
+        # Сигналів не дають — межі порівнювати нема з чим. Показуємо їх окремо:
+        # мовчки з'їдений факт неможливо відрізнити від невитягнутого.
+        uncoded = [
+            {"keyword": f.keyword, "value": f.value, "unit": f.unit,
+             "ts": f.ts.date().isoformat(), "source": f.source_doc_id,
+             "span": f.source_span, "dated": f.date_stated}
+            for f in card.factstore.uncoded()
+        ]
+
+        # Мова документа — з його ТЕКСТУ (detect_lang), а не з назви файлу. Якщо
+        # тексту немає, документ не потрапляє сюди взагалі: інтерфейс краще
+        # покаже відсутність бейджа, ніж навмання «UA» (detect_lang("") == "uk").
+        docs = {}
+        for n in card.graph.nodes_of_type("Document"):
+            text = (card.graph.g.nodes[n].get("text") or "").strip()
+            if text:
+                docs[n.split("/", 1)[1]] = {"lang": detect_lang(text)}
 
         seen: dict[str, None] = {}
         for n in card.graph.nodes_of_type("MedicationRequest"):
@@ -386,6 +407,8 @@ def get_state_endpoint(lang: str = "uk", state: _State = Depends(_get_state)):
             "patient": {"id": card.patient.id, "gender": card.patient.gender},
             "document_count": card.document_count,
             "series": series,
+            "uncoded": uncoded,
+            "docs": docs,
             "medications": medications,
             "signals": [s.model_dump() for s in sigs],
             "decision": decision.model_dump(),

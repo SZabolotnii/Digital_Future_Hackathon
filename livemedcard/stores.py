@@ -39,6 +39,8 @@ class KVTFact(BaseModel):
     # (start, end) offset у free-text іпостасі документа-джерела, звідки витягнуто
     # факт (span-рівнева прив'язка для точного grounding). None — коли невідомо.
     source_span: Optional[tuple[int, int]] = None
+    # False → ts це дата завантаження документа, а не дата вимірювання з нього.
+    date_stated: bool = True
 
 
 def _concept_label(cc: Optional[CodeableConcept], fallback: str) -> str:
@@ -76,6 +78,7 @@ def observation_to_kvt(o: Observation) -> Optional[KVTFact]:
         ts=ts,
         source_doc_id=o.provenance.source_doc_id if o.provenance else None,
         source_span=o.provenance.source_span if o.provenance else None,
+        date_stated=o.provenance.date_stated if o.provenance else True,
     )
 
 
@@ -117,6 +120,15 @@ class FactStore:
     def loincs(self) -> list[str]:
         """Унікальні LOINC-коди, наявні у сторі (у порядку першої появи)."""
         return list(self._by_loinc)
+
+    def uncoded(self) -> list[KVTFact]:
+        """Факти без LOINC — витягнуті, але без стандартного коду.
+
+        Вони не мають ані таймлайну, ані референсних меж, тож не породжують
+        сигналів. Але й ховати їх не можна: витягнутий і невидимий факт виглядає
+        точно так само, як не витягнутий — а це різні речі.
+        """
+        return [f for f in self._facts if not f.loinc]
 
 
 class KnowledgeGraph:

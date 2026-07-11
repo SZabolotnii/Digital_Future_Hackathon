@@ -38,12 +38,33 @@ def test_split_value():
 
 def test_parse_timestamp_formats_and_range():
     p = l2b_stage2_lora._parse_timestamp
-    assert p("2024-03-15", None) == datetime(2024, 3, 15, tzinfo=timezone.utc)
-    assert p("06/13/2025", None) == datetime(2025, 6, 13, tzinfo=timezone.utc)
-    assert p("March 16, 2025", None) == datetime(2025, 3, 16, tzinfo=timezone.utc)
+    assert p("2024-03-15", None) == (datetime(2024, 3, 15, tzinfo=timezone.utc), True)
+    assert p("06/13/2025", None) == (datetime(2025, 6, 13, tzinfo=timezone.utc), True)
+    assert p("March 16, 2025", None) == (datetime(2025, 3, 16, tzinfo=timezone.utc), True)
     # діапазон → кінець
-    assert p("March 16, 2025 - June 13, 2025", None) == datetime(2025, 6, 13, tzinfo=timezone.utc)
-    assert p("not stated", _RECEIVED) == _RECEIVED
+    assert p("March 16, 2025 - June 13, 2025", None) == (
+        datetime(2025, 6, 13, tzinfo=timezone.utc), True,
+    )
+    # дати в документі немає → fallback на дату завантаження, і це ПОЗНАЧЕНО
+    assert p("not stated", _RECEIVED) == (_RECEIVED, False)
+    assert p(None, _RECEIVED) == (_RECEIVED, False)
+
+
+def test_fact_without_date_is_marked_not_stated():
+    """AGP-звіт дає факти з timestamp=null. Датувати їх днем завантаження можна
+    (ряду потрібна мітка), видавати цю дату за виміряну — ні."""
+    from livemedcard.dto import Document
+
+    doc = Document(id="agp", text="# AGP", kind="lab_report", received_at=_RECEIVED)
+    kvt = [
+        {"keyword": "Average Glucose", "value": "204", "unit": "mg/dL", "timestamp": None},
+        {"keyword": "Creatinine", "value": "135", "unit": "µmol/L", "timestamp": "2024-10-15"},
+    ]
+    obs = l2b_stage2_lora.to_observations(kvt, doc, "mom-001", extracted_by="t")
+    by_kw = {o.code.text: o for o in obs}
+    assert by_kw["Average Glucose"].provenance.date_stated is False
+    assert by_kw["Average Glucose"].effectiveDateTime == doc.received_at
+    assert by_kw["Creatinine"].provenance.date_stated is True
 
 
 def test_extract_json_array_strips_thought_tokens_and_fences():

@@ -159,6 +159,8 @@
   .trend.flat{color:var(--muted);background:color-mix(in srgb,var(--muted) 14%,transparent)}
   .metric .meta{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-top:3px}
   .metric .ref{color:var(--faint);font-size:11.5px;font-family:var(--mono)}
+  .when{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+  .when.nodate{color:var(--moderate);cursor:help}
   .status{font-size:11.5px;font-weight:700}
   .status.ok{color:var(--ok)} .status.high{color:var(--major)} .status.low{color:var(--moderate)}
   .metric .src{color:var(--faint);font-size:11px;margin-top:7px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
@@ -167,6 +169,20 @@
   .srcchip:hover{color:var(--accent);border-color:var(--accent);transform:none}
   .lang{font:700 10px/1 var(--mono);padding:2px 5px;border-radius:5px;border:1px solid var(--line)}
   .lang.ua{color:var(--accent)} .lang.en{color:#5e9dff}
+  /* Факти без LOINC: показані, але візуально відділені від таймлайну — вони не
+     мають меж і не дають сигналів, тож не мусять виглядати як перевірені. */
+  .uncoded{margin-top:16px;padding-top:14px;border-top:1px dashed var(--line)}
+  .uncoded h3{font:700 11px/1 var(--mono);letter-spacing:.09em;text-transform:uppercase;
+    color:var(--faint);margin:0 0 10px}
+  .uncoded .rows{display:flex;flex-direction:column;gap:1px}
+  .urow{display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+    padding:7px 0;border-bottom:1px solid var(--line)}
+  .urow:last-child{border-bottom:0}
+  .urow .k{display:flex;flex-direction:column;font-size:13px;color:var(--muted);min-width:0}
+  .umeta{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:4px}
+  .urow .v{font:700 13.5px/1 var(--mono);color:var(--text);white-space:nowrap}
+  .urow .v .u{font-weight:400;font-size:11px;color:var(--faint);margin-left:3px}
+  .uncoded .note{margin:11px 0 0;font-size:11.5px;line-height:1.55;color:var(--faint)}
   .spark{margin-top:9px}
   .spark path.line{stroke:var(--accent);stroke-width:2.2;fill:none;stroke-linejoin:round;stroke-linecap:round;
     stroke-dasharray:var(--len);stroke-dashoffset:var(--len);animation:draw 1.1s .1s ease-out forwards}
@@ -363,6 +379,11 @@
     <section class="panel d1">
       <h2><span id="h-series">Metrics timeline</span> <span class="tag" id="bi-tag" style="display:none">bilingual · UA + EN</span></h2>
       <div class="series" id="series"><div class="empty">No data yet. Click “Load demo card”.</div></div>
+      <div class="uncoded" id="uncoded" style="display:none">
+        <h3 id="h-uncoded">Extracted · no standard code</h3>
+        <div class="rows" id="uncoded-rows"></div>
+        <p class="note" id="uncoded-note"></p>
+      </div>
     </section>
 
     <div class="right">
@@ -463,6 +484,10 @@ const I18N = {
     statSignals:'safety signals', statLangs:'document languages',
     statusOk:'normal', statusHigh:'above range', statusLow:'below range',
     range:'range', meas:n=>`${n} meas.`,
+    noDate:'no date in document',
+    noDateTitle:'The document does not state a date for this value — the upload date is shown.',
+    hUncoded:'Extracted · no standard code',
+    uncodedNote:'These values were extracted but have no LOINC code, so they have no reference range and raise no automatic signal. They are shown, not hidden — an extracted fact that is invisible looks exactly like one that was never extracted.',
     escalate:'escalated to human (L4)', auto:'automatic processing',
     sevLabel:{critical:'critical',major:'high',moderate:'moderate',info:'info'},
     toastSamples:'Demo card loaded', toastReset:'Card reset',
@@ -513,6 +538,10 @@ const I18N = {
     statSignals:'сигналів безпеки', statLangs:'мови документів',
     statusOk:'у нормі', statusHigh:'вище норми', statusLow:'нижче норми',
     range:'норма', meas:n=>`${n} вимір.`,
+    noDate:'дати немає в документі',
+    noDateTitle:'Документ не подає дати для цього значення — показано дату завантаження.',
+    hUncoded:'Витягнуто · без стандартного коду',
+    uncodedNote:'Ці значення витягнуто, але вони не мають LOINC-коду — отже, ані референсних меж, ані автоматичного сигналу. Ми їх показуємо, а не ховаємо: витягнутий і невидимий факт виглядає точно так само, як невитягнутий.',
     escalate:'ескалація до людини (L4)', auto:'автоматична обробка',
     sevLabel:{critical:'критичний',major:'високий',moderate:'помірний',info:'інфо'},
     toastSamples:'Демо-картку завантажено', toastReset:'Картку скинуто',
@@ -611,7 +640,24 @@ async function api(path, opts){
   return r.status===204?null:r.json();
 }
 
-function langOf(src){ return src && /(-|_)en\b|_en$|-en$/.test(src) ? 'en' : 'ua'; }
+// Мову документа визначає бекенд за його ТЕКСТОМ (`/state.docs`). Вгадувати її з
+// назви файлу не можна: `doc-ocr-e75f8cd4` — це англомовний бланк, завантажений
+// як фото, і суфікса «-en» у нього немає взагалі.
+// null → мова невідома (немає free-text іпостасі). Тоді бейджа просто немає:
+// краще нічого, ніж навмання.
+function langOf(src){
+  const d = lastState && lastState.docs && lastState.docs[src];
+  return d ? (d.lang === 'en' ? 'en' : 'ua') : null;
+}
+
+// Дата вимірювання. Якщо в документі її не було — ми поставили дату завантаження,
+// і мусимо це сказати: датувати торішній аналіз сьогоднішнім днем тихо — гірше,
+// ніж не датувати взагалі (ламається і тренд, і довіра до таймлайну).
+function whenOf(p, t){
+  return p.dated === false
+    ? `<span class="when nodate" title="${t.noDateTitle}">${p.ts} · ${t.noDate}</span>`
+    : `<span class="when">${p.ts}</span>`;
+}
 
 function sparkline(points, low, high){
   const w=300,h=64,pad=9;
@@ -681,7 +727,7 @@ function render(st){
   // stat strip
   const nMeas=st.series.reduce((a,s)=>a+s.points.length,0);
   const langs=new Set();
-  st.series.forEach(s=>s.points.forEach(p=>p.source&&langs.add(langOf(p.source))));
+  st.series.forEach(s=>s.points.forEach(p=>{const l=p.source&&langOf(p.source); if(l)langs.add(l);}));
   const bilingual=langs.has('en')&&langs.has('ua');
   $('#bi-tag').style.display = bilingual?'inline-block':'none';
   const nAlerts=st.signals.length;
@@ -689,7 +735,7 @@ function render(st){
     <div class="stat"><div class="n">${st.series.length}</div><div class="l">${t.statMetrics}</div></div>
     <div class="stat"><div class="n">${nMeas}</div><div class="l">${t.statMeasurements}</div></div>
     <div class="stat alert"><div class="n">${nAlerts}</div><div class="l">${t.statSignals}</div></div>
-    <div class="stat bi"><div class="n">${bilingual?'UA+EN':(langs.has('en')?'EN':'UA')}</div><div class="l">${t.statLangs}</div></div>
+    <div class="stat bi"><div class="n">${!langs.size?'—':bilingual?'UA+EN':(langs.has('en')?'EN':'UA')}</div><div class="l">${t.statLangs}</div></div>
   ` : '';
 
   // story ribbon — investor orientation, only when a drug interaction was caught
@@ -709,7 +755,8 @@ function render(st){
     const name=(LOINC_LABEL[s.loinc]||{})[LANG]||s.keyword;
     const ref=(s.low!=null&&s.high!=null)?`${t.range} ${s.low}–${s.high} ${s.unit||''}`:'';
     const srcs=[...new Set(s.points.map(p=>p.source).filter(Boolean))];
-    const langBadges=[...new Set(srcs.map(langOf))].map(l=>`<span class="lang ${l}">${l.toUpperCase()}</span>`).join('');
+    const langBadges=[...new Set(srcs.map(langOf).filter(Boolean))]
+      .map(l=>`<span class="lang ${l}">${l.toUpperCase()}</span>`).join('');
     const chips=srcs.map(src=>{
       // span останньої точки з цього документа — якір для drawer-підсвітки
       const pt=[...s.points].reverse().find(p=>p.source===src);
@@ -722,10 +769,27 @@ function render(st){
         <span class="big"><span class="val">${last.value}</span><span class="unit">${s.unit||''}</span>
           ${ttxt?`<span class="trend ${tcls}">${ttxt}</span>`:''}</span>
       </div>
-      <div class="meta"><span class="ref">${ref}</span><span class="status ${cls}">${txt}</span></div>
+      <div class="meta"><span class="ref">${whenOf(last,t)}${ref?` · ${ref}`:''}</span><span class="status ${cls}">${txt}</span></div>
       ${sparkline(s.points,s.low,s.high)}
       <div class="src">${langBadges}<span>${t.meas(s.points.length)}</span>${chips}</div>
     </div>`;}).join('');}
+
+  // uncoded — витягнуто, але без LOINC: ні меж, ні сигналів. Показуємо окремо.
+  const unc=st.uncoded||[];
+  const uEl=$('#uncoded');
+  uEl.style.display = unc.length ? 'block' : 'none';
+  if(unc.length){
+    $('#h-uncoded').textContent=t.hUncoded;
+    $('#uncoded-note').textContent=t.uncodedNote;
+    $('#uncoded-rows').innerHTML=unc.map(f=>{
+      const chip=f.source?`<button class="srcchip" data-doc="${f.source}"
+        data-span="${f.span?`${f.span[0]}-${f.span[1]}`:''}" title="${t.srcTitle}">${f.source}</button>`:'';
+      return `<div class="urow">
+        <span class="k">${f.keyword}<span class="umeta">${whenOf(f,t)}${chip}</span></span>
+        <span class="v">${f.value}<span class="u">${f.unit||''}</span></span>
+      </div>`;
+    }).join('');
+  }
 
   // decision
   const d=st.decision;const dEl=$('#decision');

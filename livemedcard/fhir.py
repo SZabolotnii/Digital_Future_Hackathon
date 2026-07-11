@@ -64,6 +64,11 @@ class Provenance(BaseModel):
     extracted_at: datetime = Field(default_factory=_utcnow)
     confidence: Optional[float] = None
     source_span: Optional[tuple[int, int]] = None
+    # Чи дата факту справді стоїть у документі. False → ``effectiveDateTime`` це
+    # дата завантаження (fallback), а не дата вимірювання. Ряду потрібна якась
+    # мітка часу, але інтерфейс мусить показати різницю: датувати торішній аналіз
+    # сьогоднішнім днем — тиха помилка, яка ламає і тренд, і довіру.
+    date_stated: bool = True
 
 
 class Attachment(BaseModel):

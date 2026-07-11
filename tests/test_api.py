@@ -60,6 +60,48 @@ def test_samples_flow_signals_metrics_audit(client):
     assert all(set(a) >= {"ts", "route_to", "escalate"} for a in audit)
 
 
+def test_state_document_language_comes_from_text_not_from_id(client):
+    """Мову документа визначає його ТЕКСТ. Раніше інтерфейс вгадував її за назвою
+    (`-en` у doc_id) — і англомовне фото, завантажене як `doc-ocr-<hash>`,
+    показувалось як українське."""
+    client.post("/ingest/samples")
+    client.post("/ingest", json={
+        "id": "doc-ocr-abc123",           # в id немає жодної підказки про мову
+        "text": "AGP Report. Average Glucose 204 mg/dL. Glucose Management Indicator 8.2%.",
+        "kind": "lab_report",
+    })
+    docs = client.get("/state").json()["docs"]
+    assert docs["doc-ocr-abc123"]["lang"] == "en"
+    assert any(d["lang"] == "uk" for k, d in docs.items() if k != "doc-ocr-abc123")
+
+
+def test_uncoded_facts_are_surfaced_not_swallowed(client):
+    """Факт без LOINC не має таймлайну — але мусить бути видимим. Витягнутий і
+    невидимий факт неможливо відрізнити від невитягнутого."""
+    from datetime import datetime, timezone
+
+    from livemedcard.dto import Document
+    from livemedcard.layers import l2b_stage2_lora
+
+    client.post("/ingest/samples")
+    state = api_module._sessions[client.cookies[api_module._SESSION_COOKIE]]
+    doc = Document(id="agp", text="# AGP Report", kind="lab_report",
+                   received_at=datetime(2025, 6, 13, tzinfo=timezone.utc))
+    obs = l2b_stage2_lora.to_observations(
+        [{"keyword": "Time CGM Active", "value": "34", "unit": "%", "timestamp": None}],
+        doc, "mom-001", extracted_by="test",
+    )
+    state.card.factstore.add_observations(obs)
+
+    body = client.get("/state").json()
+    uncoded = body["uncoded"]
+    assert [u["keyword"] for u in uncoded] == ["Time CGM Active"]
+    assert uncoded[0]["value"] == 34.0 and uncoded[0]["unit"] == "%"
+    assert uncoded[0]["dated"] is False          # дати в документі не було
+    # і він НЕ породжує сигналу: порівнювати нема з чим
+    assert all("CGM" not in s["detail"] for s in body["signals"])
+
+
 def test_ask_grounded_with_sources(client):
     client.post("/ingest/samples")
     ans = client.post("/ask", json={"question": "Що з нирками?"}).json()

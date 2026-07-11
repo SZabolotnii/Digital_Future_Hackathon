@@ -148,21 +148,27 @@ def _split_value(value: object) -> tuple[Optional[float], Optional[str]]:
     return num, unit
 
 
-def _parse_timestamp(ts: object, fallback: Optional[datetime]) -> Optional[datetime]:
-    """Дата факту з різних форматів; для періоду «A - B» береться КІНЕЦЬ (B)."""
-    s = str(ts).strip()
-    if not s or s.lower() == "not stated":
-        return fallback
+def _parse_timestamp(
+    ts: object, fallback: Optional[datetime]
+) -> tuple[Optional[datetime], bool]:
+    """Дата факту з різних форматів; для періоду «A - B» береться КІНЕЦЬ (B).
+
+    Другий елемент — чи дата справді прочитана з документа. False → повернуто
+    fallback (дата завантаження), і це треба показати, а не видати за виміряну.
+    """
+    s = "" if ts is None else str(ts).strip()
+    if not s or s.lower() in ("not stated", "none", "null"):
+        return fallback, False
     for sep in (" - ", " – ", " — ", " to "):
         if sep in s:
             s = s.split(sep)[-1].strip()
             break
     for fmt in _TS_DATE_FORMATS:
         try:
-            return datetime.strptime(s, fmt).replace(tzinfo=timezone.utc)
+            return datetime.strptime(s, fmt).replace(tzinfo=timezone.utc), True
         except ValueError:
             continue
-    return fallback
+    return fallback, False
 
 
 def extract_facts(summary_text: str, *, url: str | None = None, model: str | None = None) -> list[dict]:
@@ -203,7 +209,7 @@ def to_observations(
         if unit is None:
             raw_unit = str(item.get("unit") or "").strip()
             unit = raw_unit or None
-        eff = _parse_timestamp(item.get("timestamp"), doc.received_at)
+        eff, date_stated = _parse_timestamp(item.get("timestamp"), doc.received_at)
         bridge = _resolve_loinc(keyword)
         coding = (
             [Coding(system=Sys.LOINC, code=bridge[0], display=bridge[1])]
@@ -222,7 +228,10 @@ def to_observations(
                 effectiveDateTime=eff,
                 valueQuantity=Quantity(value=num, unit=unit),
                 provenance=Provenance(
-                    source_doc_id=doc.id, extracted_by=extracted_by, confidence=None
+                    source_doc_id=doc.id,
+                    extracted_by=extracted_by,
+                    confidence=None,
+                    date_stated=date_stated,
                 ),
             )
         )
