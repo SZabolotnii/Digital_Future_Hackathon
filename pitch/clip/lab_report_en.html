@@ -1,0 +1,83 @@
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#fff;color:#14181c;font-family:"Helvetica Neue",Arial,sans-serif;width:960px}
+  .page{padding:46px 54px 40px}
+  .top{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #1a6b5f;padding-bottom:16px}
+  .lab{display:flex;align-items:center;gap:13px}
+  .mark{width:44px;height:44px;border-radius:9px;background:#1a6b5f;color:#fff;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800}
+  .lab h1{font-size:22px;font-weight:800;letter-spacing:-.3px;color:#12433b}
+  .lab .sub{font-size:12.5px;color:#5a6b6a;margin-top:2px}
+  .meta{text-align:right;font-size:12px;color:#5a6b6a;line-height:1.7}
+  .meta b{color:#14181c}
+  h2{font-size:16px;letter-spacing:2px;text-transform:uppercase;color:#12433b;margin:26px 0 14px}
+  .pt{display:grid;grid-template-columns:1fr 1fr;gap:8px 40px;font-size:14px;background:#f3f7f6;border:1px solid #dde8e6;border-radius:8px;padding:16px 20px}
+  .pt div{display:flex;justify-content:space-between;border-bottom:1px dotted #cdd9d7;padding-bottom:5px}
+  .pt span{color:#5a6b6a}.pt b{color:#14181c;font-weight:600}
+  table{width:100%;border-collapse:collapse;margin-top:8px;font-size:14px}
+  thead th{background:#12433b;color:#fff;text-align:left;padding:11px 14px;font-weight:600;font-size:12.5px;letter-spacing:.3px}
+  thead th:nth-child(2),thead th:nth-child(3){text-align:center}
+  tbody td{padding:12px 14px;border-bottom:1px solid #e6edec}
+  tbody td:nth-child(2),tbody td:nth-child(3){text-align:center;font-variant-numeric:tabular-nums}
+  .val{font-weight:700;font-size:16px}
+  .flag{display:inline-block;margin-left:7px;font-size:11px;font-weight:700;color:#c0392b;vertical-align:middle}
+  .ref{color:#5a6b6a;font-variant-numeric:tabular-nums}
+  .name{font-weight:600}
+  .note{font-size:12px;color:#8a9998;margin-top:4px}
+  .sign{display:flex;justify-content:space-between;align-items:flex-end;margin-top:38px;padding-top:16px;border-top:1px solid #e6edec}
+  .sign .who{font-size:13px;color:#5a6b6a;line-height:1.9}
+  .sign .who b{color:#14181c}
+  .stamp{width:118px;height:118px;border:2px solid #9fb8ce;border-radius:50%;color:#5b7fa3;
+    display:flex;align-items:center;justify-content:center;text-align:center;font-size:10px;line-height:1.4;
+    transform:rotate(-8deg);opacity:.85;letter-spacing:.5px}
+  .footer{margin-top:26px;font-size:11px;color:#9fb0af;text-align:center;border-top:1px dashed #dde8e6;padding-top:12px}
+</style>
+<div class="page">
+  <div class="top">
+    <div class="lab">
+      <div class="mark">L</div>
+      <div>
+        <h1>LabExpert Diagnostics</h1>
+        <div class="sub">Clinical Diagnostic Laboratory · Kyiv · lic. AE-000000</div>
+      </div>
+    </div>
+    <div class="meta">
+      Report No. <b>2024-10-15/0412</b><br>
+      Collected: <b>2024-10-15</b><br>
+      Reported: <b>2024-10-16</b>
+    </div>
+  </div>
+
+  <h2>Laboratory Test Report</h2>
+  <div class="pt">
+    <div><span>Patient</span><b>Demonstration sample</b></div>
+    <div><span>Sex</span><b>Female</b></div>
+    <div><span>Age</span><b>70 years</b></div>
+    <div><span>Record No.</span><b>DEMO-001</b></div>
+    <div><span>Referred by</span><b>Family physician</b></div>
+    <div><span>Specimen</span><b>Venous blood</b></div>
+  </div>
+
+  <h2 style="margin-top:24px">Blood Chemistry Panel</h2>
+  <table>
+    <thead>
+      <tr><th>Test</th><th>Result</th><th>Units</th><th>Reference range</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="name">Creatinine</td><td><span class="val">135</span><span class="flag">↑ HIGH</span></td><td>µmol/L</td><td class="ref">44 – 90</td></tr>
+      <tr><td class="name">Potassium (K⁺)</td><td><span class="val">5.1</span></td><td>mmol/L</td><td class="ref">3.5 – 5.1</td></tr>
+      <tr><td class="name">Fasting glucose</td><td><span class="val">6.8</span><span class="flag">↑ HIGH</span></td><td>mmol/L</td><td class="ref">3.9 – 6.1</td></tr>
+      <tr><td class="name">Hemoglobin A1c (HbA1c)</td><td><span class="val">7.6</span><span class="flag">↑ HIGH</span></td><td>%</td><td class="ref">4.0 – 6.0</td></tr>
+    </tbody>
+  </table>
+  <div class="note">↑ — value outside the reference interval. A result is not a diagnosis; interpretation is by a physician.</div>
+
+  <div class="sign">
+    <div class="who">
+      Laboratory physician: <b>signature</b> / O. Kovalenko<br>
+      Head of laboratory: <b>signature</b> / I. Melnyk
+    </div>
+    <div class="stamp">LABEXPERT<br>FOR DOCUMENTS<br>No. 04</div>
+  </div>
+
+  <div class="footer">Synthetic demonstration document. All data is fictional; any resemblance is coincidental.</div>
+</div>
