@@ -50,12 +50,20 @@ class Quantity(BaseModel):
 
 
 class Provenance(BaseModel):
-    """Не-FHIR розширення: звідки взято факт. Живить провенанс-ребра графа."""
+    """Не-FHIR розширення: звідки взято факт. Живить провенанс-ребра графа.
+
+    ``source_doc_id`` обов'язковий — кожен факт має посилатися на документ.
+    ``source_span`` (best-effort) — (start, end) offset у free-text іпостасі того
+    документа (``DocumentReference.content.data``), звідки витягнуто факт; дає
+    span-рівневу прив'язку для точного grounding. None, коли екстрактор не дає
+    позицій (напр. KVT4 з LLM без offset-ів).
+    """
 
     source_doc_id: str
     extracted_by: str = "MedGemma-4B"
     extracted_at: datetime = Field(default_factory=_utcnow)
     confidence: Optional[float] = None
+    source_span: Optional[tuple[int, int]] = None
 
 
 class Attachment(BaseModel):

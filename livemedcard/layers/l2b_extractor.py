@@ -186,6 +186,7 @@ def deterministic_extract(
                     source_doc_id=doc.id,
                     extracted_by=extracted_by,
                     confidence=STUB_CONFIDENCE,
+                    source_span=(match.start(), number_match.end()),
                 ),
             )
         )
@@ -219,13 +220,14 @@ def deterministic_extract(
                     source_doc_id=doc.id,
                     extracted_by=extracted_by,
                     confidence=STUB_CONFIDENCE,
+                    source_span=(match.start(), match.end()),
                 ),
             )
         )
 
     conditions: list[Condition] = []
     seen_cond: set[str] = set()
-    for term, info, _match in _find_vocab_terms(text, vocab.conditions):
+    for term, info, match in _find_vocab_terms(text, vocab.conditions):
         cond_id = _stable_id("cond", doc.id, info.snomed)
         if cond_id in seen_cond:
             continue
@@ -250,6 +252,7 @@ def deterministic_extract(
                     source_doc_id=doc.id,
                     extracted_by=extracted_by,
                     confidence=STUB_CONFIDENCE,
+                    source_span=(match.start(), match.end()),
                 ),
             )
         )
@@ -268,16 +271,31 @@ def deterministic_extract(
 
 
 class StubExtractor:
-    """Детермінований stub-екстрактор: Stage 2 напряму по сирому `doc.text`."""
+    """Детермінований stub-екстрактор: Stage 2 напряму по сирому `doc.text`.
+
+    Сирий текст зберігається як `DocumentReference` (free-text іпостась) — це та
+    сама база, у яку вказують `source_span`-и фактів, і джерело freetext-QA у демо.
+    """
 
     def extract(self, doc: Document, patient_id: str) -> ExtractionResult:
-        return deterministic_extract(doc.text, doc, patient_id)
+        ext = deterministic_extract(doc.text, doc, patient_id)
+        ext.document_reference = _build_docref(
+            doc, doc.text, patient_id,
+            extracted_by="StubExtractor", title=f"raw text: {doc.id}",
+        )
+        return ext
 
 
 def _build_docref(
-    doc: Document, summary_text: str, patient_id: str
+    doc: Document,
+    summary_text: str,
+    patient_id: str,
+    *,
+    extracted_by: str = "MedGemma-Stage1",
+    title: str | None = None,
 ) -> DocumentReference:
-    """FHIR DocumentReference з Stage 1 SGR-summary (free-text іпостась)."""
+    """FHIR DocumentReference з free-text іпостассю (Stage 1 SGR-summary або сирий
+    текст). ``summary_text`` — та база, у яку вказують ``Provenance.source_span``."""
     return DocumentReference(
         id=f"docref-{doc.id}",
         status="current",
@@ -287,11 +305,11 @@ def _build_docref(
         content=Attachment(
             contentType="text/plain",
             data=summary_text,
-            title=f"SGR summary: {doc.id}",
+            title=title or f"SGR summary: {doc.id}",
         ),
         provenance=Provenance(
             source_doc_id=doc.id,
-            extracted_by="MedGemma-Stage1",
+            extracted_by=extracted_by,
             confidence=STUB_CONFIDENCE,
         ),
     )

@@ -103,6 +103,9 @@ flowchart LR
 2. Непрочитане значення маркується як unreadable/null; модель не повинна
    вигадувати число.
 3. Кожен факт має посилання на source_document_id і спосіб отримання.
+   **Реалізовано як інваріант** у `pipeline._assert_provenance`: факт без
+   `source_doc_id` відхиляється на межі екстракції (`ValueError`), тож кожен
+   триплет KV-T гарантовано має документ-джерело й провенанс-ребро графа.
 4. Структурований результат не вважається доведеним фактом, поки його не
    прийняв downstream validator і не збережено з provenance.
 5. Публічна версія не повинна зберігати завантажені зображення або повний текст
@@ -444,7 +447,11 @@ patient isolation, encryption at rest, retention/deletion policy і audit trail.
 ~~~
 
 source_span є опційним у POC, але бажаним для перевірки людиною. Якщо модель
-не може підтвердити span, поле залишається null.
+не може підтвердити span, поле залишається null. **Наскрізно (реалізовано):**
+для детермінованого екстрактора (Stub/TwoStage) span рахується з regex-offset-ів
+і доходить до `Provenance.source_span` → `KVTFact.source_span`, вказуючи у
+збережену free-text іпостась (`DocumentReference.content.data`); для LLM-KVT-
+шляхів (LoRA/NuExtract/OCR Lab) лишається null.
 
 ### 7.2. Provenance
 

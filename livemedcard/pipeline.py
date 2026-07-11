@@ -25,6 +25,26 @@ from .layers.l2b_extractor import Extractor, StubExtractor
 from .stores import FactStore, KnowledgeGraph
 
 
+def _assert_provenance(ext: ExtractionResult) -> None:
+    """Інваріант: кожен витягнутий факт має провенанс із ``source_doc_id``.
+
+    Без цього триплет губить зв'язок із документом — рветься провенанс-ребро графа
+    і майбутній retrieval. Перевіряємо на межі екстракції (не при відновленні зі
+    знімка, де ресурси вже валідовані й можуть бути легасі).
+    """
+    missing = [
+        r.id
+        for r in (*ext.observations, *ext.conditions, *ext.medications)
+        if r.provenance is None or not r.provenance.source_doc_id
+    ]
+    if missing:
+        raise ValueError(
+            "Екстракція без провенансу (source_doc_id) для ресурсів: "
+            f"{', '.join(missing)}. Провенанс обов'язковий — кожен факт має "
+            "посилатися на документ-джерело."
+        )
+
+
 class LiveMedCard:
     """Стан однієї медичної картки пацієнта + прогін документів крізь TRACE."""
 
@@ -92,6 +112,7 @@ class LiveMedCard:
             doc = doc.model_copy(update={"received_at": datetime.now(timezone.utc)})
         self._document_ids.add(doc.id)
         ext = self.extractor.extract(doc, self.patient.id)
+        _assert_provenance(ext)
         self._absorb(ext)
         signals = self.current_signals()
         decision = l3_router.route(signals, ext.mean_confidence, doc.kind)

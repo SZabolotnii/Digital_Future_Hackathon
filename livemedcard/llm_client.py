@@ -10,11 +10,49 @@ import json
 import urllib.error
 import urllib.request
 
-from .config import LMSTUDIO_URL, OCR_MODEL
+from .config import EMBED_MODEL, LMSTUDIO_URL, OCR_MODEL
 
 
 class LLMError(Exception):
     """Помилка виклику локальної LLM (недоступний сервер, порожня відповідь тощо)."""
+
+
+def embeddings(
+    texts: list[str],
+    *,
+    model: str | None = None,
+    base_url: str | None = None,
+    timeout: float = 30.0,
+) -> list[list[float]]:
+    """Embedding-вектори для списку рядків через OpenAI-сумісний `/embeddings`.
+
+    Живить семантичний ретрив Q&A (`retrieval.rank`). Порядок векторів = порядок
+    входу. Лише stdlib — тести мокають `urllib.request.urlopen`.
+    """
+    endpoint = base_url or LMSTUDIO_URL
+    url = f"{endpoint.rstrip('/')}/embeddings"
+    payload = {"model": model or EMBED_MODEL, "input": texts}
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as response:
+            res_data = json.loads(response.read().decode("utf-8"))
+    except urllib.error.URLError as exc:
+        raise LLMError(
+            f"Не вдалося з'єднатися з сервером embeddings за адресою {endpoint}. "
+            f"Помилка: {exc.reason if hasattr(exc, 'reason') else exc}"
+        ) from exc
+    except Exception as exc:
+        raise LLMError(f"Помилка виклику embeddings: {exc}") from exc
+
+    data = res_data.get("data", [])
+    if not data:
+        raise LLMError("Сервер embeddings повернув порожню відповідь (data порожній).")
+    return [d["embedding"] for d in data]
 
 
 def detect_model(base_url: str | None = None) -> str:

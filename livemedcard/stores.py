@@ -36,6 +36,9 @@ class KVTFact(BaseModel):
     unit: Optional[str]
     ts: datetime
     source_doc_id: Optional[str] = None
+    # (start, end) offset у free-text іпостасі документа-джерела, звідки витягнуто
+    # факт (span-рівнева прив'язка для точного grounding). None — коли невідомо.
+    source_span: Optional[tuple[int, int]] = None
 
 
 def _concept_label(cc: Optional[CodeableConcept], fallback: str) -> str:
@@ -66,6 +69,7 @@ def observation_to_kvt(o: Observation) -> Optional[KVTFact]:
         unit=o.valueQuantity.unit,
         ts=o.effectiveDateTime,
         source_doc_id=o.provenance.source_doc_id if o.provenance else None,
+        source_span=o.provenance.source_span if o.provenance else None,
     )
 
 

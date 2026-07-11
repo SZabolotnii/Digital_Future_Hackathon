@@ -60,3 +60,11 @@ STAGE2_MODEL = os.getenv("LMC_STAGE2_MODEL", "medgemma-ft-lora-adapters-q5_k_m")
 NUEXTRACT_URL = os.getenv("LMC_NUEXTRACT_URL", "http://127.0.0.1:1299/v1")
 NUEXTRACT_MODEL = os.getenv("LMC_NUEXTRACT_MODEL", "NuExtract3")
 
+# Семантичний ретрив по free-text summary у Q&A. Дефолт off → лексичне ранжування
+# (offline, CI, демо). On → embedding-косинус через локальний сервер embeddings
+# (OpenAI-сумісний `/embeddings`), з м'яким відкатом на лексику при недоступності.
+SEMANTIC_RETRIEVAL = os.getenv("LMC_SEMANTIC_RETRIEVAL", "").lower() in (
+    "1", "true", "yes", "on",
+)
+EMBED_MODEL = os.getenv("LMC_EMBED_MODEL", "nomic-embed-text")
+

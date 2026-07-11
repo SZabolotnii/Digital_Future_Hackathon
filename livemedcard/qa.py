@@ -6,7 +6,6 @@ LLM тут НЕ робить висновків про безпеку — від
 """
 from __future__ import annotations
 
-import re
 from typing import Optional
 
 from pydantic import BaseModel, Field
@@ -14,7 +13,24 @@ from pydantic import BaseModel, Field
 from .dto import Signal
 from .lang import Lang, detect_lang
 from .reference import range_for
+from .retrieval import Embedder, chunk, rank
 from .stores import FactStore, KnowledgeGraph
+
+
+def _config_embed() -> Optional[Embedder]:
+    """Embedder із конфігу для семантичного ретриву, або None (лексичний дефолт).
+
+    Ліниві імпорти: коли `SEMANTIC_RETRIEVAL` вимкнено (CI/демо), llm_client не
+    імпортується і мережа не чіпається.
+    """
+    from .config import SEMANTIC_RETRIEVAL
+
+    if not SEMANTIC_RETRIEVAL:
+        return None
+    from . import llm_client
+    from .config import EMBED_MODEL
+
+    return lambda texts: llm_client.embeddings(texts, model=EMBED_MODEL)
 
 # Ключові слова питання → LOINC показника. Кожен термін мапиться на СВІЙ аналіт:
 # «глікований»/«hba1c» → HbA1c; «гемоглобін» → звичайний Hb; «цукор»/«глюкоза» →
@@ -113,11 +129,14 @@ class QA:
         graph: KnowledgeGraph,
         signals: Optional[list[Signal]] = None,
         sex: Optional[str] = None,
+        embed: Optional[Embedder] = None,
     ) -> None:
         self.factstore = factstore
         self.graph = graph
         self.signals = signals or []
         self.sex = sex
+        # None → лексичний ретрив; інакше — переданий/конфігурований семантичний.
+        self._embed = embed
 
     def ask(self, question: str) -> Answer:
         q = question.lower()
@@ -182,35 +201,27 @@ class QA:
         return Answer(text=" ".join(parts), sources=sources)
 
     def _answer_freetext(self, q: str, lang: Lang) -> Optional[Answer]:
-        """Пошук у Stage 1 summary (free-text іпостась) за токенами питання.
+        """Ранжований ретрив по free-text іпостасі (Stage 1 summary / сирий текст).
 
-        Повертає рядки summary, що містять значущі слова питання, з посиланням на
-        документ-джерело. None, якщо збігів немає (тоді — загальний fallback).
+        Розбиває тексти документів на пасажі (`retrieval.chunk`) і повертає
+        найрелевантніші до питання з посиланням на документ-джерело. Дефолт —
+        лексичне ранжування; семантичне — коли сконфігуровано embedder. None, якщо
+        збігів немає (тоді — загальний fallback).
         """
-        tokens = [w for w in re.findall(r"\w+", q.lower()) if len(w) >= 4]
-        if not tokens:
-            return None
-        hits: list[str] = []
-        sources: list[str] = []
+        passages = []
         for nid in self.graph.nodes_of_type("Document"):
             text = self.graph.g.nodes[nid].get("text") or ""
-            doc_id = nid.split("/", 1)[-1]
-            for line in text.splitlines():
-                stripped = line.strip()
-                if not stripped or stripped.startswith("##") or stripped == "not stated":
-                    continue
-                low = stripped.lower()
-                if any(t in low for t in tokens):
-                    hits.append(stripped)
-                    sources.append(doc_id)
-                    if len(hits) >= 5:  # не заливати відповідь
-                        break
-            if len(hits) >= 5:
-                break
+            passages.extend(chunk(nid.split("/", 1)[-1], text))
+        if not passages:
+            return None
+        embed = self._embed if self._embed is not None else _config_embed()
+        hits = rank(q, passages, top_k=5, embed=embed)
         if not hits:
             return None
-        text = _MSG[lang]["freetext_header"] + "\n" + "\n".join(f"— {h}" for h in hits)
-        return Answer(text=text, sources=_unique(sources))
+        text = _MSG[lang]["freetext_header"] + "\n" + "\n".join(
+            f"— {h.text}" for h in hits
+        )
+        return Answer(text=text, sources=_unique(h.doc_id for h in hits))
 
     def _answer_medications(self, lang: Lang) -> Answer:
         m = _MSG[lang]

@@ -74,11 +74,14 @@ def test_deterministic_extract_no_date_falls_back_to_received_at():
     assert ext.observations[0].effectiveDateTime == _RECEIVED
 
 
-def test_stub_extractor_unchanged_behaviour():
-    """StubExtractor лишається тонкою обгорткою над deterministic_extract."""
+def test_stub_extractor_stores_raw_text_as_free_text():
+    """StubExtractor тепер зберігає сирий текст як free-text іпостась —
+    базу, у яку вказують source_span-и, і джерело freetext-QA у демо."""
     ext = StubExtractor().extract(_doc("креатинін 95"), "mom-001")
     assert ext.observations[0].effectiveDateTime == _RECEIVED
-    assert ext.document_reference is None
+    assert ext.document_reference is not None
+    assert ext.document_reference.content.data == "креатинін 95"
+    assert ext.document_reference.provenance.source_doc_id == "d1"
 
 
 # ── TwoStageExtractor E2E (мок LLM) ──────────────────────────────────────────
