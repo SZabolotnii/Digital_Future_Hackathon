@@ -448,6 +448,7 @@ const I18N = {
     toastSamples:'Demo card loaded', toastReset:'Card reset',
     toastExport:'FHIR bundle downloaded', toastNeedInput:'Enter text or choose a photo',
     ocrReading:'Reading (OCR)…', processing:'Processing…',
+    toastOcrWait:'Reading the photo on the cloud OCR lab — up to ~90 s',
     toastEscalated:'Processed · escalated to human', toastAuto:'Processed · auto',
     toastNoFacts:'Document saved, but no measurements were extracted',
     errorPrefix:'Error: ', selected:name=>`Selected: ${name}`,
@@ -491,6 +492,7 @@ const I18N = {
     toastSamples:'Демо-картку завантажено', toastReset:'Картку скинуто',
     toastExport:'FHIR Bundle завантажено', toastNeedInput:'Введіть текст або виберіть фото',
     ocrReading:'Зчитування (OCR)…', processing:'Опрацювання…',
+    toastOcrWait:'Фото читає хмарний OCR-лаб — до ~90 с',
     toastEscalated:'Оброблено · ескалація до людини', toastAuto:'Оброблено · авто',
     toastNoFacts:'Документ збережено, але жодного показника не витягнуто',
     errorPrefix:'Помилка: ', selected:name=>`Вибрано: ${name}`,
@@ -793,6 +795,9 @@ $('#add-submit').onclick=async()=>{
     let rep;
     if(file){
       btn.textContent=t.ocrReading;
+      // Хмарний OCR — це ~70–90 с. Без попередження мовчазне очікування читається
+      // як зависання (і саме так виглядає для журі, що клікне демо самостійно).
+      toast(t.toastOcrWait);
       const base64=await new Promise((res,rej)=>{const rd=new FileReader();rd.onload=()=>res(rd.result);rd.onerror=rej;rd.readAsDataURL(file);});
       rep=await api('/ingest/image',{method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({image_base64:base64,kind:$('#add-kind').value})});
