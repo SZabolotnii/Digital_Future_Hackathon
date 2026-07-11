@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="uk">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>LiveMedCard — жива медична картка</title>
+<title>LiveMedCard — Living Medical Card</title>
 <style>
   :root{
     /* dark clinical (default) */
@@ -77,6 +77,12 @@
   .theme-btn{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--panel);
     color:var(--muted);cursor:pointer;display:grid;place-items:center;transition:.15s}
   .theme-btn:hover{color:var(--accent);border-color:var(--accent)}
+  .langsw{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;height:38px}
+  .langsw button{border:none;background:var(--panel);color:var(--muted);font:700 12px/1 var(--mono);
+    padding:0 12px;cursor:pointer;transition:.15s}
+  .langsw button+button{border-left:1px solid var(--line)}
+  .langsw button:hover{color:var(--accent)}
+  .langsw button.active{background:var(--accent);color:var(--accent-ink)}
 
   /* pulse line */
   .pulse{height:34px;margin:12px 0 2px;overflow:hidden;opacity:.9}
@@ -233,12 +239,16 @@
       </div>
       <div>
         <h1>LiveMedCard</h1>
-        <span class="sub">жива медична картка · архітектура TRACE</span>
+        <span class="sub" id="subtitle">living medical card · TRACE architecture</span>
       </div>
     </div>
     <div class="spacer"></div>
-    <div class="patient" id="patient">картка не завантажена</div>
-    <button class="theme-btn" id="theme" title="Тема" aria-label="Перемкнути тему">
+    <div class="patient" id="patient">no card loaded</div>
+    <div class="langsw" id="langsw" role="group" aria-label="Language">
+      <button type="button" data-lang="en" id="lang-en">EN</button>
+      <button type="button" data-lang="ua" id="lang-ua">UA</button>
+    </div>
+    <button class="theme-btn" id="theme" title="Theme" aria-label="Toggle theme">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M4 12H2M22 12h-2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/></svg>
     </button>
   </header>
@@ -253,69 +263,190 @@
   <div class="stats" id="stats"></div>
 
   <div class="toolbar">
-    <button class="primary" id="btn-samples">Завантажити демо-картку</button>
-    <button class="ghost" id="btn-add">+ Додати документ</button>
-    <button class="ghost" id="btn-export">Експорт FHIR</button>
-    <button class="ghost" id="btn-reset">Скинути</button>
+    <button class="primary" id="btn-samples">Load demo card</button>
+    <button class="ghost" id="btn-add">+ Add document</button>
+    <button class="ghost" id="btn-export">Export FHIR</button>
+    <button class="ghost" id="btn-reset">Reset</button>
   </div>
 
   <div class="add" id="add-form">
-    <textarea id="add-text" placeholder="Вставте текст документа, напр.: «Креатинін 121 µmol/L. Призначено: аспірин 100 мг на добу.»"></textarea>
-    <div class="or">— або завантажте фото (OCR) —</div>
+    <textarea id="add-text" placeholder="Paste document text, e.g.: “Creatinine 121 µmol/L. Prescribed: aspirin 100 mg daily.”"></textarea>
+    <div class="or" id="or-photo">— or upload a photo (OCR) —</div>
     <label class="dropzone" id="dropzone">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:5px;color:var(--accent)"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-      <span id="dropzone-text">Перетягніть фото сюди або натисніть для вибору</span>
+      <span id="dropzone-text">Drag a photo here or click to choose</span>
       <input type="file" id="add-image" accept="image/*" style="display:none">
     </label>
     <div style="display:flex;gap:9px;flex-wrap:wrap">
       <select id="add-kind">
-        <option value="discharge_summary">Виписний епікриз</option>
-        <option value="lab_report">Лабораторний звіт</option>
-        <option value="prescription">Рецепт</option>
-        <option value="note">Нотатка</option>
+        <option value="discharge_summary" id="opt-discharge">Discharge summary</option>
+        <option value="lab_report" id="opt-lab">Lab report</option>
+        <option value="prescription" id="opt-rx">Prescription</option>
+        <option value="note" id="opt-note">Note</option>
       </select>
-      <button class="primary" id="add-submit">Обробити документ</button>
+      <button class="primary" id="add-submit">Process document</button>
     </div>
   </div>
 
   <div class="grid" style="margin-top:18px">
     <section class="panel d1">
-      <h2>Таймлайн показників <span class="tag" id="bi-tag" style="display:none">білінгвально · UA + EN</span></h2>
-      <div class="series" id="series"><div class="empty">Даних ще немає. Натисніть «Завантажити демо-картку».</div></div>
+      <h2><span id="h-series">Metrics timeline</span> <span class="tag" id="bi-tag" style="display:none">bilingual · UA + EN</span></h2>
+      <div class="series" id="series"><div class="empty">No data yet. Click “Load demo card”.</div></div>
     </section>
 
     <div class="right">
       <section class="panel d2">
-        <h2>Безпека — шар TRACE</h2>
+        <h2><span id="h-safety">Safety — TRACE layer</span></h2>
         <div id="decision"></div>
-        <div id="signals"><div class="empty">Сигналів немає.</div></div>
+        <div id="signals"><div class="empty">No signals.</div></div>
       </section>
       <section class="panel d3">
-        <h2>Призначені ліки</h2>
-        <div class="meds" id="meds"><div class="empty">Ліків немає.</div></div>
+        <h2><span id="h-meds">Prescribed medications</span></h2>
+        <div class="meds" id="meds"><div class="empty">No medications.</div></div>
       </section>
     </div>
   </div>
 
   <section class="panel qa" style="margin-top:18px">
-    <h2>Запитати картку <span class="tag">grounded · з посиланням на джерело</span></h2>
+    <h2><span id="h-qa">Ask the card</span> <span class="tag" id="qa-tag">grounded · with source reference</span></h2>
     <div class="log" id="log"></div>
     <div class="askrow">
-      <input id="q" placeholder="Напр.: Що з нирками за останній рік?" autocomplete="off">
-      <button class="primary" id="ask">Спитати</button>
+      <input id="q" placeholder="e.g.: What about kidneys over the last year?" autocomplete="off">
+      <button class="primary" id="ask">Ask</button>
     </div>
     <div class="chips" id="chips"></div>
   </section>
 
-  <footer>Прототип для <b>Digital Future Hackathon</b> · ніша Aging &amp; Longevity.<br>
-    Система структурує факти й показує динаміку — <b>не ставить діагнозів і не призначає лікування</b>.</footer>
+  <footer id="site-footer">Prototype for <b>Digital Future Hackathon</b> · Aging &amp; Longevity track.<br>
+    The system structures facts and shows trends — <b>it does not diagnose or prescribe treatment</b>.</footer>
 </div>
 <div class="toast" id="toast"></div>
 
 <script>
 const $ = s => document.querySelector(s);
 const SEV = {critical:'var(--critical)',major:'var(--major)',moderate:'var(--moderate)',info:'var(--info)'};
-const SEV_UK = {critical:'критичний',major:'високий',moderate:'помірний',info:'інфо'};
+
+/* ── i18n (UI chrome only — backend-generated safety text stays in the
+   source document's language; translating clinical facts algorithmically
+   would risk misrepresenting them) ─────────────────────────────────── */
+const LANG_KEY='lmc_lang';
+let LANG = localStorage.getItem(LANG_KEY) || 'en';
+let lastState = null;
+
+const I18N = {
+  en: {
+    htmlLang:'en', title:'LiveMedCard — Living Medical Card',
+    subtitle:'living medical card · TRACE architecture',
+    patientNone:'no card loaded',
+    patient:(id,docs)=>`patient <b>${id}</b> · documents <b>${docs}</b>`,
+    themeTitle:'Theme', themeAria:'Toggle theme',
+    btnSamples:'Load demo card', btnAdd:'+ Add document',
+    btnExport:'Export FHIR', btnReset:'Reset',
+    addPlaceholder:'Paste document text, e.g.: “Creatinine 121 µmol/L. Prescribed: aspirin 100 mg daily.”',
+    orPhoto:'— or upload a photo (OCR) —',
+    dropzoneDefault:'Drag a photo here or click to choose',
+    optDischarge:'Discharge summary', optLab:'Lab report', optRx:'Prescription', optNote:'Note',
+    addSubmit:'Process document',
+    hSeries:'Metrics timeline', biTag:'bilingual · UA + EN',
+    seriesEmpty:'No data yet. Click “Load demo card”.',
+    hSafety:'Safety — TRACE layer',
+    signalsEmpty:'Values in range, no dangerous interactions found.',
+    hMeds:'Prescribed medications', medsEmpty:'No medications.',
+    hQa:'Ask the card', qaTag:'grounded · with source reference',
+    qPlaceholder:'e.g.: What about kidneys over the last year?', ask:'Ask',
+    footer1:'Prototype for <b>Digital Future Hackathon</b> · Aging &amp; Longevity track.',
+    footer2:'The system structures facts and shows trends — <b>it does not diagnose or prescribe treatment</b>.',
+    statMetrics:'metrics tracked', statMeasurements:'measurements on timeline',
+    statSignals:'safety signals', statLangs:'document languages',
+    statusOk:'normal', statusHigh:'above range', statusLow:'below range',
+    range:'range', meas:n=>`${n} meas.`,
+    escalate:'escalated to human (L4)', auto:'automatic processing',
+    sevLabel:{critical:'critical',major:'high',moderate:'moderate',info:'info'},
+    toastSamples:'Demo card loaded', toastReset:'Card reset',
+    toastExport:'FHIR bundle downloaded', toastNeedInput:'Enter text or choose a photo',
+    ocrReading:'Reading (OCR)…', processing:'Processing…',
+    toastEscalated:'Processed · escalated to human', toastAuto:'Processed · auto',
+    errorPrefix:'Error: ', selected:name=>`Selected: ${name}`,
+    chips:['What about kidneys over the last year?','What was potassium?',
+      'What medications and any interactions?','What about HbA1c?'],
+  },
+  ua: {
+    htmlLang:'uk', title:'LiveMedCard — жива медична картка',
+    subtitle:'жива медична картка · архітектура TRACE',
+    patientNone:'картка не завантажена',
+    patient:(id,docs)=>`пацієнт <b>${id}</b> · документів <b>${docs}</b>`,
+    themeTitle:'Тема', themeAria:'Перемкнути тему',
+    btnSamples:'Завантажити демо-картку', btnAdd:'+ Додати документ',
+    btnExport:'Експорт FHIR', btnReset:'Скинути',
+    addPlaceholder:'Вставте текст документа, напр.: «Креатинін 121 µmol/L. Призначено: аспірин 100 мг на добу.»',
+    orPhoto:'— або завантажте фото (OCR) —',
+    dropzoneDefault:'Перетягніть фото сюди або натисніть для вибору',
+    optDischarge:'Виписний епікриз', optLab:'Лабораторний звіт', optRx:'Рецепт', optNote:'Нотатка',
+    addSubmit:'Обробити документ',
+    hSeries:'Таймлайн показників', biTag:'білінгвально · UA + EN',
+    seriesEmpty:'Даних ще немає. Натисніть «Завантажити демо-картку».',
+    hSafety:'Безпека — шар TRACE',
+    signalsEmpty:'Показники в межах, небезпечних взаємодій не виявлено.',
+    hMeds:'Призначені ліки', medsEmpty:'Ліків немає.',
+    hQa:'Запитати картку', qaTag:'grounded · з посиланням на джерело',
+    qPlaceholder:'Напр.: Що з нирками за останній рік?', ask:'Спитати',
+    footer1:'Прототип для <b>Digital Future Hackathon</b> · ніша Aging &amp; Longevity.',
+    footer2:'Система структурує факти й показує динаміку — <b>не ставить діагнозів і не призначає лікування</b>.',
+    statMetrics:'показників у динаміці', statMeasurements:'вимірювань на таймлайні',
+    statSignals:'сигналів безпеки', statLangs:'мови документів',
+    statusOk:'у нормі', statusHigh:'вище норми', statusLow:'нижче норми',
+    range:'норма', meas:n=>`${n} вимір.`,
+    escalate:'ескалація до людини (L4)', auto:'автоматична обробка',
+    sevLabel:{critical:'критичний',major:'високий',moderate:'помірний',info:'інфо'},
+    toastSamples:'Демо-картку завантажено', toastReset:'Картку скинуто',
+    toastExport:'FHIR Bundle завантажено', toastNeedInput:'Введіть текст або виберіть фото',
+    ocrReading:'Зчитування (OCR)…', processing:'Опрацювання…',
+    toastEscalated:'Оброблено · ескалація до людини', toastAuto:'Оброблено · авто',
+    errorPrefix:'Помилка: ', selected:name=>`Вибрано: ${name}`,
+    chips:['Що з нирками за останній рік?','Який був калій?',
+      'Які ліки приймає і чи є взаємодії?','Що з HbA1c?'],
+  },
+};
+
+function buildChips(){
+  $('#chips').innerHTML = I18N[LANG].chips.map(c=>`<button class="chip">${c}</button>`).join('');
+  $('#chips').querySelectorAll('.chip').forEach(b=>b.onclick=()=>ask(b.textContent));
+}
+
+function applyLang(lang){
+  LANG = lang; localStorage.setItem(LANG_KEY, lang);
+  const t = I18N[lang];
+  document.documentElement.lang = t.htmlLang;
+  document.title = t.title;
+  $('#lang-en').classList.toggle('active', lang==='en');
+  $('#lang-ua').classList.toggle('active', lang==='ua');
+  $('#subtitle').textContent = t.subtitle;
+  if(!lastState || !lastState.document_count) $('#patient').textContent = t.patientNone;
+  $('#theme').title = t.themeTitle; $('#theme').setAttribute('aria-label', t.themeAria);
+  $('#btn-samples').textContent = t.btnSamples;
+  $('#btn-add').textContent = t.btnAdd;
+  $('#btn-export').textContent = t.btnExport;
+  $('#btn-reset').textContent = t.btnReset;
+  $('#add-text').placeholder = t.addPlaceholder;
+  $('#or-photo').textContent = t.orPhoto;
+  if(!fileInput.files.length) $('#dropzone-text').textContent = t.dropzoneDefault;
+  $('#opt-discharge').textContent = t.optDischarge;
+  $('#opt-lab').textContent = t.optLab;
+  $('#opt-rx').textContent = t.optRx;
+  $('#opt-note').textContent = t.optNote;
+  $('#add-submit').textContent = t.addSubmit;
+  $('#h-series').textContent = t.hSeries;
+  $('#bi-tag').textContent = t.biTag;
+  $('#h-safety').textContent = t.hSafety;
+  $('#h-meds').textContent = t.hMeds;
+  $('#h-qa').textContent = t.hQa;
+  $('#qa-tag').textContent = t.qaTag;
+  $('#q').placeholder = t.qPlaceholder;
+  $('#ask').textContent = t.ask;
+  $('#site-footer').innerHTML = `${t.footer1}<br>${t.footer2}`;
+  buildChips();
+  if(lastState) render(lastState);
+}
 
 /* theme toggle (respects OS by default; stamps data-theme on click) */
 (function(){
@@ -326,6 +457,11 @@ const SEV_UK = {critical:'критичний',major:'високий',moderate:'�
     root.setAttribute('data-theme', cur==='dark'?'light':'dark');
   };
 })();
+
+$('#langsw').addEventListener('click', e=>{
+  const btn=e.target.closest('button[data-lang]'); if(!btn) return;
+  if(btn.dataset.lang!==LANG) applyLang(btn.dataset.lang);
+});
 
 function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');
   clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2600);}
@@ -373,10 +509,11 @@ function sparkline(points, low, high){
 }
 
 function statusOf(s){
+  const t=I18N[LANG];
   const v=s.points.at(-1).value;
-  if(s.high!=null && v>s.high) return ['вище норми','high'];
-  if(s.low!=null && v<s.low) return ['нижче норми','low'];
-  if(s.low!=null||s.high!=null) return ['у нормі','ok'];
+  if(s.high!=null && v>s.high) return [t.statusHigh,'high'];
+  if(s.low!=null && v<s.low) return [t.statusLow,'low'];
+  if(s.low!=null||s.high!=null) return [t.statusOk,'ok'];
   return ['',''];
 }
 function trendOf(s){
@@ -389,10 +526,10 @@ function trendOf(s){
 }
 
 function render(st){
+  lastState = st;
+  const t=I18N[LANG];
   const docs=st.document_count||0;
-  $('#patient').innerHTML = docs
-    ? `пацієнт <b>${st.patient.id}</b> · документів <b>${docs}</b>`
-    : 'картка не завантажена';
+  $('#patient').innerHTML = docs ? t.patient(st.patient.id, docs) : t.patientNone;
 
   // stat strip
   const nMeas=st.series.reduce((a,s)=>a+s.points.length,0);
@@ -402,18 +539,18 @@ function render(st){
   $('#bi-tag').style.display = bilingual?'inline-block':'none';
   const nAlerts=st.signals.length;
   $('#stats').innerHTML = docs ? `
-    <div class="stat"><div class="n">${st.series.length}</div><div class="l">показників у динаміці</div></div>
-    <div class="stat"><div class="n">${nMeas}</div><div class="l">вимірювань на таймлайні</div></div>
-    <div class="stat alert"><div class="n">${nAlerts}</div><div class="l">сигналів безпеки</div></div>
-    <div class="stat bi"><div class="n">${bilingual?'UA+EN':(langs.has('en')?'EN':'UA')}</div><div class="l">мови документів</div></div>
+    <div class="stat"><div class="n">${st.series.length}</div><div class="l">${t.statMetrics}</div></div>
+    <div class="stat"><div class="n">${nMeas}</div><div class="l">${t.statMeasurements}</div></div>
+    <div class="stat alert"><div class="n">${nAlerts}</div><div class="l">${t.statSignals}</div></div>
+    <div class="stat bi"><div class="n">${bilingual?'UA+EN':(langs.has('en')?'EN':'UA')}</div><div class="l">${t.statLangs}</div></div>
   ` : '';
 
   // series
   const sEl=$('#series');
-  if(!st.series.length){sEl.innerHTML='<div class="empty">Даних ще немає. Натисніть «Завантажити демо-картку».</div>';}
+  if(!st.series.length){sEl.innerHTML=`<div class="empty">${t.seriesEmpty}</div>`;}
   else{sEl.innerHTML=st.series.map((s,idx)=>{
     const last=s.points.at(-1);const [txt,cls]=statusOf(s);const [ttxt,tcls]=trendOf(s);
-    const ref=(s.low!=null&&s.high!=null)?`норма ${s.low}–${s.high} ${s.unit||''}`:'';
+    const ref=(s.low!=null&&s.high!=null)?`${t.range} ${s.low}–${s.high} ${s.unit||''}`:'';
     const srcs=[...new Set(s.points.map(p=>p.source).filter(Boolean))];
     const langBadges=[...new Set(srcs.map(langOf))].map(l=>`<span class="lang ${l}">${l.toUpperCase()}</span>`).join('');
     return `<div class="metric" style="animation-delay:${(idx*.05).toFixed(2)}s">
@@ -424,26 +561,26 @@ function render(st){
       </div>
       <div class="meta"><span class="ref">${ref}</span><span class="status ${cls}">${txt}</span></div>
       ${sparkline(s.points,s.low,s.high)}
-      <div class="src">${langBadges}<span>${s.points.length} вимір. · ${srcs.join(', ')||'—'}</span></div>
+      <div class="src">${langBadges}<span>${t.meas(s.points.length)} · ${srcs.join(', ')||'—'}</span></div>
     </div>`;}).join('');}
 
   // decision
   const d=st.decision;const dEl=$('#decision');
   dEl.className='decision '+(d.escalate?'escalate':'auto');
   dEl.innerHTML=`<span class="badge" style="background:${d.escalate?'var(--major)':'var(--ok)'}">
-      ${d.escalate?'ескалація до людини (L4)':'автоматична обробка'}</span>
+      ${d.escalate?t.escalate:t.auto}</span>
     <span class="t">${d.route_to}</span>
     <ul class="reasons">${d.reasons.map(r=>`<li>${r}</li>`).join('')}</ul>`;
 
   // signals — interaction/critical get a pulsing dot
   const sig=$('#signals');
-  if(!st.signals.length){sig.innerHTML='<div class="empty">Показники в межах, небезпечних взаємодій не виявлено.</div>';}
+  if(!st.signals.length){sig.innerHTML=`<div class="empty">${t.signalsEmpty}</div>`;}
   else{sig.innerHTML=st.signals.map(x=>{
     const hot=(x.kind==='interaction'||x.severity==='critical'||x.severity==='major');
     const color=SEV[x.severity]||'var(--info)';
     return `<div class="sig ${hot?'hot':''}">
       <span class="dot" style="background:${color};color:${color}"></span>
-      <span><span class="k">${x.layer} · ${x.kind} · ${SEV_UK[x.severity]||x.severity}</span>
+      <span><span class="k">${x.layer} · ${x.kind} · ${t.sevLabel[x.severity]||x.severity}</span>
       <span class="d">${x.detail}</span></span></div>`;}).join('');}
 
   // meds — flag those named in an interaction
@@ -452,10 +589,10 @@ function render(st){
   m.innerHTML=st.medications.length?st.medications.map(n=>{
     const flagged=interText.includes(n.toLowerCase());
     return `<span class="pill ${flagged?'flag':''}">${n}${flagged?'<span class="warn">⚠</span>':''}</span>`;
-  }).join(''):'<div class="empty">Ліків немає.</div>';
+  }).join(''):`<div class="empty">${t.medsEmpty}</div>`;
 }
 
-async function refresh(){try{render(await api('/state'));}catch(e){toast('Помилка: '+e.message);}}
+async function refresh(){try{render(await api('/state'));}catch(e){toast(I18N[LANG].errorPrefix+e.message);}}
 
 async function ask(q){
   q=(q||$('#q').value).trim(); if(!q)return;
@@ -463,63 +600,62 @@ async function ask(q){
   log.insertAdjacentHTML('beforeend',`<div class="bubble q">${q}</div>`);
   $('#q').value='';log.scrollTop=log.scrollHeight;
   try{const a=await api('/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q})});
-    const src=a.sources&&a.sources.length?`<span class="src">джерела: ${a.sources.join(', ')}</span>`:'';
+    const src=a.sources&&a.sources.length?`<span class="src">${a.sources.join(', ')}</span>`:'';
     log.insertAdjacentHTML('beforeend',`<div class="bubble a">${a.text}${src}</div>`);
     log.scrollTop=log.scrollHeight;
-  }catch(e){toast('Помилка: '+e.message);}
+  }catch(e){toast(I18N[LANG].errorPrefix+e.message);}
 }
 
-$('#btn-samples').onclick=async()=>{await api('/ingest/samples',{method:'POST'});await refresh();toast('Демо-картку завантажено');};
-$('#btn-reset').onclick=async()=>{await api('/reset',{method:'POST'});$('#log').innerHTML='';await refresh();toast('Картку скинуто');};
+$('#btn-samples').onclick=async()=>{await api('/ingest/samples',{method:'POST'});await refresh();toast(I18N[LANG].toastSamples);};
+$('#btn-reset').onclick=async()=>{await api('/reset',{method:'POST'});$('#log').innerHTML='';await refresh();toast(I18N[LANG].toastReset);};
 $('#btn-export').onclick=async()=>{
   const b=await api('/export');
   const blob=new Blob([JSON.stringify(b,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');a.href=url;a.download='livemedcard_fhir_bundle.json';
   document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
-  toast('FHIR Bundle завантажено');
+  toast(I18N[LANG].toastExport);
 };
 $('#btn-add').onclick=()=>$('#add-form').classList.toggle('show');
 
 const fileInput=$('#add-image'), dz=$('#dropzone');
-fileInput.onchange=e=>{const f=e.target.files[0];if(f){$('#dropzone-text').textContent='Вибрано: '+f.name;$('#add-text').value='';}};
+fileInput.onchange=e=>{const f=e.target.files[0];if(f){$('#dropzone-text').textContent=I18N[LANG].selected(f.name);$('#add-text').value='';}};
 dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('dragover');});
 dz.addEventListener('dragleave',()=>dz.classList.remove('dragover'));
 dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('dragover');
   if(e.dataTransfer.files.length){fileInput.files=e.dataTransfer.files;
-    $('#dropzone-text').textContent='Вибрано: '+e.dataTransfer.files[0].name;$('#add-text').value='';}});
+    $('#dropzone-text').textContent=I18N[LANG].selected(e.dataTransfer.files[0].name);$('#add-text').value='';}});
 
 $('#add-submit').onclick=async()=>{
+  const t=I18N[LANG];
   const text=$('#add-text').value.trim(), file=fileInput.files[0];
-  if(!text&&!file){toast('Введіть текст або виберіть фото');return;}
+  if(!text&&!file){toast(t.toastNeedInput);return;}
   const btn=$('#add-submit'), orig=btn.textContent; btn.disabled=true;
   try{
     let rep;
     if(file){
-      btn.textContent='Зчитування (OCR)…';
+      btn.textContent=t.ocrReading;
       const base64=await new Promise((res,rej)=>{const rd=new FileReader();rd.onload=()=>res(rd.result);rd.onerror=rej;rd.readAsDataURL(file);});
       rep=await api('/ingest/image',{method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({image_base64:base64,kind:$('#add-kind').value})});
     }else{
-      btn.textContent='Опрацювання…';
+      btn.textContent=t.processing;
       rep=await api('/ingest',{method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({id:'doc-'+Date.now(),text,kind:$('#add-kind').value})});
     }
     $('#add-text').value='';fileInput.value='';
-    $('#dropzone-text').textContent='Перетягніть фото сюди або натисніть для вибору';
+    $('#dropzone-text').textContent=t.dropzoneDefault;
     $('#add-form').classList.remove('show');
     await refresh();
-    toast(rep.decision.escalate?'Оброблено · ескалація до людини':'Оброблено · авто');
-  }catch(e){toast('Помилка: '+e.message);}
+    toast(rep.decision.escalate?t.toastEscalated:t.toastAuto);
+  }catch(e){toast(t.errorPrefix+e.message);}
   finally{btn.disabled=false;btn.textContent=orig;}
 };
 
 $('#ask').onclick=()=>ask();
 $('#q').addEventListener('keydown',e=>{if(e.key==='Enter')ask();});
-const CHIPS=['Що з нирками за останній рік?','Який був калій?','Які ліки приймає і чи є взаємодії?','Що з HbA1c?'];
-$('#chips').innerHTML=CHIPS.map(c=>`<button class="chip">${c}</button>`).join('');
-$('#chips').querySelectorAll('.chip').forEach(b=>b.onclick=()=>ask(b.textContent));
 
+applyLang(LANG);
 refresh();
 </script>
 </body>
