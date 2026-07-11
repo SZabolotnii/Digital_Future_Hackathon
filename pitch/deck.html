@@ -160,6 +160,14 @@
   .contact .clinks{font-family:var(--mono);font-size:14.5px;color:var(--muted);letter-spacing:.01em}
   .contact .clinks b{color:var(--accent);font-weight:600}
 
+  /* problem proof-stats (slide 1) */
+  .pstats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:8px}
+  .pstat{background:var(--panel-2);border:1px solid var(--line-soft);border-radius:12px;padding:15px 18px}
+  .pstat .v{font-size:30px;font-weight:800;color:var(--accent);letter-spacing:-.01em;line-height:1;font-variant-numeric:tabular-nums}
+  .pstat .l{font-size:13.5px;line-height:1.32;color:var(--muted);margin-top:8px}
+  .psrc{font-family:var(--mono);font-size:11.5px;line-height:1.5;color:var(--muted-2);margin-top:10px;letter-spacing:.01em}
+  .psrc b{color:var(--muted);font-weight:600}
+
   /* TRACE architecture ribbon (L1–L4) */
   .trace{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
   .tlvl{background:var(--panel-2);border:1px solid var(--line-soft);border-radius:12px;padding:13px 15px;
@@ -207,6 +215,12 @@
       </svg>
       <div class="herohook">Ваша мама приймає 7 препаратів від 4 лікарів.<br>Жоден не бачить призначень інших.</div>
       <div class="herosub"><b>Небезпечну взаємодію помітять уже в лікарні.</b> LiveMedCard помічає її сьогодні — вдома.</div>
+      <div class="pstats">
+        <div class="pstat"><div class="v">&gt;40%</div><div class="l">людей 65+ приймають 5+ ліків (поліпрагмазія)</div></div>
+        <div class="pstat"><div class="v">10–19%</div><div class="l">госпіталізацій літніх — через побічні реакції на ліки</div></div>
+        <div class="pstat"><div class="v">~70%</div><div class="l">із них попереджувані — саме те, що ловить детермінований шар</div></div>
+      </div>
+      <div class="psrc">США/ЄС: <b>CDC·NCHS</b> · <b>Age &amp; Ageing 2025 (Oxford)</b> · <b>Howard 2007 (BJCP)</b> — топ причин: антиагрегант (аспірин) + антикоагулянт (варфарин) = <b>саме комбінація з нашого демо</b></div>
     </div>
     <div class="bot">
       <span class="niche">Сергій Заболотній · д.т.н., проф.</span>
@@ -260,15 +274,15 @@
         </div>
         <div>
           <div class="beats">
-            <div class="beat"><div class="n">1</div><div class="t">Виписки й аналізи (укр. + англ.) зводяться в <b style="color:var(--fg)">один таймлайн</b></div></div>
+            <div class="beat"><div class="n">1</div><div class="t">Виписки й аналізи зводяться в <b style="color:var(--fg)">один таймлайн</b></div></div>
             <div class="beat"><div class="n">2</div><div class="t"><b>Варфарин + Аспірин</b> — велика взаємодія, детермінований сигнал L1</div></div>
             <div class="beat"><div class="n">3</div><div class="t">Тренди й межі показників за статтю; ескалація до людини (L3→L4)</div></div>
-            <div class="beat"><div class="n">4</div><div class="t">Q&amp;A мовою питання з посиланням на джерело · експорт <b style="color:var(--fg)">FHIR</b></div></div>
+            <div class="beat"><div class="n">4</div><div class="t">Q&amp;A з посиланням на джерело (провенанс) · експорт <b style="color:var(--fg)">FHIR</b></div></div>
           </div>
           <div class="metricrow" style="margin-top:20px">
             <span>безпека <b>confidence 1.00</b></span>
-            <span>білінгвально <b>UA/EN</b></span>
-            <span><b>97</b> автотестів</span>
+            <span><b>FHIR</b>-сумісно</span>
+            <span><b>111</b> автотестів</span>
             <span><b>local-first</b></span>
           </div>
         </div>
@@ -300,7 +314,7 @@
           <div><div class="t">Вимірювана довіра (TRACE)</div><div class="d">кожне рішення несе вектор довіри: безпека — <b style="color:var(--fg)">confidence 1.00</b> (детермінована), впевненість витягу ∈ [0,1], частка ескалацій — живі на <b style="color:var(--fg)">/metrics</b> + аудит. EU AI Act ст.14/15 · FHIR-сумісність</div></div>
         </div>
       </div>
-      <div class="punch">Разом це <b>технічно неможливо повторити обгорткою над хмарним GPT</b> — і це наш рубіж.</div>
+      <div class="punch"><b>Чим опікуни користуються зараз:</b> паперова тека · eHealth/Helsi (фрагментовано, держконтур) · нагадувалки-сканери (архів, не синтез) · ChatGPT (privacy-fail для медданих). Наш рубіж — усе це <b>разом</b>: local-first + детермінований шар безпеки + агентність.</div>
     </div>
     <div class="bot"><span class="niche">AI як ключова складова</span><span class="pageno">04 / 07</span></div>
   </section>
@@ -313,7 +327,7 @@
       <div class="market-grid">
         <div class="funnel">
           <div class="tier t1"><span class="lab">TAM</span><span class="tx"><b>65+ глобально ~1 млрд</b> і зростає <span>· цифрове здоровʼя — десятки млрд $</span></span></div>
-          <div class="tier t2"><span class="lab">SAM</span><span class="tx"><b>Родини-опікуни зі смартфоном</b> <span>· EU + Україна, sandwich generation 40–60</span></span></div>
+          <div class="tier t2"><span class="lab">SAM</span><span class="tx"><b>Родини-опікуни зі смартфоном</b> <span>· насамперед <b style="color:var(--fg)">США + Європа</b> (висока WTP, FHIR/EHDS/Cures Act); Україна — пілот-плацдарм</span></span></div>
           <div class="tier t3"><span class="lab">SOM</span><span class="tx"><b>B2C-підписка, гострий під-сегмент</b> <span>· нещодавня госпіталізація, 5+ ліків, живуть окремо</span></span></div>
           <div class="note">Точні $ TAM/SAM/SOM — уточнюємо з публічних джерел до фіналу (customer-discovery-тиждень).</div>
         </div>
@@ -324,7 +338,7 @@
           <div class="s" style="color:var(--muted-2)">Якір: одна пропущена взаємодія → госпіталізація коштує в рази більше.</div>
         </div>
       </div>
-      <div class="punch">Клин: <b>peace of mind для зайнятих дітей</b> (дохід + тривога за батьків). Дистрибуція — <b>там, де сімʼї вже є</b> (Telegram / Viber поверх застосунку), а не ще один застосунок.</div>
+      <div class="punch">Клин: <b>peace of mind для зайнятих дітей</b> (дохід + тривога). Попутний вітер — <b>Healthcare + AI-агенти</b>, найгарячіша інвестор-ніша (YC): «картка → агент здоров'я» = цей тренд. Дистрибуція — <b>там, де сімʼї вже є</b> (Telegram/Viber/WhatsApp/Signal поверх застосунку).</div>
     </div>
     <div class="bot"><span class="niche">Потенціал і роадмап</span><span class="pageno">05 / 07</span></div>
   </section>
@@ -338,7 +352,7 @@
         <div class="hz h1">
           <div class="tag">Горизонт 1 · зараз</div>
           <div class="nm">Демо / MVP<span>working E2E</span></div>
-          <ul><li>Структуризація виписок і аналізів</li><li>Сигнали безпеки + тренди</li><li>Білінгвально UA/EN, local-first</li></ul>
+          <ul><li>Структуризація виписок і аналізів</li><li>Сигнали безпеки + тренди</li><li>Local-first, on-device</li></ul>
         </div>
         <div class="hz">
           <div class="tag">Горизонт 2 · пілот</div>
@@ -361,7 +375,7 @@
 
   <!-- SLIDE 7 — TEAM / ASK -->
   <section class="slide">
-    <div class="top"><span class="kicker">07 · Команда і запит</span><span class="brandmini"><span class="dotmark"></span><b>LiveMedCard</b></span></div>
+    <div class="top"><span class="kicker">07 · Команда і роадмап</span><span class="brandmini"><span class="dotmark"></span><b>LiveMedCard</b></span></div>
     <div class="body">
       <div class="title" style="font-size:36px">Я — технічний і домен-moat. Свідомо шукаю <span class="ac">co-founder на go-to-market</span>.</div>
       <div class="teamgrid">
@@ -370,16 +384,18 @@
           <ul>
             <li><b>д.т.н., проф.</b> — автор методів TRACE та LLM StructCore</li>
             <li><b>8 років у медичному ІТ</b> — Data Analyst та AI Researcher у команді Data Science</li>
+            <li><b>Мультидомен:</b> AI-архітектура при модернізації порталу «База правових позицій» ВС України (фінансування Expertise France)</li>
             <li><b>Fine-tuned MedGemma</b> на Hugging Face — власна модель + IP</li>
-            <li><b>Робочий продукт</b>: E2E, 97 тестів, живе демо</li>
-            <li>Лишаюсь <b>CTO + наука</b>; партнер закриває GTM</li>
+            <li><b>Робочий продукт</b>: E2E, 111 тестів, живе демо</li>
           </ul>
         </div>
         <div class="card ask">
-          <div class="h">Запит до журі</div>
+          <div class="h">Роадмап</div>
           <ul>
-            <li><b>Тиждень customer discovery</b> + доступ до сегмента родин-опікунів</li>
-            <li><b>Co-founder</b> (BizDev / CEO) на go-to-market</li>
+            <li>Лишаюсь <b>CTO + наука</b>; партнер закриває GTM</li>
+            <li><b>Шукаю Co-founder</b> (BizDev / CEO) на go-to-market</li>
+            <li>Долучаю <b>медика-аналітика</b> — багаторічний досвід клінічної системи США (домен + вихід на US-ринок)</li>
+            <li>Потенційно — <b>Code-developer</b> для масштабування розробки</li>
             <li>Валідуємо WTP і збираємо waitlist / pre-order</li>
           </ul>
         </div>
