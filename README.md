@@ -241,7 +241,7 @@ livemedcard/
 └── static/
     └── index.html        # Веб-SPA (без збірки, самодостатня)
 
-tests/                    # 133 тести (pytest)
+tests/                    # 149 тестів (pytest)
 ARCHITECTURE.md           # Детальна архітектура TRACE
 USER_GUIDE.md             # Посібник користувача
 REVIEW_AND_ROADMAP.md     # Code review + дорожня карта
