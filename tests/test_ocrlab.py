@@ -203,7 +203,7 @@ def test_ingest_image_uses_ocrlab_when_image_ocr_set(monkeypatch, fake_gradio_cl
 def test_cloud_extraction_is_marked_unverified_and_escalates(monkeypatch):
     """Хмарний витяг не має заявляти високу впевненість: калібрування немає, а
     обірваний OCR виглядає так само, як повний. Отже — «не перевірено» → до людини."""
-    from livemedcard.config import LOW_CONFIDENCE
+    from livemedcard.economics import escalation_threshold
     from livemedcard.layers import l3_router
 
     fc = FakeClient(facts=[
@@ -213,7 +213,7 @@ def test_cloud_extraction_is_marked_unverified_and_escalates(monkeypatch):
     doc = Document(id="ocr-conf", text="# md", kind="lab_report")
     ext = OcrLabExtractor().extract(doc, "mom-001")
 
-    assert ext.mean_confidence < LOW_CONFIDENCE
-    decision = l3_router.route([], ext.mean_confidence, "lab_report")
+    assert ext.mean_confidence < escalation_threshold("measurement")
+    decision = l3_router.route([], ext.mean_confidence, "lab_report", hazard="measurement")
     assert decision.escalate is True
     assert decision.route_to == "L4_human"

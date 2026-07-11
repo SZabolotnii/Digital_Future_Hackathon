@@ -36,6 +36,7 @@ from fastapi import Body, Depends, FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
+from . import economics
 from .bundle import from_bundle, to_bundle
 from .config import (
     EXTRACTOR,
@@ -316,6 +317,24 @@ def metrics(state: _State = Depends(_get_state)):
         log = card.audit_log()
         n = len(log)
         escalated = sum(1 for a in log if a["escalate"])
+
+        # Економіка рішень: у що обходиться поточна політика L3 і що саме купує
+        # ескалація. `no_escalation` — контрфактичний прогін тієї самої партії
+        # документів без жодної передачі людині: різниця і є цінністю шару L3.
+        cost_actual = sum(
+            economics.expected_cost(
+                a["extraction_confidence"], a.get("hazard", "medication"),
+                escalated=a["escalate"], high_risk_signal=a.get("high_risk", False),
+            )
+            for a in log
+        )
+        cost_no_escalation = sum(
+            economics.expected_cost(
+                a["extraction_confidence"], a.get("hazard", "medication"),
+                escalated=False, high_risk_signal=a.get("high_risk", False),
+            )
+            for a in log
+        )
         return {
             "documents": card.document_count,
             "observations": len(card.observations),
@@ -325,6 +344,12 @@ def metrics(state: _State = Depends(_get_state)):
             "auto": n - escalated,
             "escalation_rate": round(escalated / n, 3) if n else 0.0,
             "active_signals": len(card.current_signals()),
+            "economics": {
+                **economics.summary(),
+                "expected_cost": round(cost_actual, 2),
+                "expected_cost_without_escalation": round(cost_no_escalation, 2),
+                "escalation_saves": round(cost_no_escalation - cost_actual, 2),
+            },
         }
 
 

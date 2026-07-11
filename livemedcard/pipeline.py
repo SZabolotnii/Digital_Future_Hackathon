@@ -12,7 +12,15 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Optional
 
-from .dto import AuditEntry, Document, ExtractionResult, Signal, TraceReport
+from . import economics
+from .dto import (
+    AuditEntry,
+    Document,
+    ExtractionResult,
+    Signal,
+    TraceReport,
+    severity_rank,
+)
 from .fhir import (
     Condition,
     DocumentReference,
@@ -120,8 +128,13 @@ class LiveMedCard:
         _assert_provenance(ext)
         self._absorb(ext)
         signals = self.current_signals()
-        decision = l3_router.route(signals, ext.mean_confidence, doc.kind)
-        self._record_audit(doc, ext, signals, decision)
+        # Чим ризикує саме цей документ — визначає планку довіри (economics).
+        hazard = economics.hazard_of(
+            has_medications=bool(ext.medications),
+            has_observations=bool(ext.observations),
+        )
+        decision = l3_router.route(signals, ext.mean_confidence, doc.kind, hazard=hazard)
+        self._record_audit(doc, ext, signals, decision, hazard)
         return TraceReport(
             document_id=doc.id, extraction=ext, signals=signals, decision=decision
         )
@@ -130,7 +143,10 @@ class LiveMedCard:
         return [self.ingest(d) for d in docs]
 
     # ── аудит рішень L3 ───────────────────────────────────────────────────────
-    def _record_audit(self, doc, ext, signals, decision) -> None:
+    def _record_audit(self, doc, ext, signals, decision, hazard: str = "medication") -> None:
+        high_risk = any(
+            severity_rank(s.severity) >= severity_rank("major") for s in signals
+        )
         self._audit.append(AuditEntry(
             ts=datetime.now(timezone.utc),
             document_id=doc.id,
@@ -139,6 +155,8 @@ class LiveMedCard:
             n_signals=len(signals),
             route_to=decision.route_to,
             escalate=decision.escalate,
+            hazard=hazard,
+            high_risk=high_risk,
         ))
 
     def audit_log(self) -> list[dict]:

@@ -15,6 +15,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `dto.py` — DTO конвеєра: `Document`, `ExtractionResult`, `Signal`, `Decision`, `TraceReport`, `AuditEntry`
 - `refmodels.py` — типізовані моделі довідників (`Interaction`, `DoseLimit`, `RangeSpec`/`RefRange`, `Vocab`); усі **заморожені** (frozen), бо loader-и кешуються
 - `config.py` — централізовані налаштування (пороги, шляхи; override через env `LMC_*`)
+- `economics.py` — **економіка рішень TRACE**: поріг ескалації не константа, а `c* = 1 − C_human/(π·C_harm)`; залежить від того, чим ризикує документ (`Hazard`: ліки → ≈0.97, показники → 0.8). Живі числа — у `/metrics.economics`; модель і чутливість — `docs/economics.md`
 - `stores.py` — `FactStore` (KV-T, ідемпотентний, індекс за LOINC; `KVTFact` несе `source_doc_id` + **`source_span`** — span-рівневий провенанс) + `KnowledgeGraph` (networkx; ребра `derived_from` факт→`Document/{id}`, вузол-документ тримає free-text)
 - `reference.py` + `data/*.json` — відкриті довідкові БД; loader-и кешовані й повертають незмінні структури; `range_for(loinc, sex)` — межі за статтю
 - `layers/` — шари TRACE: `l1_safety` (взаємодії/дози), `l2a_trends` (тренди/межі, за статтю), `l2b_extractor` (екстрактори L2b: `StubExtractor` (offline, `deterministic_extract`; зберігає сирий текст як `DocumentReference` — free-text іпостась для span/QA), `TwoStageExtractor` (Stage1+детермінований Stage2), `LoraStage2Extractor` (Stage1+LoRA Stage2); доза×кратність; **дата на факт** або fallback `received_at`; **стабільні хеш-id**; **`source_span`** (offset у free-text) на факт у детермінованому шляху), `l2b_stage1` (Stage 1 SGR-стиснення → 9-key summary, free-text іпостась), `l2b_stage2_lora` (Stage 2 через FT база+LoRA → KVT4 → Observations, keyword→LOINC міст), `l2b_nuextract` (NuExtract3 VLM: image→markdown + markdown→JSON за шаблоном), `l3_router` (роутинг/ескалація)
@@ -38,7 +39,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 uv run python -m livemedcard.demo            # E2E-демо в терміналі
 uv run uvicorn livemedcard.api:app --reload  # веб-UI на http://127.0.0.1:8000 + JSON API
-uv run --extra dev pytest -q                 # тести (133 шт.)
+uv run --extra dev pytest -q                 # тести (149 шт.)
 uv run --extra dev pytest tests/test_pipeline.py -q   # один файл
 uv run --extra dev ruff check livemedcard tests       # лінтер (як у CI)
 LMC_PERSIST_PATH=~/lmc.json uv run uvicorn livemedcard.api:app  # з персистентністю

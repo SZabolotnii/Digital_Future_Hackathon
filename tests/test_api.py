@@ -80,6 +80,19 @@ def test_sample_sets_mirror_each_other_across_languages(client):
     assert {d["lang"] for d in en_state["docs"].values()} == {"en"}
 
 
+def test_metrics_expose_the_economics_of_escalation(client):
+    """/metrics має показувати, з чого взявся поріг і що купує ескалація. Інакше
+    «людина в контурі» — гасло, а не рішення, яке можна захистити."""
+    client.post("/ingest/samples")
+    e = client.get("/metrics").json()["economics"]
+
+    assert e["threshold_source"] == "derived"          # не підібраний руками
+    assert e["threshold_medication"] > e["threshold_measurement"]
+    # $5 за перевірку проти тисяч очікуваної шкоди → ескалація окупається
+    assert e["expected_cost"] < e["expected_cost_without_escalation"]
+    assert e["escalation_saves"] > 0
+
+
 def test_graph_endpoint_exposes_provenance_edges(client):
     client.post("/ingest/samples")
     g = client.get("/graph").json()
