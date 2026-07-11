@@ -75,6 +75,17 @@
   .col li::before{content:"";position:absolute;left:2px;top:9px;width:8px;height:8px;border-radius:2px;background:var(--muted-2)}
   .col.now li{color:var(--fg)} .col.now li::before{background:var(--accent)}
   .punch{font-size:20px;line-height:1.4;color:var(--muted)}
+  /* конкурентна матриця (слайд 4) */
+  .cmp{display:grid;grid-template-columns:1.55fr 1fr;gap:24px;align-items:center;margin-top:4px}
+  .cmp table{border-collapse:collapse;width:100%;font-size:13px}
+  .cmp th,.cmp td{padding:4px 8px;text-align:left;border-bottom:1px solid var(--line-soft)}
+  .cmp th{font-family:var(--mono);font-size:10.5px;font-weight:600;color:var(--muted-2);
+    text-transform:uppercase;letter-spacing:.04em;line-height:1.3}
+  .cmp td{color:var(--muted)}
+  .cmp td:first-child{color:var(--fg);font-weight:600}
+  .cmp tr.us td{color:var(--accent);border-bottom:0;background:rgba(45,212,191,.07)}
+  .cmpnote{font-size:14px;line-height:1.45;color:var(--muted)}
+  .cmpnote b{color:var(--fg)}
   .punch b{color:var(--accent);font-weight:600}
 
   /* demo slide */
@@ -101,13 +112,13 @@
   .metricrow span b{color:var(--accent);font-weight:600}
 
   /* pillars (moat) */
-  .pillars{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-  .pillar{background:var(--panel-2);border:1px solid var(--line-soft);border-radius:14px;padding:20px 22px;
+  .pillars{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .pillar{background:var(--panel-2);border:1px solid var(--line-soft);border-radius:14px;padding:14px 18px;
     display:flex;gap:16px;align-items:flex-start}
   .pillar .ic{flex:0 0 auto;width:42px;height:42px;border-radius:10px;background:rgba(45,212,191,.10);
     border:1px solid rgba(45,212,191,.28);display:flex;align-items:center;justify-content:center}
-  .pillar .t{font-size:20px;font-weight:700;color:var(--fg);line-height:1.15;margin-bottom:5px}
-  .pillar .d{font-size:16px;line-height:1.38;color:var(--muted)}
+  .pillar .t{font-size:18px;font-weight:700;color:var(--fg);line-height:1.15;margin-bottom:4px}
+  .pillar .d{font-size:14.5px;line-height:1.34;color:var(--muted)}
 
   /* funnel (market) */
   .funnel{display:flex;flex-direction:column;gap:12px}
@@ -322,7 +333,20 @@
           <div><div class="t">Вимірювана довіра (TRACE)</div><div class="d">кожне рішення несе вектор довіри: безпека — <b style="color:var(--fg)">confidence 1.00</b> (детермінована), впевненість витягу ∈ [0,1], частка ескалацій — живі на <b style="color:var(--fg)">/metrics</b> + аудит. EU AI Act ст.14/15 · FHIR-сумісність</div></div>
         </div>
       </div>
-      <div class="punch"><b>Чим опікуни користуються зараз:</b> паперова тека · eHealth/Helsi (фрагментовано, держконтур) · нагадувалки-сканери (архів, не синтез) · ChatGPT (privacy-fail для медданих). Наш рубіж — усе це <b>разом</b>: local-first + детермінований шар безпеки + агентність.</div>
+      <div class="cmp">
+        <table>
+          <thead><tr><th>Хто вже є</th><th>Local-<br>first</th><th>AI з фото<br>і сканів</th><th>Детермінована<br>безпека ліків</th><th>Опікун —<br>платник</th><th>FHIR</th></tr></thead>
+          <tbody>
+            <tr><td>Apple Health Records</td><td>частково</td><td>—</td><td>—</td><td>—</td><td>✓</td></tr>
+            <tr><td>CommonHealth</td><td>✓</td><td>—</td><td>—</td><td>—</td><td>імпорт</td></tr>
+            <tr><td>Fasten Health</td><td>self-host</td><td>—</td><td>—</td><td>—</td><td>✓</td></tr>
+            <tr><td>Medisafe</td><td>—</td><td>—</td><td>хмара · <b>з 2026 платно</b></td><td>—</td><td>—</td></tr>
+            <tr><td>Ianacare · Caily</td><td>—</td><td>—</td><td>—</td><td>✓</td><td>—</td></tr>
+            <tr class="us"><td><b>LiveMedCard</b></td><td>✓</td><td>✓</td><td>✓ on-device</td><td>✓</td><td>✓</td></tr>
+          </tbody>
+        </table>
+        <div class="cmpnote"><b>Apple Health і Fasten — не конкуренти, а джерела.</b> Вони віддають FHIR — ми його <b>імпортуємо</b>. Наша робота починається там, де їхня закінчується: паперова виписка, фото рецепта, український бланк — того, чого в жодному FHIR-ендпойнті немає. А шар безпеки — поверх усього разом.</div>
+      </div>
     </div>
     <div class="bot"><span class="niche">AI як ключова складова</span><span class="pageno">04 / 07</span></div>
   </section>
@@ -334,16 +358,16 @@
       <div class="title" style="font-size:36px">Платник — не літня людина, а її <span class="ac">доросла дитина 40–60</span></div>
       <div class="market-grid">
         <div class="funnel">
-          <div class="tier t1"><span class="lab">TAM</span><span class="tx"><b>65+ глобально ~1 млрд</b> і зростає <span>· цифрове здоровʼя — десятки млрд $</span></span></div>
-          <div class="tier t2"><span class="lab">SAM</span><span class="tx"><b>Родини-опікуни зі смартфоном</b> <span>· насамперед <b style="color:var(--fg)">США + Європа</b> (висока WTP, FHIR/EHDS/Cures Act); Україна — пілот-плацдарм</span></span></div>
-          <div class="tier t3"><span class="lab">SOM</span><span class="tx"><b>B2C-підписка, гострий під-сегмент</b> <span>· нещодавня госпіталізація, 5+ ліків, живуть окремо</span></span></div>
-          <div class="note">Точні $ TAM/SAM/SOM — уточнюємо з публічних джерел до фіналу (customer-discovery-тиждень).</div>
+          <div class="tier t1"><span class="lab">TAM</span><span class="tx"><b>0,84 млрд людей 65+</b> у світі <span>· 61,2 млн у США (Census 2024), ~90 млн у ЄС (Eurostat 2024) · ринок PHR-софту 9,7 млрд $ (2024) → 21,9 млрд (2034)</span></span></div>
+          <div class="tier t2"><span class="lab">SAM</span><span class="tx"><b>59 млн родин-опікунів у США</b> (NAC/AARP 2025) <span>· ЄС: 80% догляду — неформальні опікуни (Eurocarers) · неоплачуваний догляд = <b style="color:var(--fg)">600 млрд $/рік</b> (AARP)</span></span></div>
+          <div class="tier t3"><span class="lab">SOM</span><span class="tx"><b>B2C-підписка, гострий під-сегмент</b> <span>· нещодавня госпіталізація, 5+ ліків, живуть окремо · 10% early-adopter-опікунів = робоча гіпотеза, не дані</span></span></div>
+          <div class="note">Джерела: U.S. Census Vintage 2024 · Eurostat 2024 · NAC/AARP «Caregiving in the US 2025» · Zion/Mordor (PHR). Що чесно бракує: кількості caregiver-домогосподарств зі смартфоном у ЄС — тримаємо як формулу, не як вигадане число.</div>
         </div>
         <div class="sidebox">
           <div class="h">Монетизація</div>
           <div class="big">Freemium → <b>~5–9 €/міс</b></div>
           <div class="s">Premium: повний таймлайн, необмежені документи, алерти взаємодій, спільний доступ родини, експорт лікарю.</div>
-          <div class="s" style="color:var(--muted-2)">Якір: одна пропущена взаємодія → госпіталізація коштує в рази більше.</div>
+          <div class="s" style="color:var(--muted-2)">Бенчмарк WTP: Medisafe <b style="color:var(--fg)">$4,99/міс</b>, MyTherapy $2,99, b.well $10 — коридор ринку $3–10. Якір: одна пропущена взаємодія → госпіталізація коштує в рази більше.</div>
         </div>
       </div>
       <div class="punch">Клин: <b>peace of mind для зайнятих дітей</b> (дохід + тривога). Попутний вітер — <b>Healthcare + AI-агенти</b>, найгарячіша інвестор-ніша (YC): «картка → агент здоров'я» = цей тренд. Дистрибуція — <b>там, де сімʼї вже є</b> (Telegram/Viber/WhatsApp/Signal поверх застосунку).</div>
@@ -375,7 +399,7 @@
       </div>
       <div class="boundary">
         <span class="dotmark" style="background:var(--danger);box-shadow:0 0 10px rgba(251,90,114,.7)"></span>
-        <div class="h"><b>Чесна межа:</b> LiveMedCard структурує факти й формує питання до лікаря — <b>не ставить діагнозів</b>. MVP свідомо поза MDR; TRACE операціоналізує EU AI Act (людина в контурі, L3→L4).</div>
+        <div class="h"><b>Чесна межа:</b> LiveMedCard структурує факти й формує питання до лікаря — <b>не ставить діагнозів</b>. MVP свідомо поза MDR; TRACE операціоналізує EU AI Act (людина в контурі, L3→L4). США: consumer-PHR під <b>FTC HBNR</b> (оновлення 2024), а не під HIPAA — і local-first знімає майже весь цей контур, бо ми не тримаємо медданих на серверах.</div>
       </div>
     </div>
     <div class="bot"><span class="niche">Регуляторна зрілість, не наївність</span><span class="pageno">06 / 07</span></div>
@@ -394,7 +418,7 @@
             <li><b>8 років у медичному ІТ</b> — Data Analyst та AI Researcher у команді Data Science</li>
             <li><b>Мультидомен:</b> AI-архітектура при модернізації порталу «База правових позицій» ВС України (фінансування Expertise France)</li>
             <li><b>Fine-tuned MedGemma</b> на Hugging Face — власна модель + IP</li>
-            <li><b>Робочий продукт</b>: E2E, 111 тестів, живе демо</li>
+            <li><b>Робочий продукт</b>: E2E, 141 тест, живе демо</li>
           </ul>
         </div>
         <div class="card ask">
