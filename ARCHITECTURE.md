@@ -14,9 +14,9 @@
              дефолт offline: StubExtractor (Stage 2 напряму по сирому тексту)
 ExtractionResult  (FHIR: Observation / Condition / MedicationRequest + Provenance; + DocumentReference — free-text)
    │
-   ├──► FactStore (KV-T)   — джерело істини для кількісного
-   ├──► KnowledgeGraph     — зв'язки + провенанс (вузол Document несе summary)
-   └──► DocumentReference  — free-text іпостась (Stage 1 summary)
+   ├──► FactStore (KV-T)   — джерело істини для кількісного (триплет несе source_doc_id + source_span)
+   ├──► KnowledgeGraph     — зв'язки + провенанс (ребра derived_from факт→Document; вузол Document несе summary)
+   └──► DocumentReference  — free-text іпостась (Stage 1 summary / сирий текст у stub)
    │
    ▼  L1  — детермінований якір: взаємодії ліків, дозові межі (по відкритій БД)
    ▼  L2a — класичний аналіз: тренди й вихід за референс-межі на KV-T
@@ -29,8 +29,10 @@ Decision  (auto | ескалація до L4-людини)
 ```
 
 Q&A (grounded): запит → детермінований ретрив по FactStore+Graph → відповідь
-природною мовою з посиланням на документи-джерела (провенанс). LLM тут не робить
-висновків про безпеку.
+природною мовою з посиланням на документи-джерела (провенанс). Лаб/ліки-інтенти —
+за keyword-мапами; freetext-гілка — **ранжований span-aware ретрив** (`retrieval.py`:
+лексичне ранжування offline, опційно семантичний косинус через embeddings). LLM тут
+не робить висновків про безпеку — ретрив лише відбирає пасажі, не породжує сигналів.
 
 ## Модулі та контракти
 
@@ -82,6 +84,12 @@ Q&A (grounded): запит → детермінований ретрив по Fa
   локально, складне → opt-in). De-id — defense-in-depth (ймовірнісна, не
   анонімізація, слабша для UA), тож перевага приватному/self-hosted ендпойнту;
   recall de-id і приріст якості вимірюються перед релізом.
+- **Провенанс — інваріант + span-рівнева прив'язка.** `pipeline._assert_provenance`
+  відхиляє витягнутий факт без `source_doc_id` (`ValueError`) на межі `ingest`, тож
+  кожен KV-T-триплет гарантовано має документ-джерело й ребро графа. `source_span`
+  (`Provenance`/`KVTFact`) — offset у free-text іпостасі (детермінований екстрактор
+  рахує з regex-матчів; для LLM-KVT — best-effort null). Це живить графову БЗ і
+  точний grounding для детальніших відповідей.
 - **Довідкові БД** (`data/interactions.json`, `dose_limits.json`,
   `reference_ranges.json`) — відкриті, версіоновані, читаються детерміновано.
   Коди узгоджені: RxNorm (ліки), LOINC (аналізи), SNOMED (діагнози).
@@ -91,7 +99,7 @@ Q&A (grounded): запит → детермінований ретрив по Fa
 ```bash
 uv run python -m livemedcard.demo          # E2E демо в терміналі
 uv run uvicorn livemedcard.api:app         # веб-UI на http://127.0.0.1:8000
-uv run --extra dev pytest                  # тести (64 шт.)
+uv run --extra dev pytest                  # тести (111 шт.)
 uv run --extra dev ruff check livemedcard tests   # лінтер (як у CI)
 ```
 

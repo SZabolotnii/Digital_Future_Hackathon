@@ -150,6 +150,8 @@ VLM ≈ 0.6–1.0 ГБ + KV-кеш/контекст ≈ 0.3–0.8 ГБ + ран�
 | `LMC_LOW_CONFIDENCE` | `0.6` | Поріг впевненості L2b для ескалації L3 |
 | `LMC_STUB_CONFIDENCE` | `0.95` | Впевненість StubExtractor на словниковий збіг |
 | `LMC_MAX_DOC_CHARS` | `20000` | Ліміт символів одного документа |
+| `LMC_SEMANTIC_RETRIEVAL` | `""` (off) | Семантичний ретрив у Q&A (embeddings-косинус); off → лексичне ранжування |
+| `LMC_EMBED_MODEL` | `nomic-embed-text` | Модель для `/embeddings` при семантичному ретриві |
 
 ### Production-зауваження
 
@@ -165,7 +167,7 @@ VLM ≈ 0.6–1.0 ГБ + KV-кеш/контекст ≈ 0.3–0.8 ГБ + ран�
 ## Тести та якість
 
 ```bash
-# Усі тести (64 шт.)
+# Усі тести (111 шт.)
 uv run --extra dev pytest -q
 
 # Лінтер
@@ -186,13 +188,14 @@ livemedcard/
 ├── fhir.py           # FHIR R4 Pydantic-моделі (Observation, Condition, MedicationRequest…)
 ├── dto.py            # DTO конвеєра: Signal, Decision, TraceReport, AuditEntry
 ├── config.py         # Централізовані налаштування (env LMC_*)
-├── stores.py         # FactStore (KV-T, LOINC-індекс) + KnowledgeGraph (networkx)
+├── stores.py         # FactStore (KV-T, LOINC-індекс; триплет: source_doc_id + source_span) + KnowledgeGraph (networkx)
 ├── reference.py      # Завантаження довідкових БД (frozen + lru_cache)
 ├── refmodels.py      # Типізовані frozen-моделі довідників
 ├── pipeline.py       # LiveMedCard — оркестрація E2E, snapshot/from_snapshot
 ├── bundle.py         # FHIR Bundle export/import
 ├── repository.py     # Персистентність у локальний JSON
-├── qa.py             # Grounded Q&A з провенансом
+├── qa.py             # Grounded Q&A з провенансом (freetext — ранжований ретрив)
+├── retrieval.py      # Ретрив по free-text: chunk+rank (лексика offline / опц. семантика)
 ├── api.py            # FastAPI + threading.Lock (_State)
 ├── demo.py           # CLI-демонстратор
 ├── layers/
@@ -209,7 +212,7 @@ livemedcard/
 └── static/
     └── index.html        # Веб-SPA (без збірки, самодостатня)
 
-tests/                    # 64 тести (pytest)
+tests/                    # 111 тестів (pytest)
 ARCHITECTURE.md           # Детальна архітектура TRACE
 USER_GUIDE.md             # Посібник користувача
 REVIEW_AND_ROADMAP.md     # Code review + дорожня карта
@@ -264,6 +267,7 @@ REVIEW_AND_ROADMAP.md     # Code review + дорожня карта
 
 **Горизонт 2 — продуктова зрілість:**
 - [ ] Автентифікація (OAuth2) + ізоляція пацієнтів
+- [x] Ранжований span-aware ретрив + опційний семантичний бекенд (`retrieval.py`)
 - [ ] LLM-формулювання відповідей Q&A (RAG поверх детермінованого ретриву)
 - [ ] Мобільний клієнт (on-device, офлайн)
 

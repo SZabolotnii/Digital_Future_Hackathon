@@ -15,14 +15,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `dto.py` — DTO конвеєра: `Document`, `ExtractionResult`, `Signal`, `Decision`, `TraceReport`, `AuditEntry`
 - `refmodels.py` — типізовані моделі довідників (`Interaction`, `DoseLimit`, `RangeSpec`/`RefRange`, `Vocab`); усі **заморожені** (frozen), бо loader-и кешуються
 - `config.py` — централізовані налаштування (пороги, шляхи; override через env `LMC_*`)
-- `stores.py` — `FactStore` (KV-T, ідемпотентний, індекс за LOINC) + `KnowledgeGraph` (networkx)
+- `stores.py` — `FactStore` (KV-T, ідемпотентний, індекс за LOINC; `KVTFact` несе `source_doc_id` + **`source_span`** — span-рівневий провенанс) + `KnowledgeGraph` (networkx; ребра `derived_from` факт→`Document/{id}`, вузол-документ тримає free-text)
 - `reference.py` + `data/*.json` — відкриті довідкові БД; loader-и кешовані й повертають незмінні структури; `range_for(loinc, sex)` — межі за статтю
-- `layers/` — шари TRACE: `l1_safety` (взаємодії/дози), `l2a_trends` (тренди/межі, за статтю), `l2b_extractor` (екстрактори L2b: `StubExtractor` (offline, `deterministic_extract`), `TwoStageExtractor` (Stage1+детермінований Stage2), `LoraStage2Extractor` (Stage1+LoRA Stage2); доза×кратність; **дата на факт** або fallback `received_at`; **стабільні хеш-id**), `l2b_stage1` (Stage 1 SGR-стиснення → 9-key summary, free-text іпостась), `l2b_stage2_lora` (Stage 2 через FT база+LoRA → KVT4 → Observations, keyword→LOINC міст), `l2b_nuextract` (NuExtract3 VLM: image→markdown + markdown→JSON за шаблоном), `l3_router` (роутинг/ескалація)
-- `pipeline.py` — `LiveMedCard` (джерело істини FHIR-ресурсів; `snapshot`/`from_snapshot`, типізований аудит `AuditEntry`; тримає й `DocumentReference`-и — free-text іпостась, `_absorb_docref` додає summary у вузол `Document/{id}` графа)
+- `layers/` — шари TRACE: `l1_safety` (взаємодії/дози), `l2a_trends` (тренди/межі, за статтю), `l2b_extractor` (екстрактори L2b: `StubExtractor` (offline, `deterministic_extract`; зберігає сирий текст як `DocumentReference` — free-text іпостась для span/QA), `TwoStageExtractor` (Stage1+детермінований Stage2), `LoraStage2Extractor` (Stage1+LoRA Stage2); доза×кратність; **дата на факт** або fallback `received_at`; **стабільні хеш-id**; **`source_span`** (offset у free-text) на факт у детермінованому шляху), `l2b_stage1` (Stage 1 SGR-стиснення → 9-key summary, free-text іпостась), `l2b_stage2_lora` (Stage 2 через FT база+LoRA → KVT4 → Observations, keyword→LOINC міст), `l2b_nuextract` (NuExtract3 VLM: image→markdown + markdown→JSON за шаблоном), `l3_router` (роутинг/ескалація)
+- `pipeline.py` — `LiveMedCard` (джерело істини FHIR-ресурсів; `snapshot`/`from_snapshot`, типізований аудит `AuditEntry`; тримає й `DocumentReference`-и — free-text іпостась, `_absorb_docref` додає summary у вузол `Document/{id}` графа); **`_assert_provenance`** — інваріант: витягнутий факт без `source_doc_id` відхиляється на межі `ingest` (`ValueError`)
 - `bundle.py` — експорт/імпорт FHIR Bundle; `repository.py` — персистентність у локальний JSON (пошкоджений знімок → явний `ValueError`, не мовчазний порожній старт)
-- `qa.py` — grounded Q&A з провенансом (за статтю); **білінгвальний**: `detect_lang` за питанням → відповідь UA/EN через каталог `_MSG`; keyword-мапи UA+EN; `api.py` — FastAPI + UI (стан під `threading.Lock`, без `global`); `demo.py` — CLI-демо
+- `qa.py` — grounded Q&A з провенансом (за статтю); **білінгвальний**: `detect_lang` за питанням → відповідь UA/EN через каталог `_MSG`; keyword-мапи UA+EN для лаб/ліки-інтентів; freetext-гілка — **ранжований span-aware ретрив** через `retrieval.py`; `api.py` — FastAPI + UI (стан під `threading.Lock`, без `global`); `demo.py` — CLI-демо
 - `lang.py` — легкий детектор мови `detect_lang(text) -> 'uk'|'en'` (частка кирилиці); основа авто-вибору мови у білінгвальному режимі
-- `llm_client.py` — спільний OpenAI-сумісний клієнт до локального сервера (LM Studio): `chat_completions(messages)` + `detect_model()`; лише stdlib (`urllib`), щоб тести мокали `urllib.request.urlopen`. Спільний канал для OCR і Stage 1
+- `retrieval.py` — релевантнісний ретрив по free-text іпостасі (`chunk` → пасажі з offset-ами + `rank`): лексичне ранжування offline (дефолт), опційно семантичний косинус через `llm_client.embeddings` (`LMC_SEMANTIC_RETRIEVAL`), м'який відкат на лексику; живить freetext-Q&A. Ретрив НЕ породжує сигналів (межа детермінізму)
+- `llm_client.py` — спільний OpenAI-сумісний клієнт до локального сервера (LM Studio): `chat_completions(messages)` + `detect_model()` + `embeddings()` (семантичний ретрив); лише stdlib (`urllib`), щоб тести мокали `urllib.request.urlopen`. Спільний канал для OCR, Stage 1 і embeddings
 - `ocr.py` — `OcrService`: OCR медичних зображень (vision-модель типу MedGemma). Делегує HTTP у `llm_client`, лишає лише vision-payload і промпт дослівної транскрипції. Крок image→text перед двоетапним L2b, **жодних висновків про безпеку**
 
 Документи та легасі:
@@ -37,7 +38,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 uv run python -m livemedcard.demo            # E2E-демо в терміналі
 uv run uvicorn livemedcard.api:app --reload  # веб-UI на http://127.0.0.1:8000 + JSON API
-uv run --extra dev pytest -q                 # тести (82 шт.)
+uv run --extra dev pytest -q                 # тести (111 шт.)
 uv run --extra dev pytest tests/test_pipeline.py -q   # один файл
 uv run --extra dev ruff check livemedcard tests       # лінтер (як у CI)
 LMC_PERSIST_PATH=~/lmc.json uv run uvicorn livemedcard.api:app  # з персистентністю
