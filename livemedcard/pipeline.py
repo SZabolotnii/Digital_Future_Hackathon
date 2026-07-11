@@ -104,14 +104,19 @@ class LiveMedCard:
             self.factstore, self.patient.gender, lang
         )
 
-    def ingest(self, doc: Document) -> TraceReport:
-        """Прогнати один документ і повернути повний TRACE-звіт поточного стану."""
+    def ingest(self, doc: Document, *, extractor: "Extractor | None" = None) -> TraceReport:
+        """Прогнати один документ і повернути повний TRACE-звіт поточного стану.
+
+        `extractor` — разовий override L2b для цього документа (не змінює дефолт
+        картки). Використовується для завантаження фото через хмарний OCR Lab,
+        коли текстовий шлях лишається детермінованим `stub`.
+        """
         # Без мітки часу обзервації не потрапляють у факт-стор і зникають з
         # таймлайну (і з перевірок безпеки). Проставляємо час прийому документа.
         if doc.received_at is None:
             doc = doc.model_copy(update={"received_at": datetime.now(timezone.utc)})
         self._document_ids.add(doc.id)
-        ext = self.extractor.extract(doc, self.patient.id)
+        ext = (extractor or self.extractor).extract(doc, self.patient.id)
         _assert_provenance(ext)
         self._absorb(ext)
         signals = self.current_signals()

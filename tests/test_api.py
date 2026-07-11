@@ -85,8 +85,30 @@ def test_import_bundle_without_patient_422(client):
     assert r.status_code == 422
 
 
+def test_sessions_are_isolated_between_clients():
+    """Per-session: різні відвідувачі (різні cookie) мають незалежні картки."""
+    import livemedcard.api as api_module
+
+    a = TestClient(api_module.app)
+    b = TestClient(api_module.app)
+    a.post("/ingest/samples")            # клієнт A наповнює свою картку
+    assert a.get("/state").json()["document_count"] == 4
+    assert b.get("/state").json()["document_count"] == 0  # B її не бачить
+    b.post("/ingest", json={             # B додає свій документ
+        "id": "b1", "text": "Креатинін 121 µmol/L.", "kind": "lab_report",
+        "received_at": "2024-03-01T00:00:00",
+    })
+    assert b.get("/state").json()["document_count"] == 1
+    assert a.get("/state").json()["document_count"] == 4  # A не зачеплено
+    # A скидає свою — B лишається цілим (немає спільного стану)
+    a.post("/reset")
+    assert a.get("/state").json()["document_count"] == 0
+    assert b.get("/state").json()["document_count"] == 1
+
+
 def test_concurrent_mixed_requests_stay_consistent(client):
     """Мікс конкурентних читань/мутацій не дає 5xx і лишає стан цілісним."""
+    client.get("/state")  # прайм cookie → усі потоки в одній сесії (лок-тест)
 
     def call(i: int) -> int:
         if i % 4 == 0:

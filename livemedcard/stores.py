@@ -9,7 +9,7 @@
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 import networkx as nx
@@ -61,13 +61,19 @@ def observation_to_kvt(o: Observation) -> Optional[KVTFact]:
     if o.valueQuantity is None or o.effectiveDateTime is None:
         return None
     kw = o.code.text or (o.code.coding[0].display if o.code.coding else "obs")
+    ts = o.effectiveDateTime
+    # Нормалізуємо до tz-aware UTC: різні джерела дають naive (демо-семпли) чи
+    # aware (екстрактори) мітки; без цього series() падає на порівнянні при їх
+    # змішуванні (напр. stub-сід + хмарний OCR фото в одному LOINC-ряді).
+    if ts.tzinfo is None:
+        ts = ts.replace(tzinfo=timezone.utc)
     return KVTFact(
         obs_id=o.id,
         keyword=kw,
         loinc=loinc_of(o),
         value=o.valueQuantity.value,
         unit=o.valueQuantity.unit,
-        ts=o.effectiveDateTime,
+        ts=ts,
         source_doc_id=o.provenance.source_doc_id if o.provenance else None,
         source_span=o.provenance.source_span if o.provenance else None,
     )

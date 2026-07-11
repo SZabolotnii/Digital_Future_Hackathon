@@ -25,18 +25,21 @@ sync-ендпойнти FastAPI виконуються в пулі потокі�
 """
 from __future__ import annotations
 
+import secrets
 import threading
+from collections import OrderedDict
 from datetime import date
 
 import hashlib
 
-from fastapi import Body, FastAPI, HTTPException
+from fastapi import Body, Depends, FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from .bundle import from_bundle, to_bundle
 from .config import (
     EXTRACTOR,
+    IMAGE_OCR,
     MAX_DOC_CHARS,
     PERSIST_PATH,
     SEED_SAMPLES,
@@ -98,18 +101,61 @@ class _State:
             save_card(self.card, PERSIST_PATH)
 
 
+def _seeded_card() -> LiveMedCard:
+    """Свіжа картка; для публічного демо — одразу із сід-таймлайном (stub, миттєво)."""
+    card = LiveMedCard(_new_patient(), _make_extractor())
+    if SEED_SAMPLES:
+        card.ingest_all([Document(**d) for d in load_sample_docs()])
+    return card
+
+
 def _initial_card() -> LiveMedCard:
     if PERSIST_PATH:
         loaded = load_card(PERSIST_PATH, _make_extractor())
         if loaded is not None:
             return loaded
-    card = LiveMedCard(_new_patient(), _make_extractor())
-    if SEED_SAMPLES:  # публічне демо (HF Space) стартує з заповненою карткою
-        card.ingest_all([Document(**d) for d in load_sample_docs()])
-    return card
+    return _seeded_card()
 
 
-_state = _State(_initial_card())
+# Дві моделі стану:
+#  • PERSIST_PATH заданий → персональний local-first режим: ОДНА персистентна
+#    картка на весь сервер (як раніше);
+#  • інакше (публічне демо) → картка НА СЕСІЮ (cookie), щоб відвідувачі не бачили
+#    й не скидали картки одне одного. LRU-кеп обмежує памʼять.
+_SESSION_COOKIE = "lmc_sid"
+_MAX_SESSIONS = 300
+_single_state: "_State | None" = _State(_initial_card()) if PERSIST_PATH else None
+_sessions: "OrderedDict[str, _State]" = OrderedDict()
+_sessions_lock = threading.Lock()
+
+
+def _get_state(request: Request, response: Response) -> _State:
+    """Стан для цього запиту: персональний (persist) або per-session (демо)."""
+    if _single_state is not None:
+        return _single_state
+    sid = request.cookies.get(_SESSION_COOKIE)
+    if sid:
+        with _sessions_lock:
+            state = _sessions.get(sid)
+            if state is not None:
+                _sessions.move_to_end(sid)  # LRU: свіжий доступ — у кінець
+                return state
+    # Новий сеанс — сідаємо картку ПОЗА глобальним локом (мінімум контенції).
+    sid = secrets.token_urlsafe(16)
+    state = _State(_seeded_card())
+    with _sessions_lock:
+        _sessions[sid] = state
+        while len(_sessions) > _MAX_SESSIONS:
+            _sessions.popitem(last=False)  # витісняємо найдавніший
+    # HF рендерить Space у cross-site iframe (huggingface.co → *.hf.space), тож для
+    # HTTPS потрібен SameSite=None; Secure, інакше cookie не долетить і кожен запит
+    # плодив би нову сесію. Локально (http) — Lax. Проксі HF ставить X-Forwarded-Proto.
+    https = request.headers.get("x-forwarded-proto", request.url.scheme) == "https"
+    response.set_cookie(
+        _SESSION_COOKIE, sid, max_age=86400, httponly=True,
+        samesite="none" if https else "lax", secure=https,
+    )
+    return state
 
 
 class AskRequest(BaseModel):
@@ -118,19 +164,20 @@ class AskRequest(BaseModel):
 
 @app.get("/")
 def index() -> FileResponse:
+    # Без сесійної залежності: liveness-полінг платформи не має плодити сесії.
     return FileResponse(_STATIC / "index.html")
 
 
 @app.post("/ingest")
-def ingest(doc: Document):
+def ingest(doc: Document, state: _State = Depends(_get_state)):
     if len(doc.text) > MAX_DOC_CHARS:
         raise HTTPException(
             status_code=413,
             detail=f"Документ завеликий (> {MAX_DOC_CHARS} символів)",
         )
-    with _state.lock:
-        report = _state.card.ingest(doc)
-        _state.autosave()
+    with state.lock:
+        report = state.card.ingest(doc)
+        state.autosave()
     return report
 
 
@@ -140,21 +187,27 @@ class ImageIngestRequest(BaseModel):
 
 
 @app.post("/ingest/image")
-def ingest_image(req: ImageIngestRequest):
+def ingest_image(req: ImageIngestRequest, state: _State = Depends(_get_state)):
     if not req.image_base64.strip():
         raise HTTPException(
             status_code=422,
             detail="Зображення порожнє або некоректне",
         )
 
-    # У режимах nuextract/ocrlab зображення читає сам NuExtract (image→markdown),
-    # тож окремий OCR не потрібен — уникаємо накопичення помилок OCR→summary→extract.
-    # ocrlab робить image→markdown на хмарному ZeroGPU Space (opt-in).
+    # Бекенд OCR для фото відокремлений від текстового EXTRACTOR (config.IMAGE_OCR):
+    # публічне демо тримає `stub` для сіду/тексту (миттєво, детерміновано, 0 хмари),
+    # а фото — реальний OCR через хмарний Lab. `nuextract`/`ocrlab` самі роблять
+    # image→markdown, тож окремий OCR не потрібен. Витяг фактів для цього документа
+    # робить відповідний екстрактор (override), не змінюючи дефолт картки.
+    img_backend = IMAGE_OCR or EXTRACTOR
+    img_extractor: Extractor | None = None
     try:
-        if EXTRACTOR == "ocrlab":
+        if img_backend == "ocrlab":
             text = l2b_ocrlab.image_to_markdown(req.image_base64)
-        elif EXTRACTOR == "nuextract":
+            img_extractor = OcrLabExtractor()
+        elif img_backend == "nuextract":
             text = l2b_nuextract.image_to_markdown(req.image_base64)
+            img_extractor = NuExtractExtractor()
         else:
             text = OcrService.perform_ocr(req.image_base64)
     except (OcrError, LLMError, OcrLabError) as exc:
@@ -183,62 +236,65 @@ def ingest_image(req: ImageIngestRequest):
     doc_id = f"doc-ocr-{hashlib.sha1(text.encode('utf-8')).hexdigest()[:12]}"
     doc = Document(id=doc_id, text=text, kind=req.kind)
 
-    with _state.lock:
-        report = _state.card.ingest(doc)
-        _state.autosave()
+    try:
+        with state.lock:
+            report = state.card.ingest(doc, extractor=img_extractor)
+            state.autosave()
+    except OcrLabError as exc:  # витяг фактів Stage 2 у хмарному Lab
+        raise HTTPException(status_code=503, detail=str(exc))
     return report
 
 
 
 @app.post("/ingest/samples")
-def ingest_samples():
+def ingest_samples(state: _State = Depends(_get_state)):
     docs = [Document(**d) for d in load_sample_docs()]
-    with _state.lock:
-        reports = _state.card.ingest_all(docs)
-        _state.autosave()
+    with state.lock:
+        reports = state.card.ingest_all(docs)
+        state.autosave()
     return reports
 
 
 @app.post("/reset")
-def reset():
-    with _state.lock:
-        _state.card = LiveMedCard(_new_patient(), _make_extractor())
-        _state.autosave()
-        return {"status": "reset", "patient": _state.card.patient.id}
+def reset(state: _State = Depends(_get_state)):
+    with state.lock:
+        state.card = LiveMedCard(_new_patient(), _make_extractor())
+        state.autosave()
+        return {"status": "reset", "patient": state.card.patient.id}
 
 
 @app.get("/export")
-def export_bundle():
+def export_bundle(state: _State = Depends(_get_state)):
     """Експорт картки як FHIR Bundle (для передачі лікарю / еЗдоров'ю)."""
-    with _state.lock:
-        return to_bundle(_state.card)
+    with state.lock:
+        return to_bundle(state.card)
 
 
 @app.post("/import")
-def import_bundle(bundle: dict = Body(...)):
+def import_bundle(bundle: dict = Body(...), state: _State = Depends(_get_state)):
     """Імпорт картки з FHIR Bundle (замінює поточний стан)."""
     try:
         card = from_bundle(bundle, _make_extractor())
     except (ValueError, KeyError, TypeError) as exc:
         raise HTTPException(status_code=422, detail=f"Некоректний Bundle: {exc}")
-    with _state.lock:
-        _state.card = card
-        _state.autosave()
-        return {"status": "imported", "documents": _state.card.document_count}
+    with state.lock:
+        state.card = card
+        state.autosave()
+        return {"status": "imported", "documents": state.card.document_count}
 
 
 @app.get("/audit")
-def audit():
+def audit(state: _State = Depends(_get_state)):
     """Журнал рішень L3 (спостережуваність)."""
-    with _state.lock:
-        return _state.card.audit_log()
+    with state.lock:
+        return state.card.audit_log()
 
 
 @app.get("/metrics")
-def metrics():
+def metrics(state: _State = Depends(_get_state)):
     """Агреговані метрики роботи конвеєра."""
-    with _state.lock:
-        card = _state.card
+    with state.lock:
+        card = state.card
         log = card.audit_log()
         n = len(log)
         escalated = sum(1 for a in log if a["escalate"])
@@ -255,33 +311,33 @@ def metrics():
 
 
 @app.get("/timeline/{loinc}")
-def timeline(loinc: str):
-    with _state.lock:
-        return _state.card.factstore.series(loinc)
+def timeline(loinc: str, state: _State = Depends(_get_state)):
+    with state.lock:
+        return state.card.factstore.series(loinc)
 
 
 @app.get("/signals")
-def signals():
-    with _state.lock:
-        return _state.card.current_signals()
+def signals(state: _State = Depends(_get_state)):
+    with state.lock:
+        return state.card.current_signals()
 
 
 @app.get("/document/{doc_id}")
-def document(doc_id: str):
+def document(doc_id: str, state: _State = Depends(_get_state)):
     """Free-text іпостась документа (вузол графа) — для span-провенансу в UI."""
-    with _state.lock:
-        node = _state.card.graph.g.nodes.get(f"Document/{doc_id}")
+    with state.lock:
+        node = state.card.graph.g.nodes.get(f"Document/{doc_id}")
         if node is None or "text" not in node:
             raise HTTPException(status_code=404, detail=f"Документ {doc_id} не знайдено")
         return {"id": doc_id, "text": node["text"]}
 
 
 @app.get("/state")
-def state(lang: str = "uk"):
+def get_state_endpoint(lang: str = "uk", state: _State = Depends(_get_state)):
     """Агрегований знімок картки для інтерфейсу (`lang=uk|en` — мова текстів сигналів)."""
     lang = "en" if lang == "en" else "uk"
-    with _state.lock:
-        card = _state.card
+    with state.lock:
+        card = state.card
         sigs = card.current_signals(lang)
         # Рішення L3 над поточним станом (сигнали детерміновані → впевненість 1.0).
         doc_kind = "card state" if lang == "en" else "стан картки"
@@ -321,18 +377,16 @@ def state(lang: str = "uk"):
 
 
 @app.post("/ask", response_model=Answer)
-def ask(req: AskRequest) -> Answer:
-    with _state.lock:
-        card = _state.card
+def ask(req: AskRequest, state: _State = Depends(_get_state)) -> Answer:
+    with state.lock:
+        card = state.card
         qa = QA(card.factstore, card.graph, card.current_signals(), sex=card.patient.gender)
         return qa.ask(req.question)
 
 
 @app.get("/health")
 def health():
-    with _state.lock:
-        return {
-            "status": "ok",
-            "patient": _state.card.patient.id,
-            "documents": _state.card.document_count,
-        }
+    # Без сесійної залежності: не плодимо сесії на кожен liveness-пінг.
+    if _single_state is not None:
+        return {"status": "ok", "mode": "single", "documents": _single_state.card.document_count}
+    return {"status": "ok", "mode": "session", "sessions": len(_sessions)}
