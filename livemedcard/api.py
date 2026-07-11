@@ -383,16 +383,24 @@ def graph(state: _State = Depends(_get_state)):
     лише мітку (сам текст — за `/document/{id}`), щоб відповідь лишалась легкою.
     """
     with state.lock:
-        g = state.card.graph.g
-        nodes = [
-            {
-                "id": n,
-                "type": d.get("type", "?"),
-                # у вузла-документа мітки немає — показуємо його id
-                "label": d.get("label") or n.split("/", 1)[-1],
-            }
-            for n, d in g.nodes(data=True)
-        ]
+        card = state.card
+        g = card.graph.g
+        # Вузол-вимірювання без значення — це просто повторений підпис («Креатинін»
+        # чотири рази поспіль). Значення робить граф читабельним: видно і ЩО, і СКІЛЬКИ.
+        values = {
+            f"Observation/{o.id}": (
+                f"{o.valueQuantity.value:g} {o.valueQuantity.unit or ''}".strip()
+            )
+            for o in card.observations
+            if o.valueQuantity is not None
+        }
+        nodes = []
+        for n, d in g.nodes(data=True):
+            # у вузла-документа мітки немає — показуємо його id
+            label = d.get("label") or n.split("/", 1)[-1]
+            if n in values:
+                label = f"{label} {values[n]}"
+            nodes.append({"id": n, "type": d.get("type", "?"), "label": label})
         edges = [
             {"source": u, "target": v, "rel": d.get("rel", "")}
             for u, v, d in g.edges(data=True)

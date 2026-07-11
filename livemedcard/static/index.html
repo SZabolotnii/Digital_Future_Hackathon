@@ -330,14 +330,17 @@
   .glegend i{width:9px;height:9px;border-radius:50%;display:inline-block}
   .gwrap{overflow:auto;margin-top:6px}
   .gwrap svg{display:block}
-  .gwrap .edge{stroke:var(--line);stroke-width:1.2;fill:none;transition:.16s}
-  .gwrap .edge.prov{stroke-dasharray:3 3}
+  .gwrap .edge{stroke:color-mix(in srgb,var(--muted) 42%,transparent);stroke-width:1.3;
+    fill:none;transition:.16s}
+  /* provenance (факт → документ) — головне ребро графа, тож видиме й іменоване */
+  .gwrap .edge.prov{stroke:color-mix(in srgb,var(--accent) 55%,transparent);
+    stroke-width:1.5;stroke-dasharray:4 3}
   .gwrap .node{cursor:pointer}
-  .gwrap .node text{font:11px/1 var(--mono);fill:var(--muted);transition:.16s}
+  .gwrap .node text{font:11.5px/1 var(--mono);fill:var(--ink);transition:.16s}
   .gwrap .node:hover text{fill:var(--ink)}
-  .gwrap.sel .edge{opacity:.12}
+  .gwrap.sel .edge{opacity:.1}
   .gwrap.sel .edge.on{opacity:1;stroke:var(--accent);stroke-width:2}
-  .gwrap.sel .node{opacity:.3}
+  .gwrap.sel .node{opacity:.28}
   .gwrap.sel .node.on{opacity:1}
   .gwrap.sel .node.on text{fill:var(--ink);font-weight:700}
   .drawer .body{padding:14px 18px 20px;overflow:auto;white-space:pre-wrap;
@@ -1087,7 +1090,7 @@ function drawGraph(g){
 
   const nodes=g.nodes.filter(n=>pos[n.id]).map(n=>{
     const p=pos[n.id], right=p.x===X[2];
-    const label=n.label.length>26?n.label.slice(0,25)+'…':n.label;
+    const label=n.label.length>30?n.label.slice(0,29)+'…':n.label;
     return `<g class="node" data-id="${n.id}">
       <circle cx="${p.x}" cy="${p.y}" r="5.5" fill="${GCOLOR[n.type]||'#888'}"/>
       <text x="${right?p.x+11:p.x-11}" y="${p.y+4}" text-anchor="${right?'start':'end'}">${label}</text>
