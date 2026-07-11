@@ -38,7 +38,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 uv run python -m livemedcard.demo            # E2E-демо в терміналі
 uv run uvicorn livemedcard.api:app --reload  # веб-UI на http://127.0.0.1:8000 + JSON API
-uv run --extra dev pytest -q                 # тести (111 шт.)
+uv run --extra dev pytest -q                 # тести (133 шт.)
 uv run --extra dev pytest tests/test_pipeline.py -q   # один файл
 uv run --extra dev ruff check livemedcard tests       # лінтер (як у CI)
 LMC_PERSIST_PATH=~/lmc.json uv run uvicorn livemedcard.api:app  # з персистентністю

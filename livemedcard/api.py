@@ -88,6 +88,20 @@ def _make_extractor() -> Extractor:
     return StubExtractor()
 
 
+def _photo_ocr_mode() -> str:
+    """Куди піде завантажене фото: 'cloud' | 'local' | 'none'.
+
+    Публічне демо тримає детермінований `stub` для тексту, але фото віддає в хмарний
+    ZeroGPU Lab — і UI мусить показувати саме це, а не загальне «без хмари».
+    """
+    backend = IMAGE_OCR or EXTRACTOR
+    if backend == "ocrlab":
+        return "cloud"
+    if backend in ("nuextract", "local", "two_stage", "two_stage_lora"):
+        return "local"
+    return "none"
+
+
 class _State:
     """Тримач картки одного пацієнта: доступ лише під `lock`."""
 
@@ -375,6 +389,9 @@ def get_state_endpoint(lang: str = "uk", state: _State = Depends(_get_state)):
             "medications": medications,
             "signals": [s.model_dump() for s in sigs],
             "decision": decision.model_dump(),
+            # Куди піде ФОТО. Інтерфейс мусить казати про це правду: у публічному
+            # демо текст/сід/безпека лишаються на сервері, а фото їде в хмарний Lab.
+            "photo_ocr": _photo_ocr_mode(),
         }
 
 

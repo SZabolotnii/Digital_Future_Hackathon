@@ -268,6 +268,17 @@
   .drawer .cap{padding:10px 18px 0;color:var(--faint);font-size:11.5px}
   .drawer .body{padding:14px 18px 20px;overflow:auto;white-space:pre-wrap;
     font-size:13.5px;line-height:1.75;color:var(--muted)}
+  /* ── cloud consent (photo leaves the device — say so before it does) ── */
+  .consent{position:fixed;left:50%;top:50%;transform:translate(-50%,-46%) scale(.98);
+    width:min(470px,92vw);background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:22px 24px 18px;z-index:60;opacity:0;pointer-events:none;
+    box-shadow:0 24px 60px rgba(4,9,13,.28);transition:opacity .16s,transform .16s}
+  .consent.show{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}
+  .consent h3{margin:0 0 10px;font-size:15.5px;color:var(--critical)}
+  .consent p{margin:0 0 16px;font-size:13px;line-height:1.6;color:var(--muted);white-space:pre-line}
+  .consent .row{display:flex;gap:9px;justify-content:flex-end}
+  .consent .ghost{background:none;border:1px solid var(--line);color:var(--muted)}
+  .consent .ghost:hover{color:var(--ink);border-color:var(--accent)}
   .drawer .body mark{background:color-mix(in srgb,var(--accent) 26%,transparent);color:var(--ink);
     border-radius:4px;padding:1px 3px;font-weight:650;
     box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 45%,transparent)}
@@ -390,6 +401,15 @@
   <div class="cap" id="drawer-cap"></div>
   <div class="body" id="drawer-body"></div>
 </aside>
+<div class="drawer-back" id="consent-back"></div>
+<div class="consent" id="consent" role="dialog" aria-modal="true" aria-labelledby="consent-title">
+  <h3 id="consent-title"></h3>
+  <p id="consent-body"></p>
+  <div class="row">
+    <button class="ghost" id="consent-cancel"></button>
+    <button id="consent-ok"></button>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -456,10 +476,16 @@ const I18N = {
       'What medications and any interactions?','What about HbA1c?'],
     story:(docs,pair)=>`One timeline from ${docs} documents in two languages. The card flagged a dangerous combination — <b>${pair}</b> — deterministically, by safety rules, not by AI guess. See the red alert in the Safety panel.`,
     groupL1:'L1 · deterministic rules', groupL2a:'L2a · trends & reference ranges',
-    trust:['No cloud LLM','Deterministic safety rules (L1)','FHIR export','Local-first by design'],
+    trust:['No LLM in safety decisions','Deterministic safety rules (L1)','FHIR export','Local-first by design'],
+    trustPhotoCloud:'Photo OCR → cloud lab',
+    trustPhotoLocal:'Photo OCR → on-device',
     drawerTitle:id=>`Source · ${id}`,
     drawerCap:'The extracted fact is highlighted in the source document.',
     srcTitle:'Show source document',
+    consentTitle:'This photo will leave your device',
+    consentBody:'To read the photo, this public demo sends it to a cloud OCR lab (Hugging Face ZeroGPU). Text you type, the demo card and every safety decision stay on the server and never go to an LLM.\n\nUpload synthetic or fully de-identified documents only — never real personal medical data.',
+    consentOk:'Send the photo',
+    consentCancel:'Cancel',
   },
   ua: {
     htmlLang:'uk', title:'LiveMedCard — жива медична картка',
@@ -500,10 +526,16 @@ const I18N = {
       'Які ліки приймає і чи є взаємодії?','Що з HbA1c?'],
     story:(docs,pair)=>`Один таймлайн із ${docs} документів двома мовами. Картка помітила небезпечну комбінацію — <b>${pair}</b> — детерміновано, правилами безпеки, а не «на думку» ШІ. Дивіться червоний сигнал у панелі безпеки.`,
     groupL1:'L1 · детерміновані правила', groupL2a:'L2a · тренди й референсні межі',
-    trust:['Без хмарної LLM','Детерміновані правила безпеки (L1)','Експорт FHIR','Local-first за дизайном'],
+    trust:['Жодної LLM у рішеннях безпеки','Детерміновані правила безпеки (L1)','Експорт FHIR','Local-first за дизайном'],
+    trustPhotoCloud:'OCR фото → хмарний лаб',
+    trustPhotoLocal:'OCR фото → на пристрої',
     drawerTitle:id=>`Джерело · ${id}`,
     drawerCap:'Витягнутий факт підсвічено в документі-джерелі.',
     srcTitle:'Показати документ-джерело',
+    consentTitle:'Це фото покине ваш пристрій',
+    consentBody:'Щоб прочитати фото, це публічне демо надсилає його в хмарний OCR-лаб (Hugging Face ZeroGPU). Введений текст, демо-картка й усі рішення безпеки лишаються на сервері й до жодної LLM не потрапляють.\n\nЗавантажуйте лише синтетичні або повністю деідентифіковані документи — ніколи не справжні персональні медичні дані.',
+    consentOk:'Надіслати фото',
+    consentCancel:'Скасувати',
   },
 };
 
@@ -542,7 +574,7 @@ function applyLang(lang){
   $('#qa-tag').textContent = t.qaTag;
   $('#q').placeholder = t.qPlaceholder;
   $('#ask').textContent = t.ask;
-  $('#trust').innerHTML = t.trust.map(x=>`<span>${x}</span>`).join('');
+  renderTrust();
   $('#site-footer').innerHTML = `${t.footer1}<br>${t.footer2}
     <div class="flinks"><a href="https://github.com/SZabolotnii/Digital_Future_Hackathon" target="_blank" rel="noopener">GitHub</a> ·
     <a href="https://traces.solutions" target="_blank" rel="noopener">traces.solutions</a> ·
@@ -628,8 +660,20 @@ function trendOf(s){
   return ['→ 0%','flat'];
 }
 
+/* Чипи довіри мають відповідати тому, що система РОБИТЬ: якщо фото їде в хмару,
+   мовчати про це не можна — інакше «local-first» на екрані стає неправдою. */
+function renderTrust(){
+  const t=I18N[LANG];
+  const mode = lastState && lastState.photo_ocr;
+  const chips = t.trust.slice();
+  if(mode==='cloud') chips.push(t.trustPhotoCloud);
+  else if(mode==='local') chips.push(t.trustPhotoLocal);
+  $('#trust').innerHTML = chips.map(x=>`<span>${x}</span>`).join('');
+}
+
 function render(st){
   lastState = st;
+  renderTrust();
   const t=I18N[LANG];
   const docs=st.document_count||0;
   $('#patient').innerHTML = docs ? t.patient(st.patient.id, docs) : t.patientNone;
@@ -778,6 +822,32 @@ $('#btn-export').onclick=async()=>{
 };
 $('#btn-add').onclick=()=>$('#add-form').classList.toggle('show');
 
+/* Згода на відправку фото в хмару. Питаємо ПЕРЕД тим, як файл покине пристрій —
+   згода постфактум згодою не є. Локальний бекенд нічого не питає. */
+function askCloudConsent(){
+  if(!lastState || lastState.photo_ocr !== 'cloud') return Promise.resolve(true);
+  const t=I18N[LANG];
+  $('#consent-title').textContent=t.consentTitle;
+  $('#consent-body').textContent=t.consentBody;
+  $('#consent-ok').textContent=t.consentOk;
+  $('#consent-cancel').textContent=t.consentCancel;
+  $('#consent').classList.add('show'); $('#consent-back').classList.add('show');
+  $('#consent-ok').focus();
+  return new Promise(res=>{
+    const done=v=>{
+      $('#consent').classList.remove('show'); $('#consent-back').classList.remove('show');
+      $('#consent-ok').onclick=null; $('#consent-cancel').onclick=null;
+      $('#consent-back').onclick=null; document.removeEventListener('keydown',onKey);
+      res(v);
+    };
+    const onKey=e=>{ if(e.key==='Escape') done(false); };
+    $('#consent-ok').onclick=()=>done(true);
+    $('#consent-cancel').onclick=()=>done(false);
+    $('#consent-back').onclick=()=>done(false);
+    document.addEventListener('keydown',onKey);
+  });
+}
+
 const fileInput=$('#add-image'), dz=$('#dropzone');
 fileInput.onchange=e=>{const f=e.target.files[0];if(f){$('#dropzone-text').textContent=I18N[LANG].selected(f.name);$('#add-text').value='';}};
 dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('dragover');});
@@ -794,6 +864,7 @@ $('#add-submit').onclick=async()=>{
   try{
     let rep;
     if(file){
+      if(!await askCloudConsent()){ btn.disabled=false; btn.textContent=orig; return; }
       btn.textContent=t.ocrReading;
       // Хмарний OCR — це ~70–90 с. Без попередження мовчазне очікування читається
       // як зависання (і саме так виглядає для журі, що клікне демо самостійно).

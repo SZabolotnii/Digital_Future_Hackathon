@@ -17,6 +17,7 @@ from ..config import (
     STAGE2_MODEL,
     STAGE2_URL,
     STUB_CONFIDENCE,
+    UNVERIFIED_CONFIDENCE,
 )
 from ..dto import Document, ExtractionResult
 from ..fhir import (
@@ -330,6 +331,9 @@ class TwoStageExtractor:
         ext = deterministic_extract(
             summary_text, doc, patient_id, extracted_by="MedGemma-4B+Stage2"
         )
+        # Stage 2 тут детермінований, але читає він LLM-summary: чого модель не
+        # внесла у стиснення, того регекс уже не поверне. Отже — «не перевірено».
+        ext.mean_confidence = UNVERIFIED_CONFIDENCE if ext.observations else 0.0
         ext.document_reference = _build_docref(doc, summary_text, patient_id)
         return ext
 
@@ -367,7 +371,7 @@ class LoraStage2Extractor:
         )
         return ExtractionResult(
             observations=observations,
-            mean_confidence=STUB_CONFIDENCE if observations else 0.0,
+            mean_confidence=UNVERIFIED_CONFIDENCE if observations else 0.0,
             document_reference=_build_docref(doc, summary_text, patient_id),
         )
 
@@ -392,7 +396,7 @@ class NuExtractExtractor:
         )
         return ExtractionResult(
             observations=observations,
-            mean_confidence=STUB_CONFIDENCE if observations else 0.0,
+            mean_confidence=UNVERIFIED_CONFIDENCE if observations else 0.0,
             document_reference=_build_docref(doc, doc.text, patient_id),
         )
 
@@ -427,7 +431,7 @@ class OcrLabExtractor:
         )
         return ExtractionResult(
             observations=observations,
-            mean_confidence=STUB_CONFIDENCE if observations else 0.0,
+            mean_confidence=UNVERIFIED_CONFIDENCE if observations else 0.0,
             document_reference=_build_docref(doc, doc.text, patient_id),
         )
 

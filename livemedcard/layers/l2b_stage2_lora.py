@@ -35,9 +35,13 @@ from ..llm_client import chat_completions
 _KEYWORD_LOINC: dict[str, tuple[str, str]] = {
     # EN (readmission-домен FT) + UA — білінгвальний міст
     "creatinine": ("2160-0", "Creatinine"),
+    "serum creatinine": ("2160-0", "Creatinine"),
     "креатинін": ("2160-0", "Creatinine"),
     "glucose": ("2345-7", "Glucose"),
+    "fasting glucose": ("2345-7", "Glucose"),
+    "blood glucose": ("2345-7", "Glucose"),
     "глюкоза": ("2345-7", "Glucose"),
+    "глюкоза натще": ("2345-7", "Glucose"),
     "potassium": ("2823-3", "Potassium"),
     "калій": ("2823-3", "Potassium"),
     "sodium": ("2951-2", "Sodium"),
@@ -45,6 +49,8 @@ _KEYWORD_LOINC: dict[str, tuple[str, str]] = {
     "hemoglobin": ("718-7", "Hemoglobin"),
     "гемоглобін": ("718-7", "Hemoglobin"),
     "hba1c": ("4548-4", "Hemoglobin A1c"),
+    "hemoglobin a1c": ("4548-4", "Hemoglobin A1c"),
+    "glycated hemoglobin": ("4548-4", "Hemoglobin A1c"),
     "глікований гемоглобін": ("4548-4", "Hemoglobin A1c"),
     "hematocrit": ("4544-3", "Hematocrit"),
     "гематокрит": ("4544-3", "Hematocrit"),
@@ -191,6 +197,12 @@ def to_observations(
         num, unit = _split_value(item.get("value"))
         if num is None:  # нечислові (Yes/No, назви) лишаються лише в summary
             continue
+        # KVT4 з хмарного Lab несе одиницю ОКРЕМИМ полем ({"value":"135","unit":"µmol/L"}),
+        # тоді як локальний шлях вкладає її в рядок значення ("135 мкмоль/л"). Без цього
+        # рядка кожен факт із фото приходив без одиниці — і псував FHIR-експорт.
+        if unit is None:
+            raw_unit = str(item.get("unit") or "").strip()
+            unit = raw_unit or None
         eff = _parse_timestamp(item.get("timestamp"), doc.received_at)
         bridge = _resolve_loinc(keyword)
         coding = (

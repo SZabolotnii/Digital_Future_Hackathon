@@ -10,6 +10,7 @@ from typing import Optional
 from ..dto import Signal
 from ..reference import range_for
 from ..stores import FactStore
+from ..units import canonical, same_unit
 
 
 def _fmt(v: float) -> str:
@@ -32,6 +33,10 @@ def detect_trends(store: FactStore, lang: str = "uk") -> list[Signal]:
     for loinc in store.loincs():
         series = store.series(loinc)
         if len(series) < 3:
+            continue
+        # Ряд у різних одиницях — не ряд: 100 mg/dL і 5.5 mmol/L «зростають» лише
+        # на папері. Тренд рахуємо тільки на однорідних одиницях.
+        if len({canonical(f.unit) for f in series}) > 1:
             continue
         values = [f.value for f in series]
         # Нестрога монотонність із чистою зміною: рівний крок (повторне значення)
@@ -84,6 +89,29 @@ def detect_range_breaches(
         # series відсортований за часом; беремо ОСТАННІЙ (при рівних мітках —
         # останній доданий), щоб L2a і Q&A узгоджено бачили те саме значення.
         latest = series[-1]
+        # Порівнювати з межею можна лише в тих самих одиницях. Інакше — не мовчимо,
+        # а кажемо прямо: перевірку не виконано (мовчазний пропуск гірший за незгоду).
+        if not same_unit(latest.unit, ref.unit):
+            keyword = (ref.keyword_en if lang == "en" and ref.keyword_en else ref.keyword)
+            got = latest.unit or ("not stated" if lang == "en" else "не вказано")
+            detail = (
+                f"{keyword} {_fmt(latest.value)} {got}: units do not match the reference "
+                f"({ref.unit}) — range check not performed"
+                if lang == "en" else
+                f"{keyword} {_fmt(latest.value)} {got}: одиниці не збігаються з довідником "
+                f"({ref.unit}) — перевірку меж не виконано"
+            )
+            signals.append(
+                Signal(
+                    layer="L2a",
+                    kind="unit_mismatch",
+                    severity="moderate",
+                    detail=detail,
+                    subjects=[loinc],
+                    confidence=1.0,
+                )
+            )
+            continue
         if latest.value < ref.low:
             direction = "below range" if lang == "en" else "нижче норми"
         elif latest.value > ref.high:

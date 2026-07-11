@@ -18,6 +18,13 @@ LOW_CONFIDENCE = float(os.getenv("LMC_LOW_CONFIDENCE", "0.6"))
 # Реальний екстрактор (MedGemma) має ставити модельну впевненість замість цієї.
 STUB_CONFIDENCE = float(os.getenv("LMC_STUB_CONFIDENCE", "0.95"))
 
+# Впевненість витягу, зробленого LLM (NuExtract/LoRA/хмарний Lab). Тримаємо НИЖЧЕ
+# LOW_CONFIDENCE навмисно: калібрування в нас поки немає, а обірваний OCR виглядає
+# рівно так само, як повний. Поки не вміємо міряти — чесне значення це «не
+# перевірено», і L3 веде такий документ до людини. Детермінований `stub` (regex +
+# vocab на сирому тексті) лишається при 0.95: там впевненість справді щось означає.
+UNVERIFIED_CONFIDENCE = float(os.getenv("LMC_UNVERIFIED_CONFIDENCE", "0.5"))
+
 # Максимальний розмір тексту документа (символів) — валідація API.
 MAX_DOC_CHARS = int(os.getenv("LMC_MAX_DOC_CHARS", "20000"))
 

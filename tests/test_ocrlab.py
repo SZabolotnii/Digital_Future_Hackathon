@@ -198,3 +198,22 @@ def test_ingest_image_uses_ocrlab_when_image_ocr_set(monkeypatch, fake_gradio_cl
         assert creat["points"][-1]["source"]  # провенанс збережено
     finally:
         c.post("/reset")
+
+
+def test_cloud_extraction_is_marked_unverified_and_escalates(monkeypatch):
+    """Хмарний витяг не має заявляти високу впевненість: калібрування немає, а
+    обірваний OCR виглядає так само, як повний. Отже — «не перевірено» → до людини."""
+    from livemedcard.config import LOW_CONFIDENCE
+    from livemedcard.layers import l3_router
+
+    fc = FakeClient(facts=[
+        {"keyword": "Креатинін", "value": "135 мкмоль/л", "timestamp": "2024-10-15"},
+    ])
+    _use(monkeypatch, fc)
+    doc = Document(id="ocr-conf", text="# md", kind="lab_report")
+    ext = OcrLabExtractor().extract(doc, "mom-001")
+
+    assert ext.mean_confidence < LOW_CONFIDENCE
+    decision = l3_router.route([], ext.mean_confidence, "lab_report")
+    assert decision.escalate is True
+    assert decision.route_to == "L4_human"

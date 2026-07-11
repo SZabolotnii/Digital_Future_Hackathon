@@ -98,3 +98,39 @@ def test_lora_extractor_end_to_end():
     assert card.factstore.series("2160-0")[0].value == 1.4
     # Free-text іпостась збережено.
     assert len(card.document_references) == 1
+
+
+def test_kvt4_unit_field_reaches_observation():
+    """Хмарний Lab несе одиницю ОКРЕМИМ полем — вона не має губитися дорогою у FHIR."""
+    doc = Document(id="d-unit", text="x", kind="lab_report")
+    obs = l2b_stage2_lora.to_observations(
+        [{"keyword": "Creatinine", "value": "135", "unit": "µmol/L",
+          "timestamp": "2024-10-15"}],
+        doc, "mom-001", extracted_by="test",
+    )
+    assert obs[0].valueQuantity.unit == "µmol/L"
+
+
+def test_en_lab_keywords_bridge_to_loinc():
+    """Формулювання зі справжнього EN-бланка мають мостити у LOINC, а не падати у free-form."""
+    doc = Document(id="d-en", text="x", kind="lab_report")
+    obs = l2b_stage2_lora.to_observations(
+        [
+            {"keyword": "Fasting glucose", "value": "6.8", "unit": "mmol/L",
+             "timestamp": "2024-10-15"},
+            {"keyword": "Hemoglobin A1c (HbA1c)", "value": "7.6", "unit": "%",
+             "timestamp": "2024-10-15"},
+        ],
+        doc, "mom-001", extracted_by="test",
+    )
+    assert [loinc_of(o) for o in obs] == ["2345-7", "4548-4"]
+
+
+def test_glycated_hemoglobin_does_not_collapse_into_hemoglobin():
+    """Захист від колапсу лишається: «глікований гемоглобін» ≠ «гемоглобін» (718-7)."""
+    doc = Document(id="d-hb", text="x", kind="lab_report")
+    obs = l2b_stage2_lora.to_observations(
+        [{"keyword": "Глікований гемоглобін", "value": "7.6 %", "timestamp": "2024-10-15"}],
+        doc, "mom-001", extracted_by="test",
+    )
+    assert loinc_of(obs[0]) == "4548-4"

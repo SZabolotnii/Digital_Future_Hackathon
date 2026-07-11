@@ -171,6 +171,7 @@ VLM ≈ 0.6–1.0 ГБ + KV-кеш/контекст + рантайм/compute-б�
 | `LMC_PERSIST_PATH` | `""` (пам'ять) | Шлях до JSON-файлу знімка картки |
 | `LMC_LOW_CONFIDENCE` | `0.6` | Поріг впевненості L2b для ескалації L3 |
 | `LMC_STUB_CONFIDENCE` | `0.95` | Впевненість StubExtractor на словниковий збіг |
+| `LMC_UNVERIFIED_CONFIDENCE` | `0.5` | Впевненість LLM-витягу (NuExtract/LoRA/хмарний Lab). Навмисно **нижче** порога: калібрування немає, обірваний OCR виглядає як повний → документ іде до людини |
 | `LMC_MAX_DOC_CHARS` | `20000` | Ліміт символів одного документа |
 | `LMC_SEMANTIC_RETRIEVAL` | `""` (off) | Семантичний ретрив у Q&A (embeddings-косинус); off → лексичне ранжування |
 | `LMC_EMBED_MODEL` | `nomic-embed-text` | Модель для `/embeddings` при семантичному ретриві |
@@ -189,7 +190,7 @@ VLM ≈ 0.6–1.0 ГБ + KV-кеш/контекст + рантайм/compute-б�
 ## Тести та якість
 
 ```bash
-# Усі тести (111 шт.)
+# Усі тести (133 шт.)
 uv run --extra dev pytest -q
 
 # Лінтер
@@ -234,7 +235,7 @@ livemedcard/
 └── static/
     └── index.html        # Веб-SPA (без збірки, самодостатня)
 
-tests/                    # 111 тестів (pytest)
+tests/                    # 133 тести (pytest)
 ARCHITECTURE.md           # Детальна архітектура TRACE
 USER_GUIDE.md             # Посібник користувача
 REVIEW_AND_ROADMAP.md     # Code review + дорожня карта
