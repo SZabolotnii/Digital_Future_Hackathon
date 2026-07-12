@@ -354,11 +354,15 @@
   .sphoto{border:1px dashed var(--line);border-radius:10px;padding:12px 14px;margin-top:14px}
   .sphoto img{width:100%;max-width:420px;border-radius:8px;border:1px solid var(--line);display:block;margin:9px 0}
   .sfoot{display:flex;gap:9px;justify-content:flex-end;padding:12px 18px;border-top:1px solid var(--line)}
+  a#samples-photo-dl{display:inline-flex;align-items:center;text-decoration:none;cursor:pointer;
+    font:inherit;font-weight:550;border:1px solid var(--line);border-radius:10px;padding:9px 15px;
+    background:transparent;color:var(--ink);transition:.14s}
+  a#samples-photo-dl:hover{border-color:var(--accent);color:var(--accent)}
 
   /* ── cloud consent (photo leaves the device — say so before it does) ── */
   .consent{position:fixed;left:50%;top:50%;transform:translate(-50%,-46%) scale(.98);
     width:min(470px,92vw);background:var(--panel);border:1px solid var(--line);border-radius:14px;
-    padding:22px 24px 18px;z-index:60;opacity:0;pointer-events:none;
+    padding:22px 24px 18px;z-index:70;opacity:0;pointer-events:none;
     box-shadow:0 24px 60px rgba(4,9,13,.28);transition:opacity .16s,transform .16s}
   .consent.show{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}
   .consent h3{margin:0 0 10px;font-size:15.5px;color:var(--critical)}
@@ -525,7 +529,10 @@
       <div class="sk" id="samples-photo-head"></div>
       <p class="st" id="samples-photo-cap" style="margin:6px 0 0"></p>
       <img id="samples-photo" alt="">
-      <button class="ghost" id="samples-photo-btn"></button>
+      <div style="display:flex;gap:9px;flex-wrap:wrap">
+        <button class="ghost" id="samples-photo-btn"></button>
+        <a class="ghost" id="samples-photo-dl" href="/samples/image" download="livemedcard_sample_lab_report.jpg"></a>
+      </div>
     </div>
   </div>
   <div class="sfoot">
@@ -543,7 +550,7 @@
   <div class="body" id="help-body"></div>
 </aside>
 
-<div class="drawer-back" id="consent-back"></div>
+<div class="drawer-back" id="consent-back" style="z-index:69"></div>
 <div class="consent" id="consent" role="dialog" aria-modal="true" aria-labelledby="consent-title">
   <h3 id="consent-title"></h3>
   <p id="consent-body"></p>
@@ -624,8 +631,8 @@ const I18N = {
     samplesHint:'Note the two dangerous medications sit in <b>different</b> documents, two visits apart. That combination is what the deterministic layer catches.',
     samplesLoad:'Load into the card', samplesCancel:'Cancel',
     samplesPhotoHead:'Or a photo of a lab form',
-    samplesPhotoCap:'Same comparison, harder path: this synthetic form is read by a real OCR model, not by a script with the answers.',
-    samplesPhotoBtn:'Read this photo (OCR)',
+    samplesPhotoCap:'Same comparison, harder path: this synthetic form is read by a real OCR model, not by a script with the answers. It is our own synthetic file — nothing of yours leaves your device — so we do not ask for consent here. The cloud OCR lab takes up to ~90 s.',
+    samplesPhotoBtn:'Read this photo (OCR)', samplesPhotoDl:'Save the form to my device',
     toastExport:'FHIR bundle downloaded', toastNeedInput:'Enter text or choose a photo',
     ocrReading:'Reading (OCR)…', processing:'Processing…',
     toastOcrWait:'Reading the photo on the cloud OCR lab — up to ~90 s',
@@ -728,8 +735,8 @@ const I18N = {
     samplesHint:'Зверніть увагу: два небезпечні препарати лежать у <b>різних</b> документах, між ними — рік. Саме таку комбінацію й ловить детермінований шар.',
     samplesLoad:'Завантажити в картку', samplesCancel:'Скасувати',
     samplesPhotoHead:'Або фото лабораторного бланка',
-    samplesPhotoCap:'Те саме порівняння, складніший шлях: цей синтетичний бланк читає справжня OCR-модель, а не скрипт із готовими відповідями.',
-    samplesPhotoBtn:'Прочитати це фото (OCR)',
+    samplesPhotoCap:'Те саме порівняння, складніший шлях: цей синтетичний бланк читає справжня OCR-модель, а не скрипт із готовими відповідями. Це наш власний синтетичний файл — ваш пристрій нічого не покидає, — тож згоди тут не питаємо. Хмарний OCR-лаб читає його до ~90 с.',
+    samplesPhotoBtn:'Прочитати це фото (OCR)', samplesPhotoDl:'Зберегти бланк на пристрій',
     toastExport:'FHIR Bundle завантажено', toastNeedInput:'Введіть текст або виберіть фото',
     ocrReading:'Зчитування (OCR)…', processing:'Опрацювання…',
     toastOcrWait:'Фото читає хмарний OCR-лаб — до ~90 с',
@@ -1220,6 +1227,7 @@ async function openSamples(){
   $('#samples-photo-head').textContent=t.samplesPhotoHead;
   $('#samples-photo-cap').textContent=t.samplesPhotoCap;
   $('#samples-photo-btn').textContent=t.samplesPhotoBtn;
+  $('#samples-photo-dl').textContent=t.samplesPhotoDl;
   $('#samples-photo').src='/samples/image';
   try{
     const d=await api('/samples?lang='+(LANG==='ua'?'uk':'en'));
@@ -1246,10 +1254,12 @@ $('#samples-load').onclick=async()=>{
   finally{b.disabled=false;b.textContent=orig;}
 };
 
-// Той самий бланк, що в кліпі: журі бачить його очима, потім віддає справжньому OCR.
+/* Той самий бланк, що в кліпі: журі бачить його очима, потім віддає справжньому OCR.
+   Згоди НЕ питаємо: це наш власний синтетичний файл, пристрій користувача нічого не
+   покидає. Згода існує, щоб захистити ЙОГО дані, — а тут захищати нічого. Але про
+   хмару й ~90 с усе одно кажемо в підписі: мовчати про це було б обманом. */
 $('#samples-photo-btn').onclick=async()=>{
   const t=I18N[LANG], b=$('#samples-photo-btn'), orig=b.textContent;
-  if(!await askCloudConsent()) return;
   b.disabled=true; b.textContent=t.ocrReading; toast(t.toastOcrWait);
   try{
     const blob=await (await fetch('/samples/image')).blob();
