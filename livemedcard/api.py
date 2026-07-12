@@ -264,6 +264,22 @@ def ingest_image(req: ImageIngestRequest, state: _State = Depends(_get_state)):
 
 
 
+@app.get("/samples")
+def samples(lang: str = "uk"):
+    """Демо-документи як вхідні дані — БЕЗ завантаження в картку.
+
+    Дає журі побачити сирий документ до того, як картка з нього щось витягне:
+    спершу вхід, потім результат. Сесія не потрібна — нічого не змінюємо.
+    """
+    return {"documents": load_sample_docs(lang)}
+
+
+@app.get("/samples/image")
+def sample_image() -> FileResponse:
+    """Синтетичний бланк лабораторії — фото-шлях (OCR) для того самого порівняння."""
+    return FileResponse(_STATIC / "sample_lab_report.jpg", media_type="image/jpeg")
+
+
 @app.post("/ingest/samples")
 def ingest_samples(lang: str = "uk", state: _State = Depends(_get_state)):
     """Демо-документи мовою `lang` (`uk`|`en`) — набори дзеркальні за значеннями."""

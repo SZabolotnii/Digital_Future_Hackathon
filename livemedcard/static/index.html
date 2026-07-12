@@ -345,6 +345,16 @@
   .gwrap.sel .node.on text{fill:var(--ink);font-weight:700}
   .drawer .body{padding:14px 18px 20px;overflow:auto;white-space:pre-wrap;
     font-size:13.5px;line-height:1.75;color:var(--muted)}
+  /* ── зразки документів: спершу вхід, потім результат ── */
+  .sdoc{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:10px;background:var(--panel-2)}
+  .sdoc .sh{display:flex;gap:9px;align-items:baseline;margin-bottom:7px}
+  .sdoc .sk{font-size:12px;font-weight:600;color:var(--ink)}
+  .sdoc .sd{font-family:var(--mono);font-size:11px;color:var(--muted)}
+  .sdoc .st{font-family:var(--mono);font-size:12px;line-height:1.65;color:var(--muted);white-space:pre-wrap;word-break:break-word;margin:0}
+  .sphoto{border:1px dashed var(--line);border-radius:10px;padding:12px 14px;margin-top:14px}
+  .sphoto img{width:100%;max-width:420px;border-radius:8px;border:1px solid var(--line);display:block;margin:9px 0}
+  .sfoot{display:flex;gap:9px;justify-content:flex-end;padding:12px 18px;border-top:1px solid var(--line)}
+
   /* ── cloud consent (photo leaves the device — say so before it does) ── */
   .consent{position:fixed;left:50%;top:50%;transform:translate(-50%,-46%) scale(.98);
     width:min(470px,92vw);background:var(--panel);border:1px solid var(--line);border-radius:14px;
@@ -502,6 +512,28 @@
   </div>
 </aside>
 
+<div class="drawer-back" id="samples-back"></div>
+<aside class="help" id="samplesm" role="dialog" aria-modal="true" aria-labelledby="samples-title">
+  <div class="head">
+    <h3 id="samples-title"></h3>
+    <button class="close" id="samples-close" aria-label="Close">×</button>
+  </div>
+  <div class="body">
+    <p class="gcap" id="samples-cap"></p>
+    <div id="samples-list"></div>
+    <div class="sphoto">
+      <div class="sk" id="samples-photo-head"></div>
+      <p class="st" id="samples-photo-cap" style="margin:6px 0 0"></p>
+      <img id="samples-photo" alt="">
+      <button class="ghost" id="samples-photo-btn"></button>
+    </div>
+  </div>
+  <div class="sfoot">
+    <button class="ghost" id="samples-cancel"></button>
+    <button class="primary" id="samples-load"></button>
+  </div>
+</aside>
+
 <div class="drawer-back" id="help-back"></div>
 <aside class="help" id="help" role="dialog" aria-modal="true" aria-labelledby="help-title">
   <div class="head">
@@ -587,6 +619,13 @@ const I18N = {
     escalate:'escalated to human (L4)', auto:'automatic processing',
     sevLabel:{critical:'critical',major:'high',moderate:'moderate',info:'info'},
     toastSamples:'Demo card loaded', toastReset:'Card reset',
+    samplesTitle:'Sample documents — what goes in',
+    samplesCap:'These are the raw inputs, exactly as the card receives them. Read them first, then load them and check what was extracted — the timeline, the medications, the safety signals. Nothing here is hidden from you.',
+    samplesHint:'Note the two dangerous medications sit in <b>different</b> documents, two visits apart. That combination is what the deterministic layer catches.',
+    samplesLoad:'Load into the card', samplesCancel:'Cancel',
+    samplesPhotoHead:'Or a photo of a lab form',
+    samplesPhotoCap:'Same comparison, harder path: this synthetic form is read by a real OCR model, not by a script with the answers.',
+    samplesPhotoBtn:'Read this photo (OCR)',
     toastExport:'FHIR bundle downloaded', toastNeedInput:'Enter text or choose a photo',
     ocrReading:'Reading (OCR)…', processing:'Processing…',
     toastOcrWait:'Reading the photo on the cloud OCR lab — up to ~90 s',
@@ -684,6 +723,13 @@ const I18N = {
     escalate:'ескалація до людини (L4)', auto:'автоматична обробка',
     sevLabel:{critical:'критичний',major:'високий',moderate:'помірний',info:'інфо'},
     toastSamples:'Демо-картку завантажено', toastReset:'Картку скинуто',
+    samplesTitle:'Зразки документів — що подається на вхід',
+    samplesCap:'Це сирі документи, рівно в тому вигляді, в якому їх отримує картка. Спершу прочитайте їх, потім завантажте — і перевірте, що з них витягнуто: таймлайн, ліки, сигнали безпеки. Нічого не приховано.',
+    samplesHint:'Зверніть увагу: два небезпечні препарати лежать у <b>різних</b> документах, між ними — рік. Саме таку комбінацію й ловить детермінований шар.',
+    samplesLoad:'Завантажити в картку', samplesCancel:'Скасувати',
+    samplesPhotoHead:'Або фото лабораторного бланка',
+    samplesPhotoCap:'Те саме порівняння, складніший шлях: цей синтетичний бланк читає справжня OCR-модель, а не скрипт із готовими відповідями.',
+    samplesPhotoBtn:'Прочитати це фото (OCR)',
     toastExport:'FHIR Bundle завантажено', toastNeedInput:'Введіть текст або виберіть фото',
     ocrReading:'Зчитування (OCR)…', processing:'Опрацювання…',
     toastOcrWait:'Фото читає хмарний OCR-лаб — до ~90 с',
@@ -1045,7 +1091,7 @@ async function openDoc(docId, span){
 function closeDoc(){$('#drawer').classList.remove('show');$('#drawer-back').classList.remove('show');}
 $('#drawer-close').onclick=closeDoc;
 $('#drawer-back').onclick=closeDoc;
-addEventListener('keydown',e=>{if(e.key==='Escape'){closeDoc();closeHelp();closeGraph();}});
+addEventListener('keydown',e=>{if(e.key==='Escape'){closeDoc();closeHelp();closeGraph();closeSamples();}});
 
 // ── довідка ───────────────────────────────────────────────
 function renderHelp(){
@@ -1159,10 +1205,63 @@ async function ask(q){
   }catch(e){toast(I18N[LANG].errorPrefix+e.message);}
 }
 
-// Демо-документи — мовою інтерфейсу (набори дзеркальні: ті самі значення, ті самі сигнали).
-$('#btn-samples').onclick=async()=>{
-  await api(`/ingest/samples?lang=${LANG==='ua'?'uk':'en'}`,{method:'POST'});
-  await refresh();toast(I18N[LANG].toastSamples);
+/* Демо-документи — мовою інтерфейсу (набори дзеркальні: ті самі значення, ті самі
+   сигнали). Спершу показуємо ВХІД, і лише потім вантажимо: інакше витягнутим фактам
+   немає з чим порівнювати, і журі лишається тільки вірити нам на слово. */
+const kindLabels=()=>{const t=I18N[LANG];
+  return {discharge_summary:t.optDischarge,lab_report:t.optLab,prescription:t.optRx,note:t.optNote};};
+
+async function openSamples(){
+  const t=I18N[LANG];
+  $('#samples-title').textContent=t.samplesTitle;
+  $('#samples-cap').innerHTML=t.samplesCap+' '+t.samplesHint;
+  $('#samples-load').textContent=t.samplesLoad;
+  $('#samples-cancel').textContent=t.samplesCancel;
+  $('#samples-photo-head').textContent=t.samplesPhotoHead;
+  $('#samples-photo-cap').textContent=t.samplesPhotoCap;
+  $('#samples-photo-btn').textContent=t.samplesPhotoBtn;
+  $('#samples-photo').src='/samples/image';
+  try{
+    const d=await api('/samples?lang='+(LANG==='ua'?'uk':'en'));
+    const K=kindLabels();
+    $('#samples-list').innerHTML=d.documents.map(doc=>`<div class="sdoc">
+      <div class="sh"><span class="sk">${K[doc.kind]||doc.kind}</span><span class="sd">${escHtml((doc.received_at||'').slice(0,10))}</span></div>
+      <p class="st">${escHtml(doc.text)}</p></div>`).join('');
+  }catch(e){toast(t.errorPrefix+e.message);return;}
+  $('#samplesm').classList.add('show');$('#samples-back').classList.add('show');
+  $('#samples-close').focus();
+}
+function closeSamples(){$('#samplesm').classList.remove('show');$('#samples-back').classList.remove('show');}
+$('#btn-samples').onclick=openSamples;
+$('#samples-close').onclick=closeSamples;
+$('#samples-cancel').onclick=closeSamples;
+$('#samples-back').onclick=closeSamples;
+
+$('#samples-load').onclick=async()=>{
+  const t=I18N[LANG], b=$('#samples-load'), orig=b.textContent; b.disabled=true;
+  try{
+    await api(`/ingest/samples?lang=${LANG==='ua'?'uk':'en'}`,{method:'POST'});
+    closeSamples(); await refresh(); toast(t.toastSamples);
+  }catch(e){toast(t.errorPrefix+e.message);}
+  finally{b.disabled=false;b.textContent=orig;}
+};
+
+// Той самий бланк, що в кліпі: журі бачить його очима, потім віддає справжньому OCR.
+$('#samples-photo-btn').onclick=async()=>{
+  const t=I18N[LANG], b=$('#samples-photo-btn'), orig=b.textContent;
+  if(!await askCloudConsent()) return;
+  b.disabled=true; b.textContent=t.ocrReading; toast(t.toastOcrWait);
+  try{
+    const blob=await (await fetch('/samples/image')).blob();
+    const base64=await new Promise((res,rej)=>{
+      const rd=new FileReader(); rd.onload=()=>res(rd.result); rd.onerror=rej; rd.readAsDataURL(blob);});
+    const rep=await api('/ingest/image',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({image_base64:base64,kind:'lab_report'})});
+    closeSamples(); await refresh();
+    const got=(rep.extraction&&rep.extraction.observations||[]).length;
+    toast(got?(rep.decision.escalate?t.toastEscalated:t.toastAuto):t.toastNoFacts);
+  }catch(e){toast(t.errorPrefix+e.message);}
+  finally{b.disabled=false;b.textContent=orig;}
 };
 $('#btn-reset').onclick=async()=>{await api('/reset',{method:'POST'});$('#log').innerHTML='';await refresh();toast(I18N[LANG].toastReset);};
 $('#btn-export').onclick=async()=>{

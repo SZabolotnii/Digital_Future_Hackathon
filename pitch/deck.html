@@ -60,6 +60,14 @@
   .herohook{font-size:46px;font-weight:800;line-height:1.14;letter-spacing:-.015em;text-wrap:balance;max-width:1120px}
   .herosub{font-size:22px;color:var(--muted);line-height:1.4}
   .herosub b{color:var(--danger);font-weight:600}
+.icp{border-left:3px solid var(--accent);padding:2px 0 2px 14px;font-size:16.5px;line-height:1.42;color:var(--muted)}
+.icp b{color:var(--fg);font-weight:700}
+.gdpr{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.gd{background:var(--panel-2);border:1px solid var(--line-soft);border-radius:10px;padding:10px 12px}
+.gd .a{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+.gd .b{font-size:12.5px;line-height:1.36;color:var(--muted);margin-top:5px}
+.gd .b b{color:var(--fg);font-weight:600}
+.icp i{font-style:normal;color:var(--accent);font-weight:600}
   .ekg{display:block;width:100%;height:40px}
   .ekg polyline{filter:drop-shadow(0 0 6px rgba(45,212,191,.7))}
 
@@ -230,6 +238,7 @@
       </svg>
       <div class="herohook">Ваша мама приймає 7 препаратів від 4 лікарів.<br>Жоден не бачить призначень інших.</div>
       <div class="herosub"><b>Небезпечну взаємодію помітять уже в лікарні.</b> LiveMedCard помічає її сьогодні — вдома.</div>
+      <div class="icp"><b>Мама не відкриває застосунок — і не мусить.</b> Картку веде <i>доросла дитина (40–60)</i>: вона тримає документи, вона платить, вона тривожиться. Той самий екран <i>лікар</i> читає за 20 секунд.</div>
       <div class="pstats">
         <div class="pstat"><div class="v">&gt;40%</div><div class="l">людей 65+ приймають 5+ ліків (поліпрагмазія)</div></div>
         <div class="pstat"><div class="v">10–19%</div><div class="l">госпіталізацій літніх — через побічні реакції на ліки</div></div>
@@ -304,6 +313,7 @@
             <span><b>149</b> автотестів</span>
             <span><b>local-first</b></span>
           </div>
+          <div class="icp" style="margin-top:18px;font-size:15px"><b>Один екран — два користувачі.</b> Опікун бачить <i>спокій</i>. Лікар бачить <i>усі ліки від усіх лікарів</i> і взаємодію між ними — за 20 секунд замість 10 хвилин збору анамнезу.</div>
         </div>
       </div>
     </div>
@@ -312,7 +322,7 @@
 
   <!-- SLIDE 4 — MOAT -->
   <section class="slide">
-    <div class="top"><span class="kicker">04 · Moat · чому це не обгортка над ChatGPT</span><span class="brandmini"><span class="dotmark"></span><b>LiveMedCard</b></span></div>
+    <div class="top"><span class="kicker">04 · Захисний рубіж · чому це не обгортка над ChatGPT</span><span class="brandmini"><span class="dotmark"></span><b>LiveMedCard</b></span></div>
     <div class="body">
       <div class="title">AI там, де додає цінність. <span class="ac">Детермінізм</span> там, де потрібна безпека.</div>
       <div class="pillars">
@@ -345,7 +355,7 @@
             <tr class="us"><td><b>LiveMedCard</b></td><td>✓</td><td>✓</td><td>✓ on-device</td><td>✓</td><td>✓</td></tr>
           </tbody>
         </table>
-        <div class="cmpnote"><b>Apple Health і Fasten — не конкуренти, а джерела.</b> Вони віддають FHIR — ми його <b>імпортуємо</b>. Наша робота починається там, де їхня закінчується: паперова виписка, фото рецепта, український бланк — того, чого в жодному FHIR-ендпойнті немає. А шар безпеки — поверх усього разом.</div>
+        <div class="cmpnote"><b>Apple Health і Fasten — не конкуренти, а джерела.</b> Вони віддають FHIR — ми його <b>імпортуємо</b>. Наша робота починається там, де їхня закінчується: паперова виписка, фото рецепта, сканований бланк — того, чого в жодному FHIR-ендпойнті немає. А шар безпеки — поверх усього разом.</div>
       </div>
     </div>
     <div class="bot"><span class="niche">AI як ключова складова</span><span class="pageno">04 / 07</span></div>
@@ -353,24 +363,26 @@
 
   <!-- SLIDE 5 — MARKET / WEDGE -->
   <section class="slide">
-    <div class="top"><span class="kicker">05 · Ринок і клин входу</span><span class="brandmini"><span class="dotmark"></span><b>LiveMedCard</b></span></div>
+    <div class="top"><span class="kicker">05 · Ринок і точка входу</span><span class="brandmini"><span class="dotmark"></span><b>LiveMedCard</b></span></div>
     <div class="body">
-      <div class="title" style="font-size:36px">Платник — не літня людина, а її <span class="ac">доросла дитина 40–60</span></div>
+      <div class="title" style="font-size:36px">Заходимо через <span class="ac">дорослу дитину 40–60</span>. Гроші — у <span class="ac">B2B</span>.</div>
       <div class="market-grid">
         <div class="funnel">
           <div class="tier t1"><span class="lab">TAM</span><span class="tx"><b>0,84 млрд людей 65+</b> у світі <span>· 61,2 млн у США (Census 2024), ~90 млн у ЄС (Eurostat 2024) · ринок PHR-софту 9,7 млрд $ (2024) → 21,9 млрд (2034)</span></span></div>
           <div class="tier t2"><span class="lab">SAM</span><span class="tx"><b>59 млн родин-опікунів у США</b> (NAC/AARP 2025) <span>· ЄС: 80% догляду — неформальні опікуни (Eurocarers) · неоплачуваний догляд = <b style="color:var(--fg)">600 млрд $/рік</b> (AARP)</span></span></div>
-          <div class="tier t3"><span class="lab">SOM</span><span class="tx"><b>B2C-підписка, гострий під-сегмент</b> <span>· нещодавня госпіталізація, 5+ ліків, живуть окремо · 10% early-adopter-опікунів = робоча гіпотеза, не дані</span></span></div>
-          <div class="note">Джерела: U.S. Census Vintage 2024 · Eurostat 2024 · NAC/AARP «Caregiving in the US 2025» · Zion/Mordor (PHR). Що чесно бракує: кількості caregiver-домогосподарств зі смартфоном у ЄС — тримаємо як формулу, не як вигадане число.</div>
+          <div class="tier t3"><span class="lab">SOM</span><span class="tx"><b>Гострий під-сегмент, далі — сімейні практики</b> <span>· нещодавня госпіталізація, 5+ ліків, живуть окремо · 10% early-adopter-опікунів = робоча гіпотеза, не дані</span></span></div>
+          <div class="note">Джерела: U.S. Census Vintage 2024 · Eurostat 2024 · NAC/AARP «Caregiving in the US 2025» · Zion/Mordor (PHR). Що чесно бракує: кількості caregiver-домогосподарств зі смартфоном у ЄС.</div>
         </div>
         <div class="sidebox">
-          <div class="h">Монетизація</div>
-          <div class="big">Freemium → <b>~5–9 €/міс</b></div>
-          <div class="s">Premium: повний таймлайн, необмежені документи, алерти взаємодій, спільний доступ родини, експорт лікарю.</div>
-          <div class="s" style="color:var(--muted-2)">Бенчмарк WTP: Medisafe <b style="color:var(--fg)">$4,99/міс</b>, MyTherapy $2,99, b.well $10 — коридор ринку $3–10. Якір: одна пропущена взаємодія → госпіталізація коштує в рази більше.</div>
+          <div class="h">Дві доріжки</div>
+          <div class="big"><b>B2C</b> → проникнення</div>
+          <div class="s">Freemium → <b style="color:var(--fg)">~5–9 €/міс</b>. Бенчмарк готовності платити (WTP): Medisafe $4,99, MyTherapy $2,99, b.well $10. Опікун приводить дані — і приводить лікаря.</div>
+          <div class="big" style="margin-top:12px"><b>B2B</b> → дохід</div>
+          <div class="s">Сімейні практики, клініки, home-care, страховики. Той самий екран — місце лікаря. Ціна за seat — валідуємо в пілоті, не вигадуємо.</div>
+          <div class="s" style="color:var(--muted-2)">Чому клініка купить саме нас: сигнал безпеки <b style="color:var(--fg)">детермінований і аудитований</b> — його можна показати регулятору. Генеративного асистента показати не можна.</div>
         </div>
       </div>
-      <div class="punch">Клин: <b>peace of mind для зайнятих дітей</b> (дохід + тривога). Попутний вітер — <b>Healthcare + AI-агенти</b>, найгарячіша інвестор-ніша (YC): «картка → агент здоров'я» = цей тренд. Дистрибуція — <b>там, де сімʼї вже є</b> (Telegram/Viber/WhatsApp/Signal поверх застосунку).</div>
+      <div class="punch">Точка входу: <b>peace of mind для зайнятих дітей</b> (дохід + тривога), далі — <b>лікар як платник</b>. Попутний вітер — <b>Healthcare + AI-агенти</b>, найгарячіша інвестор-ніша (YC). Дистрибуція — <b>там, де сімʼї вже є</b> (Telegram/Viber/WhatsApp/Signal поверх застосунку).</div>
     </div>
     <div class="bot"><span class="niche">Потенціал і роадмап</span><span class="pageno">05 / 07</span></div>
   </section>
@@ -388,14 +400,20 @@
         </div>
         <div class="hz">
           <div class="tag">Горизонт 2 · пілот</div>
-          <div class="nm">Пілот із родинами<span>go-to-market</span></div>
-          <ul><li>Сегмент родин-опікунів</li><li>Waitlist → підписка</li><li>Інтеграції (лабораторії, eHealth)</li><li>Opt-in «розумні відповіді»: de-id → приватна модель</li></ul>
+          <div class="nm">Пілот із родинами<span>вихід на ринок</span></div>
+          <ul><li>Сегмент родин-опікунів</li><li>Пілот у сімейній практиці — B2B-валідація</li><li>Інтеграції (лабораторії, eHealth)</li><li>Opt-in «розумні відповіді»: de-id → приватна модель</li></ul>
         </div>
         <div class="hz">
           <div class="tag">Горизонт 3 · масштаб</div>
           <div class="nm">Клінічна версія<span>регуляторний шлях</span></div>
           <ul><li>Клінічна валідація</li><li>Шлях MDR / медвиріб</li><li>EHDS, вихід за межі UA</li></ul>
         </div>
+      </div>
+      <div class="gdpr">
+        <div class="gd"><div class="a">GDPR ст. 9</div><div class="b">Дані про здоровʼя — особлива категорія. Підстава: <b>явна згода</b>; автоматичне рішення без людини не приймається (ст. 22 → L3 ескалює до L4).</div></div>
+        <div class="gd"><div class="a">Мінімізація за архітектурою</div><div class="b">Дані <b>не залишають пристрій</b>. Немає серверного сховища PHI — отже, немає й транскордонної передачі (гл. V). Найкращий захист даних — не збирати їх.</div></div>
+        <div class="gd"><div class="a">Ст. 20 · портативність</div><div class="b">Експорт <b>FHIR Bundle</b> однією кнопкою — не «фіча на потім», а вбудована властивість. Vendor lock-in неможливий за конструкцією.</div></div>
+        <div class="gd"><div class="a">Ст. 30 · підзвітність</div><div class="b">Типізований <b>аудит-лог</b> кожного рішення L3. Хмарний рівень відповідей — <b>opt-in і де-ідентифікований</b>, і він ніколи не годує L1/L2a.</div></div>
       </div>
       <div class="boundary">
         <span class="dotmark" style="background:var(--danger);box-shadow:0 0 10px rgba(251,90,114,.7)"></span>
@@ -409,7 +427,7 @@
   <section class="slide">
     <div class="top"><span class="kicker">07 · Команда і роадмап</span><span class="brandmini"><span class="dotmark"></span><b>LiveMedCard</b></span></div>
     <div class="body">
-      <div class="title" style="font-size:36px">Я — технічний і домен-moat. Свідомо шукаю <span class="ac">co-founder на go-to-market</span>.</div>
+      <div class="title" style="font-size:36px">Технічна й доменна перевага вже є. <span class="ac">Решту команди добираю під вихід на ринок.</span></div>
       <div class="teamgrid">
         <div class="card">
           <div class="h">Чому це може реалізуватись</div>
@@ -422,13 +440,13 @@
           </ul>
         </div>
         <div class="card ask">
-          <div class="h">Роадмап</div>
+          <div class="h">Кого добираю</div>
           <ul>
-            <li>Лишаюсь <b>CTO + наука</b>; партнер закриває GTM</li>
-            <li><b>Шукаю Co-founder</b> (BizDev / CEO) на go-to-market</li>
+            <li>Лишаюсь <b>CTO + наука</b>; партнер закриває <b>вихід на ринок</b> (GTM)</li>
+            <li><b>Шукаю Co-founder</b> (BizDev / CEO) — на вихід на ринок</li>
             <li>Долучаю <b>медика-аналітика</b> — багаторічний досвід клінічної системи США (домен + вихід на US-ринок)</li>
             <li>Потенційно — <b>Code-developer</b> для масштабування розробки</li>
-            <li>Валідуємо WTP і збираємо waitlist / pre-order</li>
+            <li>Валідуємо <b>готовність платити</b> (WTP) і збираємо waitlist / pre-order</li>
           </ul>
         </div>
       </div>

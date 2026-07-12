@@ -243,3 +243,29 @@ def test_state_points_carry_span_and_document_endpoint(client):
 
 def test_document_endpoint_404_for_unknown(client):
     assert client.get("/document/no-such-doc").status_code == 404
+
+
+def test_samples_preview_does_not_ingest(client):
+    """Попередній перегляд лише показує вхід — картка має лишитися порожньою."""
+    r = client.get("/samples?lang=en")
+    assert r.status_code == 200
+    docs = r.json()["documents"]
+    assert len(docs) == 4
+    assert all({"id", "kind", "text", "received_at"} <= set(d) for d in docs)
+    assert any("warfarin" in d["text"].lower() for d in docs)
+    assert client.get("/state").json()["document_count"] == 0
+
+
+def test_samples_preview_matches_what_gets_ingested(client):
+    """Показане журі й завантажене — той самий набір, інакше перегляд бреше."""
+    previewed = {d["id"] for d in client.get("/samples?lang=uk").json()["documents"]}
+    client.post("/ingest/samples?lang=uk")
+    loaded = set(client.get("/state").json()["docs"])
+    assert previewed == loaded
+
+
+def test_sample_image_is_served(client):
+    r = client.get("/samples/image")
+    assert r.status_code == 200
+    assert r.headers["content-type"] == "image/jpeg"
+    assert len(r.content) > 10_000
