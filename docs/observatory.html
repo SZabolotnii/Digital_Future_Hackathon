@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LiveMedCard · Обсерваторія історії</title>
+<style>
+  :root{
+    --bg:#070b10; --panel:#0d151d; --panel-2:#0b1219; --line:#1a2836;
+    --ink:#e9f1f5; --muted:#8ba1ae; --faint:#576b78;
+    --accent:#2dd4bf; --analyte:#2dd4bf; --drug:#f0b429; --problem:#ff7d6b;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,sans-serif;
+  }
+  *{box-sizing:border-box}
+  :root{color-scheme:dark}
+  html{background:#070b10}
+  body{margin:0;background:
+      radial-gradient(1200px 700px at 50% -6%, rgba(45,212,191,.10), transparent 62%),
+      var(--bg);
+    color:var(--ink);font-family:var(--sans);line-height:1.5;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:980px;margin:0 auto;padding:36px 20px 64px}
+  .top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+  .kicker{font-family:var(--mono);font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--accent);margin:0 0 12px}
+  h1{font-size:clamp(26px,4.4vw,40px);margin:0;letter-spacing:-.02em;font-weight:650}
+  h1 i{font-style:italic;color:var(--accent);font-weight:400}
+  .lede{color:var(--muted);max-width:560px;margin:12px 0 0;font-size:15px}
+  .langsw{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;flex:none}
+  .langsw button{background:var(--panel);color:var(--muted);border:0;padding:7px 12px;
+    font-family:var(--mono);font-size:12px;cursor:pointer}
+  .langsw button.on{background:var(--accent);color:#062b26;font-weight:700}
+
+  .readouts{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);
+    border:1px solid var(--line);border-radius:12px;overflow:hidden;margin:26px 0 18px}
+  .ro{background:var(--panel);padding:14px 16px}
+  .ro .l{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+  .ro .v{font-size:22px;font-weight:700;font-family:var(--mono);margin-top:5px;letter-spacing:-.01em}
+  .ro .v.small{font-size:15px;font-weight:600}
+  .ro .v.accent{color:var(--accent)}
+  @media(max-width:640px){.readouts{grid-template-columns:repeat(2,1fr)}}
+
+  .stage{position:relative;background:
+      radial-gradient(600px 600px at 50% 46%, rgba(45,212,191,.05), transparent 70%),
+      var(--panel-2);
+    border:1px solid var(--line);border-radius:18px;padding:10px}
+  canvas{display:block;width:100%;height:auto;border-radius:12px}
+
+  .controls{display:flex;align-items:center;gap:14px;margin-top:14px;flex-wrap:wrap}
+  .play{width:44px;height:44px;flex:none;border-radius:50%;border:1px solid var(--accent);
+    background:rgba(45,212,191,.12);color:var(--accent);cursor:pointer;font-size:16px;
+    display:flex;align-items:center;justify-content:center}
+  .play:hover{background:rgba(45,212,191,.2)}
+  .scrub{flex:1;min-width:180px;-webkit-appearance:none;appearance:none;height:4px;border-radius:3px;
+    background:var(--line);outline:none;cursor:pointer}
+  .scrub::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;
+    background:var(--accent);cursor:pointer;box-shadow:0 0 0 4px rgba(45,212,191,.18)}
+  .scrub::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--accent);
+    border:0;box-shadow:0 0 0 4px rgba(45,212,191,.18)}
+  .clock{font-family:var(--mono);font-size:13px;color:var(--muted);flex:none;min-width:96px;text-align:right}
+  .clock b{color:var(--ink)}
+
+  .legend{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:16px;font-size:12.5px;color:var(--faint)}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+
+  .howto{margin-top:44px;display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  @media(max-width:760px){.howto{grid-template-columns:1fr}}
+  .card{border:1px solid var(--line);border-radius:14px;padding:20px;background:var(--panel)}
+  .card .n{font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:.08em}
+  .card h3{margin:8px 0 8px;font-size:16px}
+  .card p{margin:0;color:var(--muted);font-size:13px}
+  .card p b{color:var(--ink);font-weight:600}
+
+  .note{margin-top:26px;padding:15px 18px;border-radius:12px;background:rgba(45,212,191,.06);
+    border:1px solid rgba(45,212,191,.22);color:var(--muted);font-size:13px}
+  .note b{color:var(--accent)}
+  footer{margin-top:34px;padding-top:22px;border-top:1px solid var(--line);color:var(--faint);
+    font-size:12px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+  footer a{color:var(--accent);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <div>
+      <p class="kicker" id="kicker">Темпоральний граф знань · LiveMedCard</p>
+      <h1 id="title">Обсерваторія <i>історії</i></h1>
+      <p class="lede" id="lede">Медична картка пацієнтки, народжена документ за документом.
+        Час обертає циферблат; зв'язок — це гравітація.</p>
+    </div>
+    <div class="langsw">
+      <button id="lg-ua" class="on">UA</button>
+      <button id="lg-en">EN</button>
+    </div>
+  </div>
+
+  <div class="readouts">
+    <div class="ro"><div class="l" id="ro1l">Сутності</div><div class="v accent" id="ro1">0</div></div>
+    <div class="ro"><div class="l" id="ro2l">Зв'язки</div><div class="v" id="ro2">0</div></div>
+    <div class="ro"><div class="l" id="ro3l">Централізація</div><div class="v" id="ro3">0.000</div></div>
+    <div class="ro"><div class="l" id="ro4l">Гравітаційний центр</div><div class="v small" id="ro4">—</div></div>
+  </div>
+
+  <div class="stage">
+    <canvas id="dial" width="1800" height="1200"></canvas>
+  </div>
+
+  <div class="controls">
+    <button class="play" id="play" aria-label="Play">▶</button>
+    <input class="scrub" id="scrub" type="range" min="0" max="1000" value="1000">
+    <div class="clock" id="clock">—</div>
+  </div>
+
+  <div class="legend">
+    <span><i style="background:var(--analyte)"></i><span id="lg1">показник</span></span>
+    <span><i style="background:var(--drug)"></i><span id="lg2">препарат</span></span>
+    <span><i style="background:var(--problem)"></i><span id="lg3">стан</span></span>
+    <span id="lg4">розмір зірки — частота вимірювань</span>
+  </div>
+
+  <div class="howto">
+    <div class="card">
+      <div class="n">01</div>
+      <h3 id="h1">Час — це циферблат</h3>
+      <p id="p1">Історія йде за годинниковою стрілкою від верху — один повний оберт, від першого
+        документа до останнього. Кожна сутність — <b>зірка, приколота під кутом своєї першої появи</b>.</p>
+    </div>
+    <div class="card">
+      <div class="n">02</div>
+      <h3 id="h2">Зв'язок — це гравітація</h3>
+      <p id="p2">Відстань зірки від центру — її вага в історії. <b>Що більше зв'язків і повторних
+        вимірювань вона накопичує, то глибше падає</b> до ядра. Креатинін тоне в центр — ниркова
+        динаміка домінує над цією історією.</p>
+    </div>
+    <div class="card">
+      <div class="n">03</div>
+      <h3 id="h3">Пульс — це перебіг</h3>
+      <p id="p3">Внутрішнє кільце — <b>ЕКГ картки: нові сутності на кожен епізод</b>. Виписки з
+        новими діагнозами дають сплеск; спокійні лабораторні панелі йдуть рівно.</p>
+    </div>
+  </div>
+
+  <div class="note" id="note"><b>Це описова проєкція.</b> Кут — це коли, гравітація — наскільки часто
+    й пов'язано. Порядок на циферблаті не є доказом причини: сигнали безпеки рахуються окремо, на
+    фактах, а не обходом цього графа.</div>
+
+  <footer>
+    <div id="foot">Прототип для Digital Future Hackathon · Aging &amp; Longevity · дані демо-картки (mom-001)</div>
+    <a href="https://traces.solutions" target="_blank" rel="noopener">traces.solutions</a>
+  </footer>
+</div>
+
+<script>
+const DATA = {"entities": [{"key": "problem:49436004", "kind": "problem", "ua": "Фібриляція передсердь", "en": "Atrial fibrillation", "fv": "2023-05-01", "lv": "2023-05-01", "occ": 1, "open": false, "istart": null}, {"key": "drug:11289", "kind": "drug", "ua": "Варфарин", "en": "Warfarin", "fv": "2023-05-01", "lv": "2023-05-01", "occ": 1, "open": true, "istart": "2023-05-01"}, {"key": "analyte:2160-0", "kind": "analyte", "ua": "Креатинін", "en": "Creatinine", "fv": "2023-05-01", "lv": "2024-10-15", "occ": 4, "open": false, "istart": null}, {"key": "analyte:2823-3", "kind": "analyte", "ua": "Калій", "en": "Potassium", "fv": "2023-05-01", "lv": "2024-10-15", "occ": 3, "open": false, "istart": null}, {"key": "analyte:4548-4", "kind": "analyte", "ua": "HbA1c", "en": "HbA1c", "fv": "2023-11-03", "lv": "2024-10-15", "occ": 3, "open": false, "istart": null}, {"key": "problem:38341003", "kind": "problem", "ua": "Артеріальна гіпертензія", "en": "Hypertension", "fv": "2024-04-09", "lv": "2024-04-09", "occ": 1, "open": false, "istart": null}, {"key": "drug:1191", "kind": "drug", "ua": "Аспірин", "en": "Aspirin", "fv": "2024-04-09", "lv": "2024-04-09", "occ": 1, "open": true, "istart": "2024-04-09"}, {"key": "drug:6809", "kind": "drug", "ua": "Метформін", "en": "Metformin", "fv": "2024-04-09", "lv": "2024-04-09", "occ": 1, "open": true, "istart": "2024-04-09"}, {"key": "analyte:2345-7", "kind": "analyte", "ua": "Глюкоза", "en": "Glucose", "fv": "2024-10-15", "lv": "2024-10-15", "occ": 1, "open": false, "istart": null}], "edges": [{"s": "drug:11289", "t": "drug:1191", "rel": "co_active", "start": "2024-04-09"}, {"s": "drug:11289", "t": "drug:6809", "rel": "co_active", "start": "2024-04-09"}, {"s": "drug:1191", "t": "drug:6809", "rel": "co_active", "start": "2024-04-09"}], "episodes": [{"i": 0, "start": "2023-05-01", "new": 4}, {"i": 1, "start": "2023-11-03", "new": 1}, {"i": 2, "start": "2024-04-09", "new": 3}, {"i": 3, "start": "2024-10-15", "new": 1}], "metrics": {"span_days": 533.0416666666666, "n_entities": 9, "n_analytes": 4, "n_drugs": 3, "n_problems": 2, "n_episodes": 4, "multimorbidity": 2, "max_concurrent_medications": 3, "active_medications": 3, "dated_fraction": 1.0, "anchored_fraction": 1.0, "novelty_by_episode": [4, 1, 3, 1]}};
+
+const I18N = {
+  ua:{kicker:"Темпоральний граф знань · LiveMedCard", title:['Обсерваторія ',''],
+    lede:"Медична картка пацієнтки, народжена документ за документом. Час обертає циферблат; зв'язок — це гравітація.",
+    ro:["Сутності","Зв'язки","Централізація","Гравітаційний центр"],
+    lg:["показник","препарат","стан","розмір зірки — частота вимірювань"],
+    h:["Час — це циферблат","Зв'язок — це гравітація","Пульс — це перебіг"],
+    p:["Історія йде за годинниковою стрілкою від верху — один повний оберт, від першого документа до останнього. Кожна сутність — <b>зірка, приколота під кутом своєї першої появи</b>.",
+       "Відстань зірки від центру — її вага в історії. <b>Що більше зв'язків і повторних вимірювань вона накопичує, то глибше падає</b> до ядра. Креатинін тоне в центр — ниркова динаміка домінує над цією історією.",
+       "Внутрішнє кільце — <b>ЕКГ картки: нові сутності на кожен епізод</b>. Виписки з новими діагнозами дають сплеск; спокійні лабораторні панелі йдуть рівно."],
+    note:"<b>Це описова проєкція.</b> Кут — це коли, гравітація — наскільки часто й пов'язано. Порядок на циферблаті не є доказом причини: сигнали безпеки рахуються окремо, на фактах, а не обходом цього графа.",
+    foot:"Прототип для Digital Future Hackathon · Aging &amp; Longevity · дані демо-картки (mom-001)",
+    epLbl:"епізод"},
+  en:{kicker:"Temporal knowledge graph · LiveMedCard", title:['The ',''],
+    lede:"A patient's medical record, born document by document. Time wraps the dial; connection is gravity.",
+    ro:["Entities","Relations","Centralization","Gravitational center"],
+    lg:["metric","medication","condition","star size — measurement frequency"],
+    h:["Time is the dial","Connection is gravity","The pulse is the course"],
+    p:["The record runs clockwise from the top — one full revolution, first document to last. Every entity is a <b>star pinned at the angle of its first appearance</b>.",
+       "A star's distance from the center is its weight in the history. <b>The more connections and repeated measurements it accumulates, the deeper it falls</b> toward the core. Creatinine sinks to the center — renal decline dominates this history.",
+       "The inner ring is the record's <b>EKG: new entities per episode</b>. Discharge summaries with new diagnoses spike; quiet lab panels run flat."],
+    note:"<b>This is a descriptive projection.</b> Angle is when, gravity is how often and how connected. Order on the dial is not evidence of cause: safety signals are computed separately, on the facts, not by traversing this graph.",
+    foot:"Prototype for Digital Future Hackathon · Aging &amp; Longevity · demo card data (mom-001)",
+    epLbl:"episode"},
+};
+const TITLE_EM = {ua:"історії", en:"Observatory"};
+
+let LANG='ua';
+const $=id=>document.getElementById(id);
+
+// ── підготовка даних ──────────────────────────────────────────────────────
+const parse=s=>Date.parse(s+"T00:00:00Z");
+const T0=Math.min(...DATA.entities.map(e=>parse(e.fv)));
+const T1=Math.max(...DATA.entities.map(e=>parse(e.lv)));
+const SPAN=Math.max(T1-T0,1);
+const DAY=86400000;
+
+// кожна сутність: кут народження, апрокс. час кожного виміру, ребра-ступінь
+const KEY=Object.fromEntries(DATA.entities.map(e=>[e.key,e]));
+DATA.entities.forEach(e=>{
+  e.birth=parse(e.fv);
+  e.baseAngle=((e.birth-T0)/SPAN)*Math.PI*2 - Math.PI/2;   // 12 год = старт, за стрілкою
+  const a=parse(e.fv), b=parse(e.lv);
+  e.occTimes = e.occ<=1 ? [a] : Array.from({length:e.occ},(_,i)=>a+(b-a)*i/(e.occ-1));
+  e.degTotal=0;
+});
+// Сутності одного дня народження сидять на спільній спиці — розводимо їх невеликим
+// віялом, щоб зірки з однаковою вагою не збігалися рівно одна в одну.
+const byBirth={};
+DATA.entities.forEach(e=>(byBirth[e.fv]=byBirth[e.fv]||[]).push(e));
+Object.values(byBirth).forEach(group=>{
+  const n=group.length;
+  const fan=Math.min(0.06*(n-1), 0.32);   // сумарний розхил, радіани (~≤18°)
+  group.forEach((e,i)=>{ e.angle = e.baseAngle + (n>1 ? (i/(n-1)-0.5)*fan : 0); });
+});
+DATA.edges.forEach(x=>{x.start_ms=parse(x.start); KEY[x.s].degTotal++; KEY[x.t].degTotal++;});
+// фінальна вага = (повтори-1) + ступінь; нормуємо для радіуса
+const wFinal=e=>Math.max(e.occ-1,0)+e.degTotal;
+const WMAX=Math.max(1,...DATA.entities.map(wFinal));
+
+// вага на момент τ (для «осідання» під час відтворення)
+function weightAt(e,t){
+  const occ=e.occTimes.filter(x=>x<=t).length;
+  const deg=DATA.edges.filter(x=>(x.s===e.key||x.t===e.key)&&x.start_ms<=t
+      && KEY[x.s].birth<=t && KEY[x.t].birth<=t).length;
+  return Math.max(occ-1,0)+deg;
+}
+
+// Freeman degree-централізація підграфа народжених вузлів (на активних ребрах)
+function centralization(t){
+  const born=DATA.entities.filter(e=>e.birth<=t);
+  const n=born.length; if(n<3) return 0;
+  const deg=Object.fromEntries(born.map(e=>[e.key,0]));
+  DATA.edges.forEach(x=>{ if(x.start_ms<=t && KEY[x.s].birth<=t && KEY[x.t].birth<=t){
+    deg[x.s]++; deg[x.t]++; }});
+  const ds=Object.values(deg); const mx=Math.max(...ds);
+  const sum=ds.reduce((a,d)=>a+(mx-d),0);
+  return sum/((n-1)*(n-2));
+}
+
+// ── canvas ────────────────────────────────────────────────────────────────
+const cv=$('dial'), ctx=cv.getContext('2d');
+const CSS=getComputedStyle(document.documentElement);
+const col=n=>CSS.getPropertyValue(n).trim();
+const KCOL={analyte:'--analyte',drug:'--drug',problem:'--problem'};
+
+function fit(){
+  const w=cv.parentElement.clientWidth-20;
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  cv.style.width=w+'px'; cv.style.height=Math.round(w*0.66)+'px';
+  cv.width=Math.round(w*dpr); cv.height=Math.round(w*0.66*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  Wc=w; Hc=w*0.66;
+}
+let Wc,Hc;
+
+// анімований радіус кожної зірки (для плавного осідання)
+DATA.entities.forEach(e=>e.rNow=null);
+
+function draw(t, playT){
+  const cx=Wc/2, cy=Hc*0.52;
+  const Rout=Math.min(Wc,Hc)*0.40;   // обід
+  const Rcore=Rout*0.12;             // ядро
+  const Rpulse=Rout*0.30;            // радіус кільця-пульсу
+  ctx.clearRect(0,0,Wc,Hc);
+
+  // концентричні напрямні
+  ctx.lineWidth=1;
+  for(const f of [1,0.72,0.44]){
+    ctx.beginPath(); ctx.arc(cx,cy,Rout*f,0,Math.PI*2);
+    ctx.strokeStyle='rgba(138,161,174,.10)'; ctx.stroke();
+  }
+  // сектори епізодів на ободі
+  DATA.episodes.forEach((ep,i)=>{
+    const a0=((parse(ep.start)-T0)/SPAN)*Math.PI*2 - Math.PI/2;
+    const next=DATA.episodes[i+1];
+    const a1=next?((parse(next.start)-T0)/SPAN)*Math.PI*2 - Math.PI/2:(Math.PI*1.5);
+    ctx.beginPath(); ctx.arc(cx,cy,Rout*1.045,a0,a1);
+    ctx.lineWidth=3; ctx.strokeStyle= i%2? 'rgba(45,212,191,.22)':'rgba(45,212,191,.40)';
+    ctx.stroke();
+    // підпис епізоду
+    const am=(a0+a1)/2, lx=cx+Math.cos(am)*Rout*1.14, ly=cy+Math.sin(am)*Rout*1.14;
+    ctx.fillStyle=col('--faint'); ctx.font='600 11px '+col('--mono');
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText((LANG==='ua'?'еп. ':'ep. ')+(ep.i+1), lx, ly);
+  });
+
+  // кільце-пульс (ЕКГ новизни за епізод) — замкнена ламана
+  const maxNew=Math.max(...DATA.episodes.map(e=>e.new),1);
+  ctx.beginPath();
+  const steps=DATA.episodes.length;
+  for(let k=0;k<=steps;k++){
+    const ep=DATA.episodes[k%steps];
+    const a=((parse(ep.start)-T0)/SPAN)*Math.PI*2 - Math.PI/2;
+    const amp=Rpulse*(0.5+0.5*ep.new/maxNew);
+    const x=cx+Math.cos(a)*amp, y=cy+Math.sin(a)*amp;
+    k===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  }
+  ctx.closePath(); ctx.strokeStyle='rgba(45,212,191,.30)'; ctx.lineWidth=1.5; ctx.stroke();
+
+  // ребра co_active — хорди між народженими зірками
+  DATA.edges.forEach(x=>{
+    const A=KEY[x.s], B=KEY[x.t];
+    if(A.birth>t||B.birth>t||x.start_ms>t) return;
+    const pa=starPos(A,t,cx,cy,Rout,Rcore), pb=starPos(B,t,cx,cy,Rout,Rcore);
+    // «комета» щойно народженого ребра → яскравіша ~30 днів
+    const fresh=Math.max(0,1-(t-x.start_ms)/(30*DAY));
+    ctx.beginPath(); ctx.moveTo(pa.x,pa.y); ctx.lineTo(pb.x,pb.y);
+    ctx.strokeStyle=`rgba(240,180,41,${0.14+0.5*fresh})`;
+    ctx.lineWidth=0.8+1.6*fresh; ctx.stroke();
+  });
+
+  // зірки
+  DATA.entities.forEach(e=>{
+    if(e.birth>t){ e.rNow=null; return; }
+    const p=starPos(e,t,cx,cy,Rout,Rcore);
+    const born=Math.max(0,1-(t-e.birth)/(24*DAY));   // спалах при народженні
+    const rad=3+Math.sqrt(e.occ)*2.4;
+    const c=col(KCOL[e.kind]);
+    // гало
+    const g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,rad*3.2);
+    g.addColorStop(0,hex(c,0.5)); g.addColorStop(1,hex(c,0));
+    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(p.x,p.y,rad*3.2,0,Math.PI*2); ctx.fill();
+    // ядро зірки
+    ctx.beginPath(); ctx.arc(p.x,p.y,rad+born*3,0,Math.PI*2);
+    ctx.fillStyle=c; ctx.globalAlpha=0.9; ctx.fill(); ctx.globalAlpha=1;
+    // підпис
+    ctx.fillStyle=col('--ink'); ctx.font='12px '+col('--sans');
+    const outward=p.r>Rout*0.55;
+    ctx.textAlign = Math.cos(e.angle)>=0?'left':'right';
+    ctx.textBaseline='middle';
+    const lx=p.x+(Math.cos(e.angle)>=0?1:-1)*(rad+6);
+    ctx.globalAlpha=outward?0.92:0.72;
+    ctx.fillText(e[LANG], lx, p.y);
+    ctx.globalAlpha=1;
+  });
+
+  // стрілка розгортки
+  const ah=playT!=null?playT:Math.PI*1.5;
+  ctx.beginPath(); ctx.moveTo(cx,cy);
+  ctx.lineTo(cx+Math.cos(ah)*Rout, cy+Math.sin(ah)*Rout);
+  ctx.strokeStyle='rgba(45,212,191,.5)'; ctx.lineWidth=1.5; ctx.stroke();
+  // центральна мітка
+  ctx.beginPath(); ctx.arc(cx,cy,Rcore*0.5,0,Math.PI*2);
+  ctx.fillStyle='rgba(45,212,191,.14)'; ctx.fill();
+}
+
+function starPos(e,t,cx,cy,Rout,Rcore){
+  const w=weightAt(e,t);
+  const target=Rcore+(Rout-Rcore)*(1-w/WMAX);
+  // плавне осідання
+  e.rNow = e.rNow==null? Rout : e.rNow + (target-e.rNow)*0.18;
+  const r=e.rNow;
+  return {x:cx+Math.cos(e.angle)*r, y:cy+Math.sin(e.angle)*r, r};
+}
+
+function hex(c,a){ // rgb/hex → rgba
+  c=c.trim();
+  if(c.startsWith('#')){const n=parseInt(c.slice(1),16);
+    return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;}
+  return c.replace('rgb','rgba').replace(')',`,${a})`);
+}
+
+// ── readouts + clock ──────────────────────────────────────────────────────
+function updateReadouts(t){
+  const born=DATA.entities.filter(e=>e.birth<=t);
+  const rel=DATA.edges.filter(x=>x.start_ms<=t && KEY[x.s].birth<=t && KEY[x.t].birth<=t).length;
+  $('ro1').textContent=born.length;
+  $('ro2').textContent=rel;
+  $('ro3').textContent=centralization(t).toFixed(3);
+  // гравітаційний центр — найважча народжена сутність
+  let heavy=null,hw=-1;
+  born.forEach(e=>{const w=weightAt(e,t); if(w>hw){hw=w;heavy=e;}});
+  $('ro4').textContent = heavy && hw>0 ? heavy[LANG] : '—';
+  const d=new Date(t);
+  $('clock').innerHTML='<b>'+d.toISOString().slice(0,10)+'</b>';
+}
+
+// ── відтворення ───────────────────────────────────────────────────────────
+let playing=false, prog=1, raf=null;
+function frame(){
+  const t=T0+SPAN*prog;
+  const playT = -Math.PI/2 + prog*Math.PI*2;
+  draw(t, playT);
+  updateReadouts(t);
+  $('scrub').value=Math.round(prog*1000);
+  if(playing){
+    prog+=0.006;
+    if(prog>=1){prog=1;playing=false;$('play').textContent='▶';}
+    raf=requestAnimationFrame(frame);
+  }
+}
+function loop(){ if(playing){draw(T0+SPAN*prog,-Math.PI/2+prog*Math.PI*2);} raf=requestAnimationFrame(loop); }
+
+$('play').onclick=()=>{
+  if(playing){playing=false;$('play').textContent='▶';return;}
+  if(prog>=1)prog=0;
+  playing=true;$('play').textContent='❚❚';frame();
+};
+$('scrub').oninput=e=>{
+  playing=false;$('play').textContent='▶';
+  prog=+e.target.value/1000;
+  // при ручному скролі даємо зіркам «дострибнути» без інерції
+  DATA.entities.forEach(x=>x.rNow=null);
+  frame();
+};
+
+// плавне доосідання, поки на паузі (щоб радіуси досягли цілі)
+setInterval(()=>{ if(!playing){draw(T0+SPAN*prog,-Math.PI/2+prog*Math.PI*2);updateReadouts(T0+SPAN*prog);} },60);
+
+// ── мова ──────────────────────────────────────────────────────────────────
+function applyLang(){
+  const t=I18N[LANG];
+  $('kicker').textContent=t.kicker;
+  $('title').innerHTML=t.title[0]+'<i>'+TITLE_EM[LANG]+'</i>'+t.title[1];
+  $('lede').textContent=t.lede;
+  t.ro.forEach((s,i)=>$('ro'+(i+1)+'l').textContent=s);
+  t.lg.forEach((s,i)=>$('lg'+(i+1)).textContent=s);
+  t.h.forEach((s,i)=>$('h'+(i+1)).textContent=s);
+  t.p.forEach((s,i)=>$('p'+(i+1)).innerHTML=s);
+  $('note').innerHTML=t.note;
+  $('foot').innerHTML=t.foot;
+  document.documentElement.lang= LANG==='ua'?'uk':'en';
+  frame();
+}
+$('lg-ua').onclick=()=>{LANG='ua';$('lg-ua').classList.add('on');$('lg-en').classList.remove('on');applyLang();};
+$('lg-en').onclick=()=>{LANG='en';$('lg-en').classList.add('on');$('lg-ua').classList.remove('on');applyLang();};
+
+window.addEventListener('resize',()=>{fit();frame();});
+fit(); applyLang(); loop();
+</script>
+</body>
+</html>
