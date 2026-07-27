@@ -230,6 +230,43 @@
   .docrow .id{font:600 12px/1 var(--mono);color:var(--ink);transition:.14s}
   .docrow .kind{font-size:12px;color:var(--muted)}
   .docrow .d{margin-left:auto;font:11.5px/1 var(--mono);color:var(--faint);white-space:nowrap}
+  /* ── temporal timeline ──────────────────────────────── */
+  .tlcap{margin:2px 0 14px;font-size:12.5px;line-height:1.6;color:var(--muted)}
+  .tlnote{margin:14px 0 0;font-size:11.5px;line-height:1.6;color:var(--faint)}
+  .tlmetrics{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+  .tlmetrics .m{background:var(--panel-2);border:1px solid var(--line);border-radius:8px;
+    padding:7px 11px;font-size:11.5px;color:var(--muted)}
+  .tlmetrics .m b{color:var(--ink);font-family:var(--mono);font-size:13px;margin-right:5px}
+  .tlmetrics .m.warn{border-color:var(--moderate);color:var(--moderate)}
+  .tlwrap{position:relative;overflow-x:auto;padding-bottom:6px}
+  .tlgrid{position:relative;min-width:520px}
+  /* смуги епізодів — фон, на якому лежать доріжки сутностей */
+  .tlep{position:absolute;top:0;bottom:26px;background:var(--band);border-radius:6px;
+    border-left:1px dashed var(--line);border-right:1px dashed var(--line)}
+  .tlep .lbl{position:absolute;top:-2px;left:6px;font-size:10px;color:var(--faint);
+    font-family:var(--mono);white-space:nowrap}
+  .tlrow{position:relative;height:26px;display:flex;align-items:center}
+  .tlrow .nm{position:relative;z-index:2;width:150px;flex:none;font-size:11.5px;
+    color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    padding-right:8px}
+  .tlrow .lane{position:relative;flex:1;height:100%}
+  .tlbar{position:absolute;top:9px;height:6px;border-radius:3px;background:var(--accent);
+    opacity:.30}
+  .tlbar.open{background:linear-gradient(90deg,var(--accent),transparent)}
+  .tldot{position:absolute;top:7px;width:10px;height:10px;border-radius:50%;
+    transform:translateX(-5px);border:2px solid var(--panel);cursor:pointer}
+  .tldot.first{width:12px;height:12px;top:6px;transform:translateX(-6px);
+    box-shadow:0 0 0 3px var(--accent-soft)}
+  .tldot.analyte{background:var(--accent)} .tldot.drug{background:var(--moderate)}
+  .tldot.problem{background:var(--major)}
+  .tlaxis{position:relative;height:22px;margin-left:150px;border-top:1px solid var(--line);
+    margin-top:4px}
+  .tlaxis span{position:absolute;top:5px;font-size:10px;color:var(--faint);
+    font-family:var(--mono);transform:translateX(-50%);white-space:nowrap}
+  .tllegend{display:flex;flex-wrap:wrap;gap:12px;margin-top:12px;font-size:11px;color:var(--faint)}
+  .tllegend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
+  @media(max-width:640px){.tlrow .nm{width:96px}.tlaxis{margin-left:96px}}
+
   .graph-tag{cursor:pointer;border:1px solid var(--line);background:var(--panel-2)}
   .graph-tag:hover{color:var(--accent);border-color:var(--accent);transform:none}
 
@@ -490,6 +527,15 @@
     </div>
   </div>
 
+  <section class="panel tl" id="temporal-card" style="margin-top:18px;display:none">
+    <h2><span id="h-temporal">History over time</span>
+      <span class="tag" id="tl-tag">temporal graph</span></h2>
+    <p class="tlcap" id="tl-cap"></p>
+    <div class="tlmetrics" id="tl-metrics"></div>
+    <div class="tlwrap" id="tl-wrap"></div>
+    <p class="tlnote" id="tl-note"></p>
+  </section>
+
   <section class="panel qa" style="margin-top:18px">
     <h2><span id="h-qa">Ask the card</span> <span class="tag" id="qa-tag">grounded · with source reference</span></h2>
     <div class="log" id="log"></div>
@@ -582,6 +628,7 @@ const SEV = {critical:'var(--critical)',major:'var(--major)',moderate:'var(--mod
 const LANG_KEY='lmc_lang';
 let LANG = localStorage.getItem(LANG_KEY) || 'en';
 let lastState = null;
+let lastTemporal = null;  // кеш /temporal — щоб зміна мови не ходила по мережу
 
 /* Назви показників за LOINC (таймлайн локалізується на клієнті; /state віддає loinc) */
 const LOINC_LABEL = {
@@ -612,6 +659,25 @@ const I18N = {
     addSubmit:'Process document',
     hSeries:'Metrics timeline', biTag:'bilingual · UA + EN',
     seriesEmpty:'No data yet. Click “Load demo card”.',
+    hTemporal:'History over time', tlTag:'temporal graph',
+    tlCap:'The same facts as entities on a time axis. A larger dot marks the '
+      +'first appearance; shaded bands are episodes — stretches of history separated '
+      +'by gaps longer than 90 days.',
+    tlNote:'The view is descriptive: it shows when things appeared and how they '
+      +'overlap. Safety signals are computed separately, on the facts — order in '
+      +'time is not evidence of cause.',
+    tlEpisode:n=>`episode ${n}`,
+    // [одн., множ.] — щоб «1 episode» не виглядало як «1 episodes»
+    tlMetrics:{
+      span:['day of history','days of history'], episodes:['episode','episodes'],
+      analytes:['metric','metrics'], drugs:['medication','medications'],
+      problems:['condition','conditions'], concurrent:['taken together','taken together'],
+      anchored:['facts on a real date','facts on a real date'],
+    },
+    tlLegendAnalyte:'metric', tlLegendDrug:'medication', tlLegendProblem:'condition',
+    tlLegendFirst:'first appearance', tlLegendBar:'period active',
+    tlUnanchored:'part of the timeline rests on processing dates, not document dates',
+    tlDotTitle:(name,d)=>`${name} · ${d}`,
     hSafety:'Safety — TRACE layer',
     signalsEmpty:'Values in range, no dangerous interactions found.',
     hMeds:'Prescribed medications', medsEmpty:'No medications.',
@@ -651,8 +717,8 @@ const I18N = {
     toastEscalated:'Processed · escalated to human', toastAuto:'Processed · auto',
     toastNoFacts:'Document saved, but no measurements were extracted',
     errorPrefix:'Error: ', selected:name=>`Selected: ${name}`,
-    chips:['What about kidneys over the last year?','What was potassium?',
-      'What medications and any interactions?','What about HbA1c?'],
+    chips:['What about kidneys over the last year?','When did creatinine first appear?',
+      'What medications and any interactions?','What is new recently?'],
     story:(docs,pair)=>`One timeline from ${docs} documents. The card flagged a dangerous combination — <b>${pair}</b> — deterministically, by safety rules, not by AI guess. See the red alert in the Safety panel.`,
     groupL1:'L1 · deterministic rules', groupL2a:'L2a · trends & reference ranges',
     trust:['No LLM in safety decisions','Deterministic safety rules (L1)','FHIR export','Local-first by design'],
@@ -717,6 +783,28 @@ const I18N = {
     addSubmit:'Обробити документ',
     hSeries:'Таймлайн показників', biTag:'білінгвально · UA + EN',
     seriesEmpty:'Даних ще немає. Натисніть «Завантажити демо-картку».',
+    hTemporal:'Історія в часі', tlTag:'темпоральний граф',
+    tlCap:'Ті самі факти як сутності на осі часу. Більша крапка — перша поява; '
+      +'затінені смуги — епізоди, відрізки історії, розділені розривами довшими '
+      +'за 90 днів.',
+    tlNote:'Вигляд описовий: він показує, коли що з’явилося і як накладається. '
+      +'Сигнали безпеки рахуються окремо, на фактах — порядок у часі не є доказом '
+      +'причини.',
+    tlEpisode:n=>`епізод ${n}`,
+    // [1, 2-4, 5+] — українські числівники: «4 епізоди», а не «4 епізодів»
+    tlMetrics:{
+      span:['день історії','дні історії','днів історії'],
+      episodes:['епізод','епізоди','епізодів'],
+      analytes:['показник','показники','показників'],
+      drugs:['препарат','препарати','препаратів'],
+      problems:['стан','стани','станів'],
+      concurrent:['приймається разом','приймаються разом','приймаються разом'],
+      anchored:['фактів на реальній даті','фактів на реальній даті','фактів на реальній даті'],
+    },
+    tlLegendAnalyte:'показник', tlLegendDrug:'препарат', tlLegendProblem:'стан',
+    tlLegendFirst:'перша поява', tlLegendBar:'період прийому',
+    tlUnanchored:'частина таймлайну спирається на дати обробки, а не на дати документів',
+    tlDotTitle:(name,d)=>`${name} · ${d}`,
     hSafety:'Безпека — шар TRACE',
     signalsEmpty:'Показники в межах, небезпечних взаємодій не виявлено.',
     hMeds:'Призначені ліки', medsEmpty:'Ліків немає.',
@@ -756,8 +844,8 @@ const I18N = {
     toastEscalated:'Оброблено · ескалація до людини', toastAuto:'Оброблено · авто',
     toastNoFacts:'Документ збережено, але жодного показника не витягнуто',
     errorPrefix:'Помилка: ', selected:name=>`Вибрано: ${name}`,
-    chips:['Що з нирками за останній рік?','Який був калій?',
-      'Які ліки приймає і чи є взаємодії?','Що з HbA1c?'],
+    chips:['Що з нирками за останній рік?','Коли вперше з’явився креатинін?',
+      'Які ліки приймає і чи є взаємодії?','Що нового останнім часом?'],
     story:(docs,pair)=>`Один таймлайн із ${docs} документів. Картка помітила небезпечну комбінацію — <b>${pair}</b> — детерміновано, правилами безпеки, а не «на думку» ШІ. Дивіться червоний сигнал у панелі безпеки.`,
     groupL1:'L1 · детерміновані правила', groupL2a:'L2a · тренди й референсні межі',
     trust:['Жодної LLM у рішеннях безпеки','Детерміновані правила безпеки (L1)','Експорт FHIR','Local-first за дизайном'],
@@ -854,6 +942,9 @@ function applyLang(lang){
     <a href="https://arxiv.org/abs/2605.03838" target="_blank" rel="noopener">TRACE (arXiv)</a></div>`;
   buildChips();
   if(lastState) render(lastState);
+  // Темпоральний вигляд перемальовуємо з кешу: назви показників і підписи
+  // епізодів мовні, а по дані на бекенд іти нема потреби — вони ті самі.
+  if(lastTemporal) renderTemporal(lastTemporal);
 }
 
 /* theme toggle (respects OS by default; stamps data-theme on click) */
@@ -1084,9 +1175,120 @@ function render(st){
   }).join(''):`<div class="empty">${t.medsEmpty}</div>`;
 }
 
+/* ── темпоральна проєкція: сутності на осі часу ───────────────────────────
+   Малюємо лише те, що віддав бекенд (`/temporal`). Жодних висновків тут не
+   робиться: доріжка показує, КОЛИ факт з’явився, а не що з нього випливає. */
+/* Числівники: українська має три форми (1 епізод / 2 епізоди / 5 епізодів),
+   англійська дві. «4 епізодів» одразу читається як машинний текст. */
+function plural(n, forms){
+  if(LANG!=='ua') return forms[Math.abs(n)===1?0:1];
+  const a=Math.abs(n);
+  if(a%100>=11 && a%100<=14) return forms[2];
+  const last=a%10;
+  if(last===1) return forms[0];
+  if(last>=2 && last<=4) return forms[1];
+  return forms[2];
+}
+
+function tlName(e){
+  // Показники мають двомовну назву в довіднику; ліки й стани — як у документі.
+  if(e.kind==='analyte' && e.code && LOINC_LABEL[e.code]) return LOINC_LABEL[e.code][LANG]||e.label;
+  return e.label;
+}
+
+function renderTemporal(tp){
+  lastTemporal=tp;
+  const t=I18N[LANG], card=$('#temporal-card');
+  const ents=(tp&&tp.entities)||[];
+  if(!ents.length){card.style.display='none';return;}
+  card.style.display='';
+  $('#h-temporal').textContent=t.hTemporal;
+  $('#tl-tag').textContent=t.tlTag;
+  $('#tl-cap').textContent=t.tlCap;
+  $('#tl-note').textContent=t.tlNote;
+
+  const m=tp.metrics||{};
+  const ms=t.tlMetrics;
+  const anchored=Math.round((m.anchored_fraction!=null?m.anchored_fraction:1)*100);
+  const chips=[
+    [Math.round(m.span_days||0), ms.span, false],
+    [m.n_episodes||0, ms.episodes, false],
+    [m.n_analytes||0, ms.analytes, false],
+    [m.n_drugs||0, ms.drugs, false],
+    [m.n_problems||0, ms.problems, false],
+    [m.max_concurrent_medications||0, ms.concurrent, false],
+    [anchored, ms.anchored, anchored<100],
+  ];
+  $('#tl-metrics').innerHTML=chips.map(([n,forms,warn],i)=>{
+    const shown=(i===chips.length-1)?n+'%':n;   // остання плитка — відсотки
+    return `<span class="m${warn?' warn':''}"><b>${shown}</b>${plural(n,forms)}</span>`;
+  }).join('');
+
+  // Спільна шкала: від найранішої до найпізнішої точки, з полями по краях.
+  const times=ents.flatMap(e=>[Date.parse(e.first_valid),Date.parse(e.last_valid)]);
+  const t0=Math.min(...times), t1=Math.max(...times);
+  const span=Math.max(t1-t0,1);
+  const pos=ms_=>((ms_-t0)/span)*100;
+
+  // Смуги епізодів позиціонуємо у відсотках тієї ж шкали.
+  const eps=(tp.episodes||[]).map(ep=>{
+    const a=pos(Date.parse(ep.start)), b=pos(Date.parse(ep.end));
+    return `<div class="tlep" style="left:${a}%;width:${Math.max(b-a,1.2)}%">
+      <span class="lbl">${t.tlEpisode(ep.index+1)}</span></div>`;
+  }).join('');
+
+  const rows=ents.map(e=>{
+    const name=tlName(e);
+    const a=pos(Date.parse(e.first_valid)), b=pos(Date.parse(e.last_valid));
+    let bar='';
+    if(e.interval){  // ліки: період прийому, відкритий кінець — градієнтом
+      const s=pos(Date.parse(e.interval.start));
+      const open=!e.interval.end;
+      const end=open?100:pos(Date.parse(e.interval.end));
+      if(end>s) bar=`<div class="tlbar${open?' open':''}" style="left:${s}%;width:${end-s}%"></div>`;
+    }else if(b>a){   // показник: відрізок від першого до останнього виміру
+      bar=`<div class="tlbar" style="left:${a}%;width:${b-a}%"></div>`;
+    }
+    const doc=(e.doc_ids&&e.doc_ids[0])||'';
+    const firstD=(e.first_valid||'').slice(0,10), lastD=(e.last_valid||'').slice(0,10);
+    let dots=`<button class="tldot first ${e.kind}" style="left:${a}%" data-doc="${doc}"
+      title="${t.tlDotTitle(name,firstD)}"></button>`;
+    if(b>a) dots+=`<button class="tldot ${e.kind}" style="left:${b}%" data-doc="${doc}"
+      title="${t.tlDotTitle(name,lastD)}"></button>`;
+    return `<div class="tlrow"><span class="nm" title="${name}">${name}</span>
+      <span class="lane">${bar}${dots}</span></div>`;
+  }).join('');
+
+  // Вісь: межі шкали плюс початки епізодів — саме там, де історія «згущувалась».
+  const marks=[...new Set([t0,...(tp.episodes||[]).map(ep=>Date.parse(ep.start)),t1])]
+    .map(ms_=>`<span style="left:${pos(ms_)}%">${new Date(ms_).toISOString().slice(0,10)}</span>`)
+    .join('');
+
+  $('#tl-wrap').innerHTML=`<div class="tlgrid">${eps}${rows}
+    <div class="tlaxis">${marks}</div></div>
+    <div class="tllegend">
+      <span><i style="background:var(--accent)"></i>${t.tlLegendAnalyte}</span>
+      <span><i style="background:var(--moderate)"></i>${t.tlLegendDrug}</span>
+      <span><i style="background:var(--major)"></i>${t.tlLegendProblem}</span>
+      <span><i style="background:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)"></i>${t.tlLegendFirst}</span>
+      ${anchored<100?`<span style="color:var(--moderate)">⚠ ${t.tlUnanchored}</span>`:''}
+    </div>`;
+  // Крапка — це факт із документа; клік веде до оригіналу (той самий drawer).
+  $('#tl-wrap').querySelectorAll('.tldot[data-doc]').forEach(d=>{
+    if(d.dataset.doc) d.onclick=()=>openDoc(d.dataset.doc,'');
+  });
+}
+
 async function refresh(){
   // lang → бекенд локалізує тексти сигналів/причин (той самий детермінований каталог)
-  try{render(await api('/state?lang='+(LANG==='ua'?'uk':'en')));}
+  try{
+    const [st,tp]=await Promise.all([
+      api('/state?lang='+(LANG==='ua'?'uk':'en')),
+      api('/temporal'),
+    ]);
+    render(st);
+    renderTemporal(tp);
+  }
   catch(e){toast(I18N[LANG].errorPrefix+e.message);}
 }
 

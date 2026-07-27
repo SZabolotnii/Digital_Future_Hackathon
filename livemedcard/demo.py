@@ -37,6 +37,28 @@ def _print_report(r: TraceReport) -> None:
         print(f"    · {reason}")
 
 
+def _print_temporal(card: LiveMedCard) -> None:
+    """Темпоральна проєкція: історія як сутності в часі, епізоди, топологія."""
+    tg = card.temporal()
+    m = tg.metrics()
+    print("\n=== Історія в часі (темпоральний граф) ===")
+    print(
+        f"  Обсяг: {m.span_days:.0f} днів · сутностей {m.n_entities} "
+        f"(показників {m.n_analytes}, ліків {m.n_drugs}, станів {m.n_problems}) · "
+        f"епізодів {m.n_episodes}"
+    )
+    print(
+        f"  Топологія: мультиморбідність {m.multimorbidity}, "
+        f"макс. одночасних ліків {m.max_concurrent_medications}, "
+        f"прив'язаність таймлайну {m.anchored_fraction * 100:.0f}%"
+    )
+    for ep in tg.episodes:
+        new = ", ".join(
+            tg.entities[k].label for k in ep.new_entity_keys if k in tg.entities
+        )
+        print(f"    епізод {ep.index + 1} ({ep.start.date()}): +{new}")
+
+
 def main() -> None:
     patient = Patient(id="mom-001", gender="female", birthDate=date(1950, 1, 1))
     card = LiveMedCard(patient)
@@ -49,11 +71,17 @@ def main() -> None:
     for r in reports:
         _print_report(r)
 
+    _print_temporal(card)
+
     print("\n=== Grounded Q&A (з посиланням на документи-джерела) ===")
-    qa = QA(card.factstore, card.graph, card.current_signals(), sex=patient.gender)
+    qa = QA(
+        card.factstore, card.graph, card.current_signals(),
+        sex=patient.gender, temporal=card.temporal(),
+    )
     for question in (
         "Що в мами з нирками за останній рік?",
-        "Який був калій?",
+        "Коли вперше з'явився креатинін?",
+        "Що нового останнім часом?",
         "Які ліки приймає і чи є взаємодії?",
     ):
         ans = qa.ask(question)
