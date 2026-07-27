@@ -33,6 +33,33 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `qa.py` — темпоральні інтенти (`_HISTORY_KEYWORDS`, `_CHANGE_KEYWORDS`; перевіряються ПЕРЕД лабораторними): «коли вперше», «що нового»; білінгвальні числівники (`_plural`), застереження про неприв'язану хронологію
 - SPA (`static/index.html`) — вкладка «Історія в часі»: доріжки сутностей, смуги епізодів, маркери першої появи; ендпойнт `/temporal`
 
+Шар нагляду L4 (принцип R; EU AI Act ст. 12/14):
+- `governance.py` — **задекларована межа автономії**: `DECLARATION` за тяжкістю (major/critical → `mandatory_review`, moderate → `advisory`, info → `autonomous`). Клас виводиться з тяжкості, а не з окремої таблиці за видом сигналу, щоб критерій ескалації L3 і критерій обов'язковості огляду не могли розійтися. `unreviewed_mandatory()` — що досі чекає рішення
+- `dto.Signal.key` — **мовно-незалежна тотожність** сигналу (`interaction:{rx1}|{rx2}`, `range_breach:{loinc}:{above|below}`, …). Сигнали ніде не зберігаються, а перераховуються на кожен запит і в обох мовах, тож брати ідентичність з `detail` не можна. Нове вимірювання, що змінює бік порушення, дає новий ключ — і новий предмет для огляду
+- `dto.ReviewEntry` — дія людини (роль, дія `acknowledged|overridden|referred`, ключ сигналу **або** id документа, нотатка, `seconds_to_act` для RBI); `dto.BoundaryEvent` — перетин межі. Обидва журнали окремі від `AuditEntry` і переживають snapshot/Bundle
+- `POST /review` (404 на невідомий ключ, 422 якщо ціль не рівно одна), `GET /audit` → `{decisions, reviews, boundary_events}`, `GET /export` **пише** `BoundaryEvent`, якщо є непереглянуті обов'язкові сигнали (не блокує — фіксує)
+- `l3_router.card_decision` — «що лишається невирішеним»: рахує лише **непереглянуті** сигнали + невирішені ескалації документів. Замінило виклик `route(sigs, 1.0, …)`, який мовчки викидав привід низької впевненості зі стану картки
+- `l3_router.should_reinvoke` + `LiveMedCard(fallback_extractor=…)` — **друга спроба перед викликом людини** (FPA): бюджет `LMC_REINVOCATION_BUDGET` (типово 1), береться **кращий** з двох результатів (гірша альтернатива не витісняє кращу), витяг поглинається лише після вибору — інакше картка накопичувала б обидві версії тих самих фактів. Перевиклик **лише** через низьку впевненість; знайдена небезпека його не запускає. `AuditEntry.attempts`, метрика в `/metrics.cost.false_positive_attenuation`
+- `AuditEntry.escalation_drive` (`risk|confidence|both|none`) — чому спрацював маршрут; вхід для SNR і EP. Відрізняється від `high_risk`, який тепер означає «цей документ вніс **нову** небезпеку» (вхід у вартість)
+- `/metrics.supervision` — OvR, RBI, SNR, `review_coverage`, `ep_proxy`, `outstanding_escalations`, `unreviewed_mandatory`, `boundary_excursions`. Порожній знаменник → `null`, а не 0
+- SPA — дії на кожному сигналі, смуга непереглянутого обов'язкового, перемикач ролі (декларація, не автентифікація), шухляда «Журнал рішень». Ескалацію рівня документа закриває перегляд **оригіналу** в шухлядці документа: «текст погано розпізнано» не є сигналом, тож у панелі сигналів для неї немає предмета
+
+Провенанс версій і метрики (принципи T/E; ст. 12/13/15):
+- `versioning.py` — `fingerprint(text)` (короткий sha1) і `agent(name, model)` → `name@model`. `Provenance.extracted_by` **без дефолту** (був `"MedGemma-4B"` незалежно від того, що працювало — провенанс, який бреше, гірший за відсутній) + `Provenance.prompt_id`. Кожен LLM-модуль має `prompt_id()` — відбиток свого системного промпту; для LoRA-шляху в провенанс іде **обидва** (`s1+s2`), бо Stage 1 вирішує, що взагалі доживе до Stage 2
+- `reference.ruleset_version()` — `1.0.0/1.0.0/1.0.0+<відбиток>`: задекларовані версії трьох файлів **правил безпеки** (`vocab.json` не входить — він впливає на витяг, не на рішення) плюс відбиток вмісту. `data/CHANGELOG.md` + `test_ruleset_version_is_declared_and_logged` роблять властивість перевірюваною: **правило неможливо змінити так, щоб журнал цього не помітив**. `Signal.ruleset_version` проставляє `current_signals()` в одному місці, а не кожен з восьми детекторів
+- **Дві іпостасі документа розділені** (ст. 13): вузол графа несе `text` (оригінал, як подано) і `generated_text` (стиснення Stage 1, написане моделлю). Раніше обидві клались в одне поле, і на двоетапних шляхах UI показував текст моделі під заголовком «Джерело» — при галюцинації Stage 1 підсвічений «доказ» був самою галюцинацією. Ознака генерованості — **факт із провенансу** (`prompt_id is not None`), а не здогадка інтерфейсу. Оригінали персистяться (`snapshot["document_texts"]`, `_meta.document_texts`); `/document/{id}` віддає `{text, generated, span_base}`; Q&A-ретрив шукає в обох
+- `/metrics` — `rule_coverage` (RCR: яку частку витягнутого правила взагалі здатні побачити; некодовані факти в знаменнику), `evidence` (ETC: `fact_trail`, `signal_trail`, `ruleset_version`), `cost` (TCC: латентність за класом шляху, з `AuditEntry.extractor`/`latency_ms`)
+- `docs/cpr.md` — CPR як **записаний артефакт** ст. 15 по класах задач. Безпека/Q&A/темпоральний шар ≈ 1; витяг ≈ 0.05 усвідомлено, з виміряним обґрунтуванням із `bench/results.json` (Vision 55/58 за 1.2 с проти NuExtract 58/58 за 24 с; уся різниця — два документи з рукописом) і зафіксованим негативним результатом, що confidence-роутер між ними неможливий
+
+Калібрування, бенчмарк витягу і дрейф (принцип E; ст. 15):
+- `bench/extraction_gold.json` (+ `build_extraction_gold.py`) — gold-корпус витягу: 40 документів UA+EN, 60 полів. Кожен документ існує заради **названого явища** (`probes`), а не для кількості; кілька очікують **порожній** результат (діапазони норм, палата/телефон, заперечення) — на них міряється precision. Очікуване — те, що витягла б **людина**, інакше recall був би 1.0 за побудовою
+- `bench/run_extraction_bench.py` — **польові** precision/recall/F1: збіг це `(LOINC, значення ± допуск, одиниця)`, а не входження підрядка як у `run_bench.py`. Виміряно: P=0.962, R=0.850, Wilson-low **0.739**
+- `calibration.py` — `confidence_for(extractor)` читає `data/extractor_calibration.json`; `mean_confidence` stub-а тепер **виміряна величина**, не константа. Береться **нижня межа Вілсона**, не точковий recall: недооцінка коштує перевірки людиною, переоцінка — пропущеного факту. Без файла — відкат на `UNVERIFIED_CONFIDENCE`
+- **Наслідок, який треба знати:** 0.739 нижче за обидва пороги (0.967/0.80), тож `escalation_rate` = 1.0 — автоматично не проходить нічого. Це не регресія, а зникнення довіри, для якої не було підстав. Деталі та знайдені дефекти — `docs/calibration.md`
+- **Дефекти, які знайшов корпус і які виправлено:** (1) одиниця бралася зі словника, а не з документа — «glucose 122 mg/dL» писалась як 122 mmol/L (major `range_breach` на нормальному значенні), а запобіжник `unit_mismatch` не міг спрацювати **ніколи**; тепер одиниця читається з тексту за закритим списком написань (`units.UNIT_PATTERN`), немає в тексті → `None`. (2) `_FREQ_RE` мав `(тріч)` замість `(трич)` — «тричі на добу» давало добову дозу втричі меншу. Записані й НЕ виправлені прогалини (щоб не підганяти систему під власну мірку): значення не впритул до терміна, табличні крапки-заповнювачі, «по 1 таблетці N мг»
+- `history.py` — часовий ряд метрик (OSI): `POST /metrics/snapshot`, `GET /metrics/history`, env `LMC_METRICS_HISTORY`. Знімки робить **оператор**, не система на кожен `GET /metrics` — інакше ряд показував би активність вкладки, а не дрейф
+- `docs/eu-ai-act.md` — матриця ст. 12–15: вимога → артефакт → метрика → **target/alert/action** пороги, і окремий розділ «чого немає» (IPSR, CE як ECE, незалежна анотація). CI прогонить бенчмарк витягу, а тест звіряє записане калібрування з поточним кодом — стале число валить збірку
+
 Документи та легасі:
 - `build_pdf.py` / `build_onepager.py` / `build_submit.py` — reportlab-генератори PDF (`build_submit.py` — фінальний, з flowable `TraceDiagram`)
 - `case_kartka_plus.md` — вихідний текст кейсу
@@ -45,7 +72,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 uv run python -m livemedcard.demo            # E2E-демо в терміналі
 uv run uvicorn livemedcard.api:app --reload  # веб-UI на http://127.0.0.1:8000 + JSON API
-uv run --extra dev pytest -q                 # тести (204 шт.)
+uv run --extra dev pytest -q                 # тести (258 шт.)
 uv run --extra dev pytest tests/test_pipeline.py -q   # один файл
 uv run --extra dev ruff check livemedcard tests       # лінтер (як у CI)
 LMC_PERSIST_PATH=~/lmc.json uv run uvicorn livemedcard.api:app  # з персистентністю
@@ -58,9 +85,10 @@ FastAPI за `/`: таймлайн показників зі спарклайн�
 (клік → оригінал), **граф знань** (модалка), білінгвальна **довідка**, grounded
 Q&A і експорт FHIR. Ендпойнти: `/state?lang=`, `/ingest`, `/ingest/image` (OCR
 зображення → текст → `ingest`), `/ingest/samples?lang=uk|en`, `/document/{id}`,
-`/graph`, `/reset`, `/timeline/{loinc}`, `/signals`, `/ask`, `/export`
-(FHIR Bundle), `/import`, `/audit`, `/metrics`. Персистентність — через env
-`LMC_PERSIST_PATH` (local-first JSON-знімок).
+`/graph`, `/temporal`, `/reset`, `/timeline/{loinc}`, `/signals`, `/ask`,
+`/review`, `/export` (FHIR Bundle), `/import`, `/audit`, `/metrics`,
+`/metrics/snapshot`, `/metrics/history`.
+Персистентність — через env `LMC_PERSIST_PATH` (local-first JSON-знімок).
 
 **Демо-документи** (`data/sample_docs.json`) — два **дзеркальні** набори, `uk` і
 `en`: ті самі значення й призначення, тож сигнали безпеки збігаються, різниця лише
