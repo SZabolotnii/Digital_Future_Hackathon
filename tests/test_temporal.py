@@ -44,7 +44,7 @@ def _obs(oid: str, loinc: str, value: float, when: datetime, doc: str = "d1",
         code=CodeableConcept(coding=[Coding(system=Sys.LOINC, code=loinc)], text=label),
         effectiveDateTime=when,
         valueQuantity=Quantity(value=value, unit=unit),
-        provenance=Provenance(source_doc_id=doc, extracted_at=when),
+        provenance=Provenance(source_doc_id=doc, extracted_by="test", extracted_at=when),
     )
 
 
@@ -59,7 +59,7 @@ def _med(mid: str, rxnorm: str, label: str, doc: str = "d1", status: str = "acti
         ),
         subject=Reference(reference="Patient/p1"),
         reason=Reference(reference=f"Condition/{reason}") if reason else None,
-        provenance=Provenance(source_doc_id=doc),
+        provenance=Provenance(source_doc_id=doc, extracted_by="test"),
     )
 
 
@@ -71,7 +71,7 @@ def _cond(cid: str, code: str, label: str, doc: str = "d1",
         code=CodeableConcept(coding=[Coding(system=Sys.SNOMED, code=code)], text=label),
         clinicalStatus="active",
         onsetDateTime=onset,
-        provenance=Provenance(source_doc_id=doc),
+        provenance=Provenance(source_doc_id=doc, extracted_by="test"),
     )
 
 
@@ -128,7 +128,7 @@ def test_fact_without_code_still_enters_graph_under_its_label():
         code=CodeableConcept(text="Час у діапазоні"),
         effectiveDateTime=_dt(2024, 1, 1),
         valueQuantity=Quantity(value=62, unit="%"),
-        provenance=Provenance(source_doc_id="d1"),
+        provenance=Provenance(source_doc_id="d1", extracted_by="test"),
     )
     tg = build([o], [], [], document_dates={"d1": _dt(2024, 1, 1)})
     assert entity_key("analyte", None, "Час у діапазоні") in tg.entities
@@ -140,7 +140,7 @@ def test_uncoded_labels_do_not_merge_with_coded_entities():
     uncoded = Observation(
         id="o2", status="final", code=CodeableConcept(text="Креатинін"),
         effectiveDateTime=_dt(2024, 1, 2), valueQuantity=Quantity(value=90),
-        provenance=Provenance(source_doc_id="d1"),
+        provenance=Provenance(source_doc_id="d1", extracted_by="test"),
     )
     tg = build([coded, uncoded], [], [], document_dates={"d1": _dt(2024, 1, 1)})
     assert len(tg.entities) == 2
@@ -152,7 +152,7 @@ def test_valid_and_record_time_are_tracked_separately():
     clinical, recorded = _dt(2023, 1, 1), _dt(2024, 6, 1)
     o = _obs("o1", "2160-0", 88, clinical)
     o = o.model_copy(update={
-        "provenance": Provenance(source_doc_id="d1", extracted_at=recorded)
+        "provenance": Provenance(source_doc_id="d1", extracted_by="test", extracted_at=recorded)
     })
     tg = build([o], [], [], document_dates={"d1": clinical})
     e = tg.entities["analyte:2160-0"]

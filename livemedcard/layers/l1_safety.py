@@ -51,6 +51,9 @@ def check_interactions(meds: list[MedicationRequest], lang: str = "uk") -> list[
             Signal(
                 layer="L1",
                 kind="interaction",
+                # Пара, а не id ресурсів: та сама взаємодія лишається тією самою,
+                # якщо призначення перевипишуть новим документом.
+                key=f"interaction:{'|'.join(sorted((rx1, rx2)))}",
                 severity=entry.severity,
                 detail=f"{name1} + {name2}: {mechanism}",
                 subjects=[f"MedicationRequest/{m1.id}", f"MedicationRequest/{m2.id}"],
@@ -88,6 +91,7 @@ def check_dose_limits(meds: list[MedicationRequest], lang: str = "uk") -> list[S
                 Signal(
                     layer="L1",
                     kind="dose_limit",
+                    key=f"dose_limit:{rx}",
                     severity="major",
                     detail=detail,
                     subjects=[f"MedicationRequest/{m.id}"],

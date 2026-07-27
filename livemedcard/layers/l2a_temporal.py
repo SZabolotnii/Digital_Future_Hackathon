@@ -69,6 +69,7 @@ def detect_polypharmacy(
         Signal(
             layer="L2a",
             kind="polypharmacy",
+            key="polypharmacy",
             severity="moderate",
             detail=detail,
             subjects=[e.key for e in active] or [e.key for e in graph.of_kind("drug")],
@@ -130,6 +131,7 @@ def detect_monitoring_gaps(
             Signal(
                 layer="L2a",
                 kind="monitoring_gap",
+                key=f"monitoring_gap:{loinc}",
                 severity="moderate",
                 detail=detail,
                 subjects=[loinc],
@@ -175,6 +177,7 @@ def detect_timeline_uncertainty(
         Signal(
             layer="L2a",
             kind="temporal_uncertainty",
+            key="temporal_uncertainty",
             severity="info",
             detail=detail,
             subjects=[e.key for e in graph.entities.values() if e.unanchored],

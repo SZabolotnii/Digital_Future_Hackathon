@@ -56,8 +56,12 @@ def test_samples_flow_signals_metrics_audit(client):
     assert m["escalated"] + m["auto"] == m["decisions"]
     assert m["escalated"] >= 1
     audit = client.get("/audit").json()
-    assert len(audit) == 4
-    assert all(set(a) >= {"ts", "route_to", "escalate"} for a in audit)
+    assert set(audit) == {"decisions", "reviews", "boundary_events"}
+    assert len(audit["decisions"]) == 4
+    assert all(
+        set(a) >= {"ts", "route_to", "escalate", "escalation_drive"}
+        for a in audit["decisions"]
+    )
 
 
 def test_sample_sets_mirror_each_other_across_languages(client):

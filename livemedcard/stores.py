@@ -142,14 +142,29 @@ class KnowledgeGraph:
         self.g.add_node(nid, type="Patient", gender=p.gender)
         return nid
 
-    def add_document(self, doc_id: str, summary_text: str) -> str:
-        """Явний вузол документа з текстом summary — ціль ребер ``derived_from``.
+    def add_document(
+        self, doc_id: str, text: str, *, generated: bool = False
+    ) -> str:
+        """Явний вузол документа з текстом — ціль ребер ``derived_from``.
 
-        Раніше вузол ``Document/{id}`` існував лише як порожня мішень ребра; тепер
-        несе free-text (Stage 1 SGR-summary), тож провенанс стає доказовим.
+        Дві іпостасі зберігаються **окремо** й підписані:
+
+        - ``text`` — те, що подала людина (оригінал);
+        - ``generated_text`` — стиснення Stage 1, написане моделлю.
+
+        Раніше обидві клались в одне поле, і для двоетапних екстракторів
+        інтерфейс показував summary під заголовком «Джерело». Якщо Stage 1
+        галюцинував значення, підсвічений «доказ» був самою галюцинацією. Змішати
+        їх удруге не можна: ``generated=True`` пише лише в друге поле.
         """
         nid = f"Document/{doc_id}"
-        self.g.add_node(nid, type="Document", text=summary_text)
+        # Вузол може вже існувати як неявна мішень ребра `derived_from` — тоді в
+        # нього немає жодного атрибута, і `type` треба проставити в будь-якому разі.
+        self.g.add_node(nid, type="Document")
+        node = self.g.nodes[nid]
+        node.setdefault("text", "")
+        node.setdefault("generated_text", "")
+        node["generated_text" if generated else "text"] = text
         return nid
 
     def add_encounter(self, e: Encounter, patient_id: str) -> str:

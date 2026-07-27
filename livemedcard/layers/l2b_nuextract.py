@@ -13,6 +13,7 @@ import json
 
 from ..config import NUEXTRACT_MODEL, NUEXTRACT_URL
 from ..llm_client import chat_completions
+from ..versioning import fingerprint
 
 # Шаблон KVT-фактів (leaf-значення = типи NuExtract). Одиниця — ОКРЕМЕ поле, як у
 # хмарного Lab: без неї значення приходить голим числом, і шар L2a не може
@@ -32,6 +33,11 @@ _TEMPLATE_JSON = json.dumps(_FACTS_TEMPLATE, indent=2)
 
 def _ctk(**kw) -> dict:
     return {"chat_template_kwargs": {"enable_thinking": False, **kw}}
+
+
+def prompt_id() -> str:
+    """Відбиток шаблону витягу — у NuExtract він і є промптом."""
+    return fingerprint(json.dumps(_FACTS_TEMPLATE, sort_keys=True, ensure_ascii=False))
 
 
 def image_to_markdown(base64_image: str, *, url: str | None = None, model: str | None = None) -> str:

@@ -1,0 +1,13 @@
+{
+  "_note": "Виміряна впевненість витягу. Береться нижня межа Вілсона для recall, а не точкова оцінка: недооцінювати себе безпечно. Оновлювати через bench/run_extraction_bench.py --write-calibration.",
+  "gold_version": "1.0.0",
+  "measured_at": "2026-07-27",
+  "extractors": {
+    "StubExtractor": {
+      "recall": 0.85,
+      "precision": 0.962,
+      "n": 60,
+      "wilson_low": 0.739
+    }
+  }
+}

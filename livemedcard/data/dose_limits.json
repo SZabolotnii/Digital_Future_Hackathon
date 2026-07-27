@@ -1,9 +1,31 @@
 {
   "_note": "Максимальна добова доза (спрощення MVP). Коди RxNorm, одиниця mg/добу.",
+  "version": "1.0.0",
+  "updated": "2026-07-27",
   "limits": [
-    {"rxnorm": "6809", "name": "Метформін", "max_daily": 2550, "unit": "mg"},
-    {"rxnorm": "1191", "name": "Аспірин", "max_daily": 4000, "unit": "mg"},
-    {"rxnorm": "29046", "name": "Лізиноприл", "max_daily": 80, "unit": "mg"},
-    {"rxnorm": "11289", "name": "Варфарин", "max_daily": 10, "unit": "mg"}
+    {
+      "rxnorm": "6809",
+      "name": "Метформін",
+      "max_daily": 2550,
+      "unit": "mg"
+    },
+    {
+      "rxnorm": "1191",
+      "name": "Аспірин",
+      "max_daily": 4000,
+      "unit": "mg"
+    },
+    {
+      "rxnorm": "29046",
+      "name": "Лізиноприл",
+      "max_daily": 80,
+      "unit": "mg"
+    },
+    {
+      "rxnorm": "11289",
+      "name": "Варфарин",
+      "max_daily": 10,
+      "unit": "mg"
+    }
   ]
 }

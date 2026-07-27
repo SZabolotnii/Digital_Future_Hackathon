@@ -29,6 +29,7 @@ from ..fhir import (
     Sys,
 )
 from ..llm_client import chat_completions
+from ..versioning import fingerprint
 
 # ── keyword → LOINC міст (часті лаби readmission-домену) ──────────────────────
 # Значення: (LOINC, людська назва). Одиниця береться з value LoRA (fallback — тут).
@@ -180,6 +181,11 @@ def _parse_timestamp(
     return fallback, False
 
 
+def prompt_id() -> str:
+    """Відбиток системного промпту Stage 2 — іде в провенанс фактів."""
+    return fingerprint(build_stage2_system_prompt())
+
+
 def extract_facts(summary_text: str, *, url: str | None = None, model: str | None = None) -> list[dict]:
     """Викликати LoRA-Stage 2 сервер і повернути сирі KVT4-обʼєкти."""
     messages = [
@@ -223,7 +229,8 @@ def _document_date(kvt: list[dict]) -> Optional[datetime]:
 
 
 def to_observations(
-    kvt: list[dict], doc: Document, patient_id: str, *, extracted_by: str
+    kvt: list[dict], doc: Document, patient_id: str, *, extracted_by: str,
+    prompt_id: str | None = None,
 ) -> list[Observation]:
     """KVT4 → FHIR Observations (лише числові; часті лаби мостяться у LOINC)."""
     subject = Reference(reference=f"Patient/{patient_id}")
@@ -268,6 +275,7 @@ def to_observations(
                 provenance=Provenance(
                     source_doc_id=doc.id,
                     extracted_by=extracted_by,
+                    prompt_id=prompt_id,
                     confidence=None,
                     date_stated=date_stated,
                 ),

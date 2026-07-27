@@ -19,6 +19,7 @@ from ..config import (
     STUB_CONFIDENCE,
     UNVERIFIED_CONFIDENCE,
 )
+from ..calibration import confidence_for
 from ..dto import Document, ExtractionResult
 from ..fhir import (
     Attachment,
@@ -35,6 +36,8 @@ from ..fhir import (
 )
 from ..config import NUEXTRACT_MODEL, NUEXTRACT_URL, OCRLAB_SPACE
 from ..reference import load_vocab
+from ..units import UNIT_PATTERN
+from ..versioning import agent
 from . import l2b_nuextract, l2b_ocrlab, l2b_stage1, l2b_stage2_lora
 
 _T = TypeVar("_T")
@@ -44,14 +47,24 @@ _T = TypeVar("_T")
 # ліки без власного числа «крадуть» число наступного терміна (напр. систолічний
 # тиск забирав би значення калію, а варфарин — дозу аспірину).
 _SEP = r"[\s:=–—-]*"
-_LAB_VALUE_RE = re.compile(_SEP + r"(\d+(?:\.\d+)?)")
+# Одиницю читаємо З ДОКУМЕНТА, а не беремо зі словника. Це не косметика:
+# «Fasting glucose 122 mg/dL», записана як 122 mmol/L, дає major-сигнал
+# `range_breach` на майже нормальному значенні, а запобіжник `unit_mismatch`
+# (для якого й писався `units.py`) не спрацьовує ніколи — бо одиниця факту за
+# побудовою дорівнює референсній. Знайшов це `bench/run_extraction_bench.py`.
+_LAB_VALUE_RE = re.compile(
+    _SEP + r"(\d+(?:\.\d+)?)\s*(" + UNIT_PATTERN + r")?", re.IGNORECASE
+)
 _DOSE_MG_RE = re.compile(_SEP + r"(\d+(?:\.\d+)?)\s*(?:мг|mg)\b", re.IGNORECASE)
 # Кратність прийому: «×2», «x2», «2 рази», «двічі», «тричі», «twice», «3 times»
 # → множник за добу. Словник білінгвальний, тож і доза має читатися двома мовами:
 # інакше в англомовному документі доза просто не знаходиться, і сигнал
 # перевищення добової межі (L1) тихо не спрацьовує.
 _FREQ_RE = re.compile(
-    r"[×xх]\s*(\d+)|(\d+)\s*раз|(двіч)|(тріч)|(\d+)\s*times|(twice)|(three times)",
+    # «трич», не «тріч»: у слові «тричі» стоїть «и». Через цю одну літеру
+    # кратність не знаходилась, і добова доза виходила втричі меншою за
+    # призначену — тобто перевищення межі могло тихо не спрацювати.
+    r"[×xх]\s*(\d+)|(\d+)\s*раз|(двіч)|(трич)|(\d+)\s*times|(twice)|(three times)",
     re.IGNORECASE,
 )
 # Дата вимірювання на факт: ISO «2024-03-15» або «15.03.2024» у тому самому рядку.
@@ -152,7 +165,8 @@ def _find_vocab_terms(
 
 
 def deterministic_extract(
-    text: str, doc: Document, patient_id: str, *, extracted_by: str = "StubExtractor"
+    text: str, doc: Document, patient_id: str, *,
+    extracted_by: str = "StubExtractor", prompt_id: str | None = None,
 ) -> ExtractionResult:
     """Детермінований Stage 2: текст → FHIR-ресурси (LOINC/RxNorm/SNOMED).
 
@@ -193,11 +207,15 @@ def deterministic_extract(
                 subject=subject,
                 effectiveDateTime=eff_date,
                 valueQuantity=Quantity(
-                    value=float(number_match.group(1)), unit=info.unit
+                    # Одиниці немає в тексті → None, а не підставлена зі
+                    # словника: L2a тоді чесно скаже «перевірку меж не виконано».
+                    value=float(number_match.group(1)),
+                    unit=number_match.group(2) or None,
                 ),
                 provenance=Provenance(
                     source_doc_id=doc.id,
                     extracted_by=extracted_by,
+                    prompt_id=prompt_id,
                     confidence=STUB_CONFIDENCE,
                     source_span=(match.start(), number_match.end()),
                 ),
@@ -232,6 +250,7 @@ def deterministic_extract(
                 provenance=Provenance(
                     source_doc_id=doc.id,
                     extracted_by=extracted_by,
+                    prompt_id=prompt_id,
                     confidence=STUB_CONFIDENCE,
                     source_span=(match.start(), match.end()),
                 ),
@@ -264,6 +283,7 @@ def deterministic_extract(
                 provenance=Provenance(
                     source_doc_id=doc.id,
                     extracted_by=extracted_by,
+                    prompt_id=prompt_id,
                     confidence=STUB_CONFIDENCE,
                     source_span=(match.start(), match.end()),
                 ),
@@ -272,8 +292,16 @@ def deterministic_extract(
 
     # Порожній витяг означає «нічого не розпізнали», а не «впевнені на 100%».
     # Низька впевненість веде документ на перегляд людиною (L3), а не в auto.
+    #
+    # Ненульова впевненість — ВИМІРЯНА (нижня межа Вілсона для recall на
+    # gold-корпусі), а не константа з конфігу. `STUB_CONFIDENCE` лишається
+    # відкатом на випадок, коли калібрування ще не проганяли: поріг ескалації
+    # виводиться з вартостей до третього знака, і порівнювати його з
+    # непоміряним числом означало б імітувати строгість.
+    measured = confidence_for("StubExtractor")
     mean_confidence = (
-        STUB_CONFIDENCE if (observations or medications or conditions) else 0.0
+        (measured if measured is not None else STUB_CONFIDENCE)
+        if (observations or medications or conditions) else 0.0
     )
     return ExtractionResult(
         observations=observations,
@@ -304,7 +332,8 @@ def _build_docref(
     summary_text: str,
     patient_id: str,
     *,
-    extracted_by: str = "MedGemma-Stage1",
+    extracted_by: str,
+    prompt_id: str | None = None,
     title: str | None = None,
 ) -> DocumentReference:
     """FHIR DocumentReference з free-text іпостассю (Stage 1 SGR-summary або сирий
@@ -323,6 +352,7 @@ def _build_docref(
         provenance=Provenance(
             source_doc_id=doc.id,
             extracted_by=extracted_by,
+            prompt_id=prompt_id,
             confidence=STUB_CONFIDENCE,
         ),
     )
@@ -340,13 +370,18 @@ class TwoStageExtractor:
 
     def extract(self, doc: Document, patient_id: str) -> ExtractionResult:
         summary_text = l2b_stage1.summarize(doc.text, model=self._model)
+        agent_id = agent("two_stage", self._model or STAGE1_MODEL)
         ext = deterministic_extract(
-            summary_text, doc, patient_id, extracted_by="MedGemma-4B+Stage2"
+            summary_text, doc, patient_id,
+            extracted_by=agent_id, prompt_id=l2b_stage1.prompt_id(),
         )
         # Stage 2 тут детермінований, але читає він LLM-summary: чого модель не
         # внесла у стиснення, того регекс уже не поверне. Отже — «не перевірено».
         ext.mean_confidence = UNVERIFIED_CONFIDENCE if ext.observations else 0.0
-        ext.document_reference = _build_docref(doc, summary_text, patient_id)
+        ext.document_reference = _build_docref(
+            doc, summary_text, patient_id,
+            extracted_by=agent_id, prompt_id=l2b_stage1.prompt_id(),
+        )
         return ext
 
 
@@ -378,13 +413,22 @@ class LoraStage2Extractor:
         kvt = l2b_stage2_lora.extract_facts(
             summary_text, url=self._s2_url, model=self._s2_model
         )
+        # Два промпти в ланцюгу — обидва в провенансі: Stage 1 вирішує, що
+        # взагалі доживе до Stage 2, тож ховати його було б неповно.
+        prompts = f"{l2b_stage1.prompt_id()}+{l2b_stage2_lora.prompt_id()}"
         observations = l2b_stage2_lora.to_observations(
-            kvt, doc, patient_id, extracted_by="MedGemma-LoRA-Stage2"
+            kvt, doc, patient_id,
+            extracted_by=agent("lora_stage2", self._s2_model),
+            prompt_id=prompts,
         )
         return ExtractionResult(
             observations=observations,
             mean_confidence=UNVERIFIED_CONFIDENCE if observations else 0.0,
-            document_reference=_build_docref(doc, summary_text, patient_id),
+            document_reference=_build_docref(
+                doc, summary_text, patient_id,
+                extracted_by=agent("stage1", self._s1_model),
+                prompt_id=l2b_stage1.prompt_id(),
+            ),
         )
 
 
@@ -403,13 +447,18 @@ class NuExtractExtractor:
 
     def extract(self, doc: Document, patient_id: str) -> ExtractionResult:
         kvt = l2b_nuextract.extract_facts(doc.text, url=self._url, model=self._model)
+        agent_id = agent("nuextract", self._model)
         observations = l2b_stage2_lora.to_observations(
-            kvt, doc, patient_id, extracted_by="NuExtract3"
+            kvt, doc, patient_id,
+            extracted_by=agent_id, prompt_id=l2b_nuextract.prompt_id(),
         )
         return ExtractionResult(
             observations=observations,
             mean_confidence=UNVERIFIED_CONFIDENCE if observations else 0.0,
-            document_reference=_build_docref(doc, doc.text, patient_id),
+            document_reference=_build_docref(
+                doc, doc.text, patient_id,
+                extracted_by=agent_id, prompt_id=l2b_nuextract.prompt_id(),
+            ),
         )
 
 
@@ -438,13 +487,16 @@ class OcrLabExtractor:
             # пів-документі) — тоді фактів у тексті просто немає. Беремо їх прямо
             # із зображення одним проходом; free-text іпостась лишається тією ж.
             kvt = l2b_ocrlab.facts_from_image(self._image_base64, space=self._space)
+        agent_id = agent("nuextract_zerogpu", self._space)
         observations = l2b_stage2_lora.to_observations(
-            kvt, doc, patient_id, extracted_by="NuExtract3/ZeroGPU"
+            kvt, doc, patient_id, extracted_by=agent_id,
         )
         return ExtractionResult(
             observations=observations,
             mean_confidence=UNVERIFIED_CONFIDENCE if observations else 0.0,
-            document_reference=_build_docref(doc, doc.text, patient_id),
+            document_reference=_build_docref(
+                doc, doc.text, patient_id, extracted_by=agent_id,
+            ),
         )
 
 
