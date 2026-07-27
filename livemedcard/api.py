@@ -424,6 +424,17 @@ def graph(state: _State = Depends(_get_state)):
         return {"nodes": nodes, "edges": edges}
 
 
+@app.get("/temporal")
+def temporal_view(state: _State = Depends(_get_state)):
+    """Темпоральна проєкція: сутності в часі, епізоди, метрики топології.
+
+    Описова — сигналів не породжує (вони приходять через `/signals`, як і всі
+    інші). Дає інтерфейсу дані для доріжок таймлайну й маркерів першої появи.
+    """
+    with state.lock:
+        return state.card.temporal().to_payload()
+
+
 @app.get("/state")
 def get_state_endpoint(lang: str = "uk", state: _State = Depends(_get_state)):
     """Агрегований знімок картки для інтерфейсу (`lang=uk|en` — мова текстів сигналів)."""
@@ -502,7 +513,13 @@ def get_state_endpoint(lang: str = "uk", state: _State = Depends(_get_state)):
 def ask(req: AskRequest, state: _State = Depends(_get_state)) -> Answer:
     with state.lock:
         card = state.card
-        qa = QA(card.factstore, card.graph, card.current_signals(), sex=card.patient.gender)
+        qa = QA(
+            card.factstore,
+            card.graph,
+            card.current_signals(),
+            sex=card.patient.gender,
+            temporal=card.temporal(),
+        )
         return qa.ask(req.question)
 
 

@@ -15,6 +15,7 @@ from .lang import Lang, detect_lang
 from .reference import range_for
 from .retrieval import Embedder, chunk, rank
 from .stores import FactStore, KnowledgeGraph
+from .temporal import TemporalGraph
 
 
 def _config_embed() -> Optional[Embedder]:
@@ -71,6 +72,21 @@ _MED_KEYWORDS = (
     "medication", "medicine", "drug", "pill", "interaction", "taking",
 )
 
+# Темпоральні наміри — питання про ЧАС, а не про значення. Перевіряються перед
+# лабораторними, бо «коли вперше підвищився креатинін» містить лабораторний
+# термін, але просить дату, а не число.
+_HISTORY_KEYWORDS = (
+    "коли вперше", "вперше", "з чого поч", "історі", "хронолог", "давно",
+    "when did", "first appear", "first time", "history", "timeline", "how long",
+)
+# «Що нового» — про появу нового, а не про динаміку показника. Фрази навмисно
+# вузькі: «за останній рік» у «що з нирками за останній рік» — це часовий діапазон
+# лабораторного питання, а не запит «що нового», тож сюди він не входить.
+_CHANGE_KEYWORDS = (
+    "що змінилося", "що змінилось", "що нового", "щось нове", "що з'явилося",
+    "what changed", "what is new", "what's new", "anything new", "what appeared",
+)
+
 # Каталог фраз відповіді за мовою питання (автовибір через detect_lang).
 _MSG: dict[Lang, dict[str, str]] = {
     "uk": {
@@ -91,6 +107,17 @@ _MSG: dict[Lang, dict[str, str]] = {
         "fallback": (
             "Не вдалося зіставити питання з наявними даними. Спробуйте спитати "
             "про показник (нирки/креатинін, HbA1c, калій, тиск) або про ліки та взаємодії."
+        ),
+        "hist_first": "«{name}» вперше з'являється в картці {d}.",
+        "hist_span": "Відтоді минуло {n} {days}, записів — {k}.",
+        "hist_none": "У картці немає записів про «{name}».",
+        "hist_episodes": "Історія розділена на {n} {eps}: {list}.",
+        "hist_empty": "Картка порожня — історії ще немає.",
+        "change_since": "Нового з {d}: {list}.",
+        "change_none": "Нічого нового з {d} у картці не з'явилося.",
+        "unanchored_note": (
+            "⚠ Частина фактів не має дати з документа — вони датовані моментом "
+            "обробки, тож хронологія приблизна."
         ),
     },
     "en": {
@@ -113,6 +140,17 @@ _MSG: dict[Lang, dict[str, str]] = {
             "value (kidney/creatinine, HbA1c, potassium, blood pressure) or about "
             "medications and interactions."
         ),
+        "hist_first": "«{name}» first appears in the record on {d}.",
+        "hist_span": "That was {n} {days} ago; {k} entries since.",
+        "hist_none": "No entries about «{name}» in the record.",
+        "hist_episodes": "The history splits into {n} {eps}: {list}.",
+        "hist_empty": "The record is empty — no history yet.",
+        "change_since": "New since {d}: {list}.",
+        "change_none": "Nothing new since {d} in the record.",
+        "unanchored_note": (
+            "⚠ Some facts carry no date from their document — they are dated by the "
+            "moment of processing, so the chronology is approximate."
+        ),
     },
 }
 
@@ -130,11 +168,15 @@ class QA:
         signals: Optional[list[Signal]] = None,
         sex: Optional[str] = None,
         embed: Optional[Embedder] = None,
+        temporal: Optional[TemporalGraph] = None,
     ) -> None:
         self.factstore = factstore
         self.graph = graph
         self.signals = signals or []
         self.sex = sex
+        # Темпоральна проєкція — необов'язкова: без неї Q&A працює як раніше,
+        # просто без питань про час.
+        self.temporal = temporal
         # None → лексичний ретрив; інакше — переданий/конфігурований семантичний.
         self._embed = embed
 
@@ -142,9 +184,17 @@ class QA:
         q = question.lower()
         lang = detect_lang(question)  # мова відповіді = мова питання
 
-        # Наміри про ліки/взаємодії перевіряємо ПЕРШИМИ: інакше питання про ліки,
-        # що містить лабораторну підстроку (напр. «...при тиску»), помилково
-        # перехоплювалося б лабораторною гілкою.
+        # Темпоральні наміри — найперші: «коли вперше підвищився креатинін»
+        # містить і лабораторний, і часовий термін, але просить дату, а не число.
+        if self.temporal is not None:
+            if any(k in q for k in _CHANGE_KEYWORDS):
+                return self._answer_change(q, lang)
+            if any(k in q for k in _HISTORY_KEYWORDS):
+                return self._answer_history(q, lang)
+
+        # Наміри про ліки/взаємодії перевіряємо перед лабораторними: інакше
+        # питання про ліки, що містить лабораторну підстроку (напр. «...при
+        # тиску»), помилково перехоплювалося б лабораторною гілкою.
         if any(k in q for k in _MED_KEYWORDS):
             return self._answer_medications(lang)
 
@@ -205,6 +255,103 @@ class QA:
         sources = _unique(f.source_doc_id for f in series if f.source_doc_id)
         return Answer(text=" ".join(parts), sources=sources)
 
+    # ── темпоральні відповіді ─────────────────────────────────────────────────
+    def _answer_history(self, q: str, lang: Lang) -> Answer:
+        """«Коли вперше…» — first_appearance конкретної сутності або огляд епізодів."""
+        m = _MSG[lang]
+        tg = self.temporal
+        assert tg is not None
+        if not tg.entities:
+            return Answer(text=m["hist_empty"])
+
+        entity = self._match_entity(q)
+        if entity is not None:
+            parts = [m["hist_first"].format(
+                name=self._entity_name(entity, lang),
+                d=entity.first_valid.date().isoformat(),
+            )]
+            if tg.horizon is not None:
+                age = (tg.horizon - entity.first_valid).days
+                parts.append(m["hist_span"].format(
+                    n=age, k=entity.occurrences,
+                    days=_plural(age, lang, ("день", "дні", "днів"), "days"),
+                ))
+            return Answer(text=self._with_caveat(" ".join(parts), lang),
+                          sources=list(entity.doc_ids))
+
+        # Без конкретної сутності — огляд епізодів: коли історія «згущувалась».
+        listed = "; ".join(
+            f"{ep.start.date().isoformat()} (+{len(ep.new_entity_keys)})"
+            for ep in tg.episodes
+        )
+        n_ep = len(tg.episodes)
+        text = m["hist_episodes"].format(
+            n=n_ep, list=listed,
+            eps=_plural(n_ep, lang, ("епізод", "епізоди", "епізодів"), "episodes"),
+        )
+        sources = _unique(d for ep in tg.episodes for d in ep.doc_ids)
+        return Answer(text=self._with_caveat(text, lang), sources=sources)
+
+    def _answer_change(self, q: str, lang: Lang) -> Answer:
+        """«Що нового» — сутності, що з'явилися в останньому епізоді."""
+        m = _MSG[lang]
+        tg = self.temporal
+        assert tg is not None
+        if not tg.episodes:
+            return Answer(text=m["hist_empty"])
+        last = tg.episodes[-1]
+        since = last.start
+        new_entities = [tg.entities[k] for k in last.new_entity_keys if k in tg.entities]
+        fresh = [self._entity_name(e, lang) for e in new_entities]
+        d = since.date().isoformat()
+        if not fresh:
+            return Answer(text=m["change_none"].format(d=d))
+        text = m["change_since"].format(d=d, list=", ".join(sorted(fresh)))
+        # Джерело — документи саме НОВИХ сутностей, а не всього епізоду: інакше
+        # посилання веде на давній показник, що просто «дожив» до цього епізоду,
+        # замість документа, звідки взято новизну.
+        sources = _unique(doc for e in new_entities for doc in e.doc_ids)
+        return Answer(text=self._with_caveat(text, lang), sources=sources)
+
+    def _entity_name(self, entity, lang: Lang) -> str:
+        """Назва сутності мовою відповіді.
+
+        Мітка сутності приходить з документа, тож на україномовній виписці вона
+        українська й в англійській відповіді виглядає чужорідно. Для показників
+        із LOINC беремо назву з довідника — того самого, що й у сигналах.
+        """
+        if lang == "en" and entity.kind == "analyte" and entity.code:
+            ref = range_for(entity.code, self.sex)
+            if ref is not None and ref.keyword_en:
+                return ref.keyword_en
+        return entity.label
+
+    def _match_entity(self, q: str):
+        """Сутність за назвою або за LOINC із лабораторної мапи ключових слів."""
+        tg = self.temporal
+        if tg is None:
+            return None
+        loinc = self._match_loinc(q)
+        if loinc is not None:
+            hit = tg.entities.get(f"analyte:{loinc}")
+            if hit is not None:
+                return hit
+        for entity in tg.entities.values():
+            if entity.label.lower() in q:
+                return entity
+        return None
+
+    def _with_caveat(self, text: str, lang: Lang) -> str:
+        """Додати застереження, якщо хронологія спирається на дати обробки.
+
+        Часова відповідь на неприв'язаному таймлайні виглядає так само впевнено,
+        як на справжньому. Різницю треба сказати, а не лишити читачеві.
+        """
+        tg = self.temporal
+        if tg is None or tg.metrics().anchored_fraction >= 1.0:
+            return text
+        return text + "\n" + _MSG[lang]["unanchored_note"]
+
     def _answer_freetext(self, q: str, lang: Lang) -> Optional[Answer]:
         """Ранжований ретрив по free-text іпостасі (Stage 1 summary / сирий текст).
 
@@ -251,6 +398,25 @@ class QA:
             if self.graph.provenance_of(n)
         )
         return Answer(text="\n".join(parts), sources=sources)
+
+
+def _plural(n: int, lang: Lang, uk_forms: tuple[str, str, str], en: str) -> str:
+    """Українські числівники (1 день / 2 дні / 5 днів); для EN — незмінна форма.
+
+    Без цього виходить «533 днів» замість «533 дні» — дрібниця, яка одразу видає
+    машинний текст читачеві, для якого українська рідна.
+    """
+    if lang != "uk":
+        return en
+    one, few, many = uk_forms
+    if 11 <= abs(n) % 100 <= 14:
+        return many
+    last = abs(n) % 10
+    if last == 1:
+        return one
+    if 2 <= last <= 4:
+        return few
+    return many
 
 
 def _unique(items) -> list[str]:

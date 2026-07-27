@@ -27,6 +27,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `llm_client.py` — спільний OpenAI-сумісний клієнт до локального сервера (LM Studio): `chat_completions(messages)` + `detect_model()` + `embeddings()` (семантичний ретрив); лише stdlib (`urllib`), щоб тести мокали `urllib.request.urlopen`. Спільний канал для OCR, Stage 1 і embeddings
 - `ocr.py` — `OcrService`: OCR медичних зображень (vision-модель типу MedGemma). Делегує HTTP у `llm_client`, лишає лише vision-payload і промпт дослівної транскрипції. Крок image→text перед двоетапним L2b, **жодних висновків про безпеку**
 
+Темпоральний шар (третя проєкція над FHIR-ресурсами; ADR — `docs/temporal-graph.md`):
+- `temporal.py` — `TemporalGraph`: сутності в часі (`TemporalEntity` з `first_valid`/`first_recorded`/`interval`), ребра з інтервалами (`treats`, `co_active`; ребра `precedes` свідомо **немає** — хибна каузальність), епізоди (сегментація за розривом `EPISODE_GAP_DAYS`), метрики топології (мультиморбідність, поліфармація, `anchored_fraction`), темпоральні запити (`as_of`/`since`/`first_appearance` з віссю `valid`|`record`). **Бітемпоральність:** valid time (коли факт істинний) vs record time (коли картка дізналась); `anchored_fraction` — частка фактів на реальній даті, а не на моменті обробки. **Межа детермінізму:** модуль НЕ імпортує `Signal` (закріплено AST-тестом), граф лише описовий. `LiveMedCard.temporal()` будує проєкцію на вимогу; `_document_dates` (valid-time якір призначень) переживає snapshot/Bundle
+- `layers/l2a_temporal.py` — детерміновані темпоральні сигнали з фактів (не обходом графа): `polypharmacy` (≥5 одночасно активних), `monitoring_gap` (показник поза межею, не переміряний > `MONITORING_GAP_DAYS`; відлік від горизонту картки), `temporal_uncertainty` (частка прив'язаних фактів < `DATED_FRACTION_FLOOR`). Усі `confidence == 1.0`
+- `qa.py` — темпоральні інтенти (`_HISTORY_KEYWORDS`, `_CHANGE_KEYWORDS`; перевіряються ПЕРЕД лабораторними): «коли вперше», «що нового»; білінгвальні числівники (`_plural`), застереження про неприв'язану хронологію
+- SPA (`static/index.html`) — вкладка «Історія в часі»: доріжки сутностей, смуги епізодів, маркери першої появи; ендпойнт `/temporal`
+
 Документи та легасі:
 - `build_pdf.py` / `build_onepager.py` / `build_submit.py` — reportlab-генератори PDF (`build_submit.py` — фінальний, з flowable `TraceDiagram`)
 - `case_kartka_plus.md` — вихідний текст кейсу
@@ -39,7 +45,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 uv run python -m livemedcard.demo            # E2E-демо в терміналі
 uv run uvicorn livemedcard.api:app --reload  # веб-UI на http://127.0.0.1:8000 + JSON API
-uv run --extra dev pytest -q                 # тести (149 шт.)
+uv run --extra dev pytest -q                 # тести (204 шт.)
 uv run --extra dev pytest tests/test_pipeline.py -q   # один файл
 uv run --extra dev ruff check livemedcard tests       # лінтер (як у CI)
 LMC_PERSIST_PATH=~/lmc.json uv run uvicorn livemedcard.api:app  # з персистентністю

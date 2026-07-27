@@ -29,7 +29,11 @@ def to_bundle(card: LiveMedCard) -> dict:
         "resourceType": "Bundle",
         "type": "collection",
         "entry": entries,
-        "_meta": {"documents": snap["documents"], "audit": snap["audit"]},
+        "_meta": {
+            "documents": snap["documents"],
+            "document_dates": snap["document_dates"],
+            "audit": snap["audit"],
+        },
     }
 
 
@@ -56,6 +60,7 @@ def from_bundle(data: dict, extractor: Optional[Extractor] = None) -> LiveMedCar
         "patient": patient,
         **buckets,
         "documents": meta.get("documents", []),
+        "document_dates": meta.get("document_dates", {}),
         "audit": meta.get("audit", []),
     }
     return LiveMedCard.from_snapshot(snapshot, extractor)

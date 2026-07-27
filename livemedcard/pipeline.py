@@ -28,9 +28,10 @@ from .fhir import (
     Observation,
     Patient,
 )
-from .layers import l1_safety, l2a_trends, l3_router
+from .layers import l1_safety, l2a_temporal, l2a_trends, l3_router
 from .layers.l2b_extractor import Extractor, StubExtractor
 from .stores import FactStore, KnowledgeGraph
+from .temporal import TemporalGraph, build as build_temporal
 
 
 def _assert_provenance(ext: ExtractionResult) -> None:
@@ -72,6 +73,9 @@ class LiveMedCard:
         self._med_ids: set[str] = set()
         self._docref_ids: set[str] = set()
         self._document_ids: set[str] = set()
+        # Дати подання документів — valid-time якір для ресурсів без власної дати
+        # (насамперед `MedicationRequest`, у якого поля дати немає взагалі).
+        self._document_dates: dict[str, datetime] = {}
         self._audit: list[AuditEntry] = []
 
     # ── L2b → сховища ───────────────────────────────────────────────────────
@@ -105,11 +109,30 @@ class LiveMedCard:
             self._doc_refs.append(dref)
             self._docref_ids.add(dref.id)
 
+    # ── темпоральна проєкція ──────────────────────────────────────────────────
+    def temporal(self) -> TemporalGraph:
+        """Темпоральна проєкція поточного стану (сутності в часі, епізоди).
+
+        Рахується на вимогу, а не тримається інкрементально: картка невелика, а
+        похідний стан, який можна забути оновити, — джерело тихих розбіжностей
+        між проєкціями.
+        """
+        return build_temporal(
+            self._observations,
+            self._conditions,
+            self._medications,
+            document_dates=self._document_dates,
+        )
+
     # ── L1 + L2a на поточному стані сховищ ────────────────────────────────────
     def current_signals(self, lang: str = "uk") -> list[Signal]:
         """Детерміновані сигнали над усім накопиченим станом (тексти — UA/EN)."""
-        return l1_safety.run(self._medications, lang) + l2a_trends.run(
-            self.factstore, self.patient.gender, lang
+        return (
+            l1_safety.run(self._medications, lang)
+            + l2a_trends.run(self.factstore, self.patient.gender, lang)
+            + l2a_temporal.run(
+                self.factstore, self.temporal(), self.patient.gender, lang
+            )
         )
 
     def ingest(self, doc: Document, *, extractor: "Extractor | None" = None) -> TraceReport:
@@ -119,6 +142,11 @@ class LiveMedCard:
         картки). Використовується для завантаження фото через хмарний OCR Lab,
         коли текстовий шлях лишається детермінованим `stub`.
         """
+        # Дату реєструємо ДО автопростановки: якщо документ прийшов без неї, то
+        # `received_at` нижче — це момент обробки, а не дата документа. Класти
+        # такий штамп у якорі таймлайну означало б вигадати клінічну дату.
+        if doc.received_at is not None:
+            self._document_dates[doc.id] = doc.received_at
         # Без мітки часу обзервації не потрапляють у факт-стор і зникають з
         # таймлайну (і з перевірок безпеки). Проставляємо час прийому документа.
         if doc.received_at is None:
@@ -175,6 +203,12 @@ class LiveMedCard:
                 d.model_dump(mode="json") for d in self._doc_refs
             ],
             "documents": sorted(self._document_ids),
+            # Дати подання окремо від списку id: без них відновлена картка
+            # втрачає valid-time якір призначень, і темпоральна проєкція
+            # «злипається» в один епізод на момент відновлення.
+            "document_dates": {
+                k: v.isoformat() for k, v in sorted(self._document_dates.items())
+            },
             "audit": [a.model_dump(mode="json") for a in self._audit],
         }
 
@@ -192,6 +226,9 @@ class LiveMedCard:
         for d in data.get("document_references", []):
             card._absorb_docref(DocumentReference(**d))
         card._document_ids.update(data.get("documents", []))
+        # Старі знімки поля не мають — тоді якорем лишається provenance-час.
+        for doc_id, iso in (data.get("document_dates") or {}).items():
+            card._document_dates[doc_id] = datetime.fromisoformat(iso)
         # Валідація журналу при відновленні: биті записи → явна помилка, не сміття.
         card._audit.extend(AuditEntry(**a) for a in data.get("audit", []))
         return card
