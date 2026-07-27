@@ -95,8 +95,8 @@ def test_empty_extraction_low_confidence_escalates():
 
 
 def test_major_signal_escalates_regardless_of_extraction_confidence():
-    major = Signal(layer="L1", kind="interaction", severity="major",
-                   detail="варфарин+аспірин", subjects=["m1", "m2"])
+    major = Signal(layer="L1", kind="interaction", key="interaction:1191|11289",
+                   severity="major", detail="варфарин+аспірин", subjects=["m1", "m2"])
     dec = route([major], extraction_confidence=0.7, doc_kind="prescription")
     assert dec.escalate is True
     assert dec.route_to == "L4_human"

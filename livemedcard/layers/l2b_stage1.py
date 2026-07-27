@@ -19,6 +19,7 @@ from typing import Iterable
 
 from ..config import STAGE1_MODEL
 from ..llm_client import chat_completions
+from ..versioning import fingerprint
 
 STAGE1_KEYS_9: list[str] = [
     "DEMOGRAPHICS",
@@ -189,6 +190,11 @@ def stage1_summary_to_text(summary: dict[str, str], keys: Iterable[str] | None =
         parts.append(f"## {k}")
         parts.append(summary.get(k, "not stated"))
     return "\n".join(parts) + "\n"
+
+
+def prompt_id() -> str:
+    """Відбиток системного промпту Stage 1 — іде в провенанс фактів."""
+    return fingerprint(build_stage1_system_prompt())
 
 
 def summarize(

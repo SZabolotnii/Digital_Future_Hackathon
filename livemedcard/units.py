@@ -12,6 +12,7 @@
 """
 from __future__ import annotations
 
+import re
 from typing import Optional
 
 # Написання однієї й тієї ж одиниці різняться за джерелом (UA-бланк, EN-бланк,
@@ -24,6 +25,24 @@ _ALIASES: dict[str, str] = {
     "mmhg": "mmhg", "мм рт.ст.": "mmhg", "мм рт. ст.": "mmhg",
     "%": "%",
 }
+
+
+# Написання, які реально трапляються в документах — саме їх читає екстрактор
+# після числа. Список ЗАКРИТИЙ навмисно: загальний шаблон «слово після числа»
+# ковтав би «натще», «ммоль» без знаменника і решту тексту, а вигадана одиниця
+# гірша за відсутню — вона проходить перевірку `same_unit` і тихо вмикає
+# порівняння з межами.
+_SPELLINGS = (
+    "µmol/L", "μmol/L", "umol/L", "мкмоль/л",
+    "mmol/L", "ммоль/л",
+    "mg/dL", "мг/дл",
+    "g/L", "г/л",
+    "mmHg", "мм рт.ст.", "мм рт. ст.",
+    "%",
+)
+UNIT_PATTERN = "|".join(
+    re.escape(u) for u in sorted(_SPELLINGS, key=len, reverse=True)
+)
 
 
 def canonical(unit: Optional[str]) -> Optional[str]:

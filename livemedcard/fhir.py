@@ -60,7 +60,14 @@ class Provenance(BaseModel):
     """
 
     source_doc_id: str
-    extracted_by: str = "MedGemma-4B"
+    # Хто саме витягнув — БЕЗ дефолту. Раніше тут стояло "MedGemma-4B" незалежно
+    # від того, що насправді працювало: провенанс, який називає не той агент,
+    # гірший за відсутній, бо виглядає перевіреним. Формат `name@model`.
+    extracted_by: str
+    # Ідентифікатор промпту (короткий хеш його тексту), якщо в ланцюгу була
+    # генеративна модель. Зміна промпту змінює поведінку витягу так само, як
+    # зміна ваг, тож вона має бути видна в аудиті. None — детермінований шлях.
+    prompt_id: Optional[str] = None
     extracted_at: datetime = Field(default_factory=_utcnow)
     confidence: Optional[float] = None
     source_span: Optional[tuple[int, int]] = None

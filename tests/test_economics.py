@@ -53,6 +53,44 @@ def test_expected_cost_escalation_buys_down_risk():
     assert economics.expected_cost(confident, "measurement", escalated=False) < 5.0
 
 
+def test_unaddressed_hazard_is_priced_at_the_document_s_own_harm():
+    """Пропущений показник коштує як показник, а не як рецепт. Раніше другий
+    доданок завжди множився на вартість шкоди від ліків і завищував усі
+    лабораторні рядки втричі."""
+    labs = economics.expected_cost(1.0, "measurement", high_risk_signal=True)
+    meds = economics.expected_cost(1.0, "medication", high_risk_signal=True)
+    assert labs == pytest.approx(0.2 * 500)
+    assert meds == pytest.approx(0.2 * 15000)
+    assert labs < meds
+
+
+def test_high_risk_is_charged_once_per_danger_not_once_per_document():
+    """Контрфактична економія не має рости від самої лише кількості документів.
+
+    Раніше `high_risk` рахувався по всій картці, тож після першого major-сигналу
+    кожен наступний документ платив за ту саму взаємодію ще раз — і заявлена
+    економія лінійно росла від нічого.
+    """
+    from datetime import date, datetime
+
+    from livemedcard.dto import Document
+    from livemedcard.fhir import Patient
+    from livemedcard.pipeline import LiveMedCard
+    from livemedcard.reference import load_sample_docs
+
+    card = LiveMedCard(Patient(id="p", gender="female", birthDate=date(1950, 1, 1)))
+    card.ingest_all([Document(**d) for d in load_sample_docs()])
+    assert any(a["high_risk"] for a in card.audit_log())
+
+    before = sum(1 for a in card.audit_log() if a["high_risk"])
+    # Документ, що не додає жодної НОВОЇ небезпеки: ті самі факти ще раз.
+    card.ingest(Document(id="dup", text="Загальний огляд без відхилень.",
+                         kind="note", received_at=datetime(2024, 11, 1)))
+    after = sum(1 for a in card.audit_log() if a["high_risk"])
+    assert after == before
+    assert card.audit_log()[-1]["high_risk"] is False
+
+
 def test_hazard_is_read_from_what_was_extracted():
     assert economics.hazard_of(has_medications=True, has_observations=True) == "medication"
     assert economics.hazard_of(has_medications=False, has_observations=True) == "measurement"

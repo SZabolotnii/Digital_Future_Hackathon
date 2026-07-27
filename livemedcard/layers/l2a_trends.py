@@ -47,8 +47,9 @@ def detect_trends(store: FactStore, lang: str = "uk") -> list[Signal]:
             continue
         first, last = series[0], series[-1]
         keyword = _keyword_for(loinc, first.keyword, lang)
+        way = "rising" if rising else "falling"
         if lang == "en":
-            direction = "rising" if rising else "falling"
+            direction = way
             detail = (
                 f"{keyword} {direction} {len(series)} measurements in a row: "
                 f"{_fmt(first.value)}→{_fmt(last.value)} "
@@ -65,6 +66,7 @@ def detect_trends(store: FactStore, lang: str = "uk") -> list[Signal]:
             Signal(
                 layer="L2a",
                 kind="trend",
+                key=f"trend:{loinc}:{way}",
                 severity="moderate",
                 detail=detail,
                 subjects=[loinc],
@@ -105,6 +107,7 @@ def detect_range_breaches(
                 Signal(
                     layer="L2a",
                     kind="unit_mismatch",
+                    key=f"unit_mismatch:{loinc}",
                     severity="moderate",
                     detail=detail,
                     subjects=[loinc],
@@ -113,8 +116,10 @@ def detect_range_breaches(
             )
             continue
         if latest.value < ref.low:
+            side = "below"
             direction = "below range" if lang == "en" else "нижче норми"
         elif latest.value > ref.high:
+            side = "above"
             direction = "above range" if lang == "en" else "вище норми"
         else:
             continue
@@ -128,6 +133,7 @@ def detect_range_breaches(
             Signal(
                 layer="L2a",
                 kind="range_breach",
+                key=f"range_breach:{loinc}:{side}",
                 severity="major",
                 detail=detail,
                 subjects=[loinc],

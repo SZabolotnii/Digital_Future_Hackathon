@@ -1,0 +1,774 @@
+{
+  "_note": "Gold-корпус витягу L2b. Очікувані факти — те, що витягла б ЛЮДИНА, а не поточний код: інакше recall дорівнював би 1.0 за побудовою. Складено автором, без незалежного анотатора — це обмеження, а не властивість. Тексти синтетичні, персональних даних немає.",
+  "version": "1.0.0",
+  "documents": [
+    {
+      "id": "g-uk-01",
+      "lang": "uk",
+      "kind": "lab_report",
+      "received_at": "2024-01-10",
+      "text": "Біохімія крові. Креатинін 121 µmol/L. Калій 5.2 mmol/L.",
+      "facts": [
+        {
+          "loinc": "2160-0",
+          "value": 121,
+          "unit": "µmol/L",
+          "date": null
+        },
+        {
+          "loinc": "2823-3",
+          "value": 5.2,
+          "unit": "mmol/L",
+          "date": null
+        }
+      ],
+      "medications": [],
+      "probes": "базовий випадок: значення впритул до терміна"
+    },
+    {
+      "id": "g-uk-02",
+      "lang": "uk",
+      "kind": "lab_report",
+      "received_at": "2024-01-11",
+      "text": "Креатинін становив 118 µmol/L на момент огляду.",
+      "facts": [
+        {
+          "loinc": "2160-0",
+          "value": 118,
+          "unit": "µmol/L",
+          "date": null
+        }
+      ],
+      "medications": [],
+      "probes": "значення НЕ впритул: між терміном і числом стоїть дієслово"
+    },
+    {
+      "id": "g-uk-03",
+      "lang": "uk",
+      "kind": "lab_report",
+      "received_at": "2024-01-12",
+      "text": "Показники:\n  Креатинін .......... 96 µmol/L\n  Калій .............. 4.4 mmol/L",
+      "facts": [
+        {
+          "loinc": "2160-0",
+          "value": 96,
+          "unit": "µmol/L",
+          "date": null
+        },
+        {
+          "loinc": "2823-3",
+          "value": 4.4,
+          "unit": "mmol/L",
+          "date": null
+        }
+      ],
+      "medications": [],
+      "probes": "табличне вирівнювання крапками — типове для бланків"
+    },
+    {
+      "id": "g-uk-04",
+      "lang": "uk",
+      "kind": "lab_report",
+      "received_at": "2024-02-01",
+      "text": "Креатинін 132 µmol/L (2024-01-28), калій 5.4 mmol/L (2024-01-28).",
+      "facts": [
+        {
+          "loinc": "2160-0",
+          "value": 132,
+          "unit": "µmol/L",
+          "date": "2024-01-28"
+        },
+        {
+          "loinc": "2823-3",
+          "value": 5.4,
+          "unit": "mmol/L",
+          "date": "2024-01-28"
+        }
+      ],
+      "medications": [],
+      "probes": "дата на кожен факт, відмінна від дати подання"
+    },
+    {
+      "id": "g-uk-05",
+      "lang": "uk",
+      "kind": "note",
+      "received_at": "2024-02-05",
+      "text": "Аналізи здано, креатинін 128 µmol/L. Дату в бланку не вказано.",
+      "facts": [
+        {
+          "loinc": "2160-0",
+          "value": 128,
+          "unit": "µmol/L",
+          "date": null
+        }
+      ],
+      "medications": [],
+      "probes": "дати немає взагалі — valid time має лишитись датою документа"
+    },
+    {
+      "id": "g-uk-06",
+      "lang": "uk",
+      "kind": "lab_report",
+      "received_at": "2024-02-20",
+      "text": "За період 2024-01-15 - 2024-02-15 середня глюкоза 7.9 mmol/L.",
+      "facts": [
+        {
+          "loinc": "2345-7",
+          "value": 7.9,
+          "unit": "mmol/L",
+          "date": "2024-02-15"
+        }
+      ],
+      "medications": [],
+      "probes": "період замість дати: якорем має стати кінець періоду"
+    },
+    {
+      "id": "g-uk-07",
+      "lang": "uk",
+      "kind": "lab_report",
+      "received_at": "2024-03-01",
+      "text": "Глюкоза натще 122 mg/dL.",
+      "facts": [
+        {
+          "loinc": "2345-7",
+          "value": 122,
+          "unit": "mg/dL",
+          "date": null
+        }
+      ],
+      "medications": [],
+      "probes": "одиниця не збігається з довідником — має дати unit_mismatch, не тихе порівняння"
+    },
+    {
+      "id": "g-uk-08",
+      "lang": "uk",
+      "kind": "lab_report",
+      "received_at": "2024-03-02",
+      "text": "Калій 5.1, креатинін 140.",
+      "facts": [
+        {
+          "loinc": "2823-3",
+          "value": 5.1,
+          "unit": null,
+          "date": null
+        },
+        {
+          "loinc": "2160-0",
+          "value": 140,
+          "unit": null,
+          "date": null
+        }
+      ],
+      "medications": [],
+      "probes": "одиниць немає зовсім"
+    },
+    {
+      "id": "g-uk-09",
+      "lang": "uk",
+      "kind": "lab_report",
+      "received_at": "2024-03-10",
+      "text": "Гемоглобін 118 g/L, глікований гемоглобін 7.9 %.",
+      "facts": [
+        {
+          "loinc": "718-7",
+          "value": 118,
+          "unit": "g/L",
+          "date": null
+        },
+        {
+          "loinc": "4548-4",
+          "value": 7.9,
+          "unit": "%",
+          "date": null
+        }
+      ],
+      "medications": [],
+      "probes": "довший термін не має злипатися з коротшим (гемоглобін ⊂ глікований гемоглобін)"
+    },
+    {
+      "id": "g-uk-10",
+      "lang": "uk",
+      "kind": "prescription",
+      "received_at": "2024-03-15",
+      "text": "Призначено: метформін 850 мг тричі на добу.",
+      "facts": [],
+      "medications": [
+        {
+          "rxnorm": "6809",
+          "dose_mg_per_day": 2550
+        }
+      ],
+      "probes": "доза × кратність словом («тричі»)"
+    },
+    {
+      "id": "g-uk-11",
+      "lang": "uk",
+      "kind": "prescription",
+      "received_at": "2024-03-16",
+      "text": "Метформін по 1 таблетці 1000 мг двічі на добу.",
+      "facts": [],
+      "medications": [
+        {
+          "rxnorm": "6809",
+          "dose_mg_per_day": 2000
+        }
+      ],
+      "probes": "доза за формою випуску («по 1 таблетці N мг»)"
+    },
+    {
+      "id": "g-uk-12",
+      "lang": "uk",
+      "kind": "prescription",
+      "received_at": "2024-03-17",
+      "text": "Продовжити лізиноприл у попередній дозі.",
+      "facts": [],
+      "medications": [
+        {
+          "rxnorm": "29046",
+          "dose_mg_per_day": null
+        }
+      ],
+      "probes": "препарат без дози — має потрапити в картку, але без дозової перевірки"
+    },
+    {
+      "id": "g-uk-13",
+      "lang": "uk",
+      "kind": "prescription",
+      "received_at": "2024-03-20",
+      "text": "Варфарин 5 мг на добу. Додано аспірин 100 мг на добу.",
+      "facts": [],
+      "medications": [
+        {
+          "rxnorm": "11289",
+          "dose_mg_per_day": 5
+        },
+        {
+          "rxnorm": "1191",
+          "dose_mg_per_day": 100
+        }
+      ],
+      "probes": "пара, що утворює взаємодію — обидва препарати мусять бути витягнуті"
+    },
+    {
+      "id": "g-uk-14",
+      "lang": "uk",
+      "kind": "prescription",
+      "received_at": "2024-03-21",
+      "text": "Метформін 1500 мг двічі на добу.",
+      "facts": [],
+      "medications": [
+        {
+          "rxnorm": "6809",
+          "dose_mg_per_day": 3000
+        }
+      ],
+      "probes": "перевищення добової межі (2550 mg) — сигнал залежить від правильної арифметики"
+    },
+    {
+      "id": "g-uk-15",
+      "lang": "uk",
+      "kind": "lab_report",
+      "received_at": "2024-04-01",
+      "text": "Феритин 18 нг/мл, вітамін D 22 нг/мл.",
+      "facts": [],
+      "medications": [],
+      "probes": "показників немає у словнику — очікуємо порожньо, але це втрата recall, а не успіх"
+    },
+    {
+      "id": "g-uk-16",
+      "lang": "uk",
+      "kind": "note",
+      "received_at": "2024-04-05",
+      "text": "Пацієнтка 69 років, палата 312, телефон доньки 0671234567. Креатинін 126 µmol/L.",
+      "facts": [
+        {
+          "loinc": "2160-0",
+          "value": 126,
+          "unit": "µmol/L",
+          "date": null
+        }
+      ],
+      "medications": [],
+      "probes": "числа-не-показники поруч: вік, палата, телефон"
+    },
+    {
+      "id": "g-uk-17",
+      "lang": "uk",
+      "kind": "note",
+      "received_at": "2024-04-10",
+      "text": "Калій не визначався. Креатинін 119 µmol/L.",
+      "facts": [
+        {
+          "loinc": "2160-0",
+          "value": 119,
+          "unit": "µmol/L",
+          "date": null
+        }
+      ],
+      "medications": [],
+      "probes": "заперечення: «не визначався» не має породжувати факт"
+    },
+    {
+      "id": "g-uk-18",
+      "lang": "uk",
+      "kind": "lab_report",
+      "received_at": "2024-04-15",
+      "text": "Креатинін 133 µmol/L (норма 44-106 µmol/L).",
+      "facts": [
+        {
+          "loinc": "2160-0",
+          "value": 133,
+          "unit": "µmol/L",
+          "date": null
+        }
+      ],
+      "medications": [],
+      "probes": "межі норми в тексті не є вимірюванням"
+    },
+    {
+      "id": "g-uk-19",
+      "lang": "uk",
+      "kind": "discharge_summary",
+      "received_at": "2024-04-20",
+      "text": "Креатинін 137 µmol/L. При виписці креатинін 137 µmol/L без динаміки.",
+      "facts": [
+        {
+          "loinc": "2160-0",
+          "value": 137,
+          "unit": "µmol/L",
+          "date": null
+        }
+      ],
+      "medications": [],
+      "probes": "повторна згадка того самого факту має колапсувати в один"
+    },
+    {
+      "id": "g-uk-20",
+      "lang": "uk",
+      "kind": "discharge_summary",
+      "received_at": "2024-05-01",
+      "text": "Виписний епікриз. Діагноз: фібриляція передсердь, гіпертензія. Лабораторно: креатинін 141 µmol/L, калій 5.3 mmol/L, глюкоза 8.1 mmol/L. Систолічний тиск 158 mmHg. Призначено: варфарин 5 мг на добу, лізиноприл 10 мг на добу.",
+      "facts": [
+        {
+          "loinc": "2160-0",
+          "value": 141,
+          "unit": "µmol/L",
+          "date": null
+        },
+        {
+          "loinc": "2823-3",
+          "value": 5.3,
+          "unit": "mmol/L",
+          "date": null
+        },
+        {
+          "loinc": "2345-7",
+          "value": 8.1,
+          "unit": "mmol/L",
+          "date": null
+        },
+        {
+          "loinc": "8480-6",
+          "value": 158,
+          "unit": "mmHg",
+          "date": null
+        }
+      ],
+      "medications": [
+        {
+          "rxnorm": "11289",
+          "dose_mg_per_day": 5
+        },
+        {
+          "rxnorm": "29046",
+          "dose_mg_per_day": 10
+        }
+      ],
+      "probes": "реалістичний епікриз: багато фактів різних типів в одному документі"
+    },
+    {
+      "id": "g-en-01",
+      "lang": "en",
+      "kind": "lab_report",
+      "received_at": "2024-01-10",
+      "text": "Blood chemistry. Creatinine 121 µmol/L. Potassium 5.2 mmol/L.",
+      "facts": [
+        {
+          "loinc": "2160-0",
+          "value": 121,
+          "unit": "µmol/L",
+          "date": null
+        },
+        {
+          "loinc": "2823-3",
+          "value": 5.2,
+          "unit": "mmol/L",
+          "date": null
+        }
+      ],
+      "medications": [],
+      "probes": "baseline: value adjacent to the term"
+    },
+    {
+      "id": "g-en-02",
+      "lang": "en",
+      "kind": "lab_report",
+      "received_at": "2024-01-11",
+      "text": "Creatinine was 118 µmol/L at the time of review.",
+      "facts": [
+        {
+          "loinc": "2160-0",
+          "value": 118,
+          "unit": "µmol/L",
+          "date": null
+        }
+      ],
+      "medications": [],
+      "probes": "value not adjacent: a verb sits between term and number"
+    },
+    {
+      "id": "g-en-03",
+      "lang": "en",
+      "kind": "lab_report",
+      "received_at": "2024-01-12",
+      "text": "Results:\n  Creatinine .......... 96 µmol/L\n  Potassium ........... 4.4 mmol/L",
+      "facts": [
+        {
+          "loinc": "2160-0",
+          "value": 96,
+          "unit": "µmol/L",
+          "date": null
+        },
+        {
+          "loinc": "2823-3",
+          "value": 4.4,
+          "unit": "mmol/L",
+          "date": null
+        }
+      ],
+      "medications": [],
+      "probes": "dot-leader table layout, typical of lab forms"
+    },
+    {
+      "id": "g-en-04",
+      "lang": "en",
+      "kind": "lab_report",
+      "received_at": "2024-02-01",
+      "text": "Creatinine 132 µmol/L (2024-01-28), potassium 5.4 mmol/L (2024-01-28).",
+      "facts": [
+        {
+          "loinc": "2160-0",
+          "value": 132,
+          "unit": "µmol/L",
+          "date": "2024-01-28"
+        },
+        {
+          "loinc": "2823-3",
+          "value": 5.4,
+          "unit": "mmol/L",
+          "date": "2024-01-28"
+        }
+      ],
+      "medications": [],
+      "probes": "per-fact date differing from the submission date"
+    },
+    {
+      "id": "g-en-05",
+      "lang": "en",
+      "kind": "note",
+      "received_at": "2024-02-05",
+      "text": "Labs done, creatinine 128 µmol/L. The form states no date.",
+      "facts": [
+        {
+          "loinc": "2160-0",
+          "value": 128,
+          "unit": "µmol/L",
+          "date": null
+        }
+      ],
+      "medications": [],
+      "probes": "no date at all — valid time must stay the document date"
+    },
+    {
+      "id": "g-en-06",
+      "lang": "en",
+      "kind": "lab_report",
+      "received_at": "2024-02-20",
+      "text": "Over 2024-01-15 - 2024-02-15 average glucose 7.9 mmol/L.",
+      "facts": [
+        {
+          "loinc": "2345-7",
+          "value": 7.9,
+          "unit": "mmol/L",
+          "date": "2024-02-15"
+        }
+      ],
+      "medications": [],
+      "probes": "period instead of a date: the end should anchor it"
+    },
+    {
+      "id": "g-en-07",
+      "lang": "en",
+      "kind": "lab_report",
+      "received_at": "2024-03-01",
+      "text": "Fasting glucose 122 mg/dL.",
+      "facts": [
+        {
+          "loinc": "2345-7",
+          "value": 122,
+          "unit": "mg/dL",
+          "date": null
+        }
+      ],
+      "medications": [],
+      "probes": "unit differs from the reference — must raise unit_mismatch, not compare silently"
+    },
+    {
+      "id": "g-en-08",
+      "lang": "en",
+      "kind": "lab_report",
+      "received_at": "2024-03-02",
+      "text": "Potassium 5.1, creatinine 140.",
+      "facts": [
+        {
+          "loinc": "2823-3",
+          "value": 5.1,
+          "unit": null,
+          "date": null
+        },
+        {
+          "loinc": "2160-0",
+          "value": 140,
+          "unit": null,
+          "date": null
+        }
+      ],
+      "medications": [],
+      "probes": "no units at all"
+    },
+    {
+      "id": "g-en-09",
+      "lang": "en",
+      "kind": "lab_report",
+      "received_at": "2024-03-10",
+      "text": "Hemoglobin 118 g/L, glycated hemoglobin 7.9 %.",
+      "facts": [
+        {
+          "loinc": "718-7",
+          "value": 118,
+          "unit": "g/L",
+          "date": null
+        },
+        {
+          "loinc": "4548-4",
+          "value": 7.9,
+          "unit": "%",
+          "date": null
+        }
+      ],
+      "medications": [],
+      "probes": "longer term must not collapse into the shorter one"
+    },
+    {
+      "id": "g-en-10",
+      "lang": "en",
+      "kind": "prescription",
+      "received_at": "2024-03-15",
+      "text": "Prescribed: metformin 850 mg three times a day.",
+      "facts": [],
+      "medications": [
+        {
+          "rxnorm": "6809",
+          "dose_mg_per_day": 2550
+        }
+      ],
+      "probes": "dose × frequency in words"
+    },
+    {
+      "id": "g-en-11",
+      "lang": "en",
+      "kind": "prescription",
+      "received_at": "2024-03-16",
+      "text": "Metformin 1 tablet of 1000 mg twice a day.",
+      "facts": [],
+      "medications": [
+        {
+          "rxnorm": "6809",
+          "dose_mg_per_day": 2000
+        }
+      ],
+      "probes": "dose expressed through the dosage form"
+    },
+    {
+      "id": "g-en-12",
+      "lang": "en",
+      "kind": "prescription",
+      "received_at": "2024-03-17",
+      "text": "Continue lisinopril at the previous dose.",
+      "facts": [],
+      "medications": [
+        {
+          "rxnorm": "29046",
+          "dose_mg_per_day": null
+        }
+      ],
+      "probes": "medication without a dose — must enter the card, but without a dose check"
+    },
+    {
+      "id": "g-en-13",
+      "lang": "en",
+      "kind": "prescription",
+      "received_at": "2024-03-20",
+      "text": "Warfarin 5 mg daily. Aspirin 100 mg daily added.",
+      "facts": [],
+      "medications": [
+        {
+          "rxnorm": "11289",
+          "dose_mg_per_day": 5
+        },
+        {
+          "rxnorm": "1191",
+          "dose_mg_per_day": 100
+        }
+      ],
+      "probes": "an interacting pair — both must be extracted or L1 has nothing to compare"
+    },
+    {
+      "id": "g-en-14",
+      "lang": "en",
+      "kind": "prescription",
+      "received_at": "2024-03-21",
+      "text": "Metformin 1500 mg twice a day.",
+      "facts": [],
+      "medications": [
+        {
+          "rxnorm": "6809",
+          "dose_mg_per_day": 3000
+        }
+      ],
+      "probes": "daily limit exceeded — the signal depends on correct arithmetic"
+    },
+    {
+      "id": "g-en-15",
+      "lang": "en",
+      "kind": "lab_report",
+      "received_at": "2024-04-01",
+      "text": "Ferritin 18 ng/mL, vitamin D 22 ng/mL.",
+      "facts": [],
+      "medications": [],
+      "probes": "analytes absent from the vocabulary — empty is expected, but it is lost recall, not success"
+    },
+    {
+      "id": "g-en-16",
+      "lang": "en",
+      "kind": "note",
+      "received_at": "2024-04-05",
+      "text": "Patient aged 69, room 312, daughter's phone 0671234567. Creatinine 126 µmol/L.",
+      "facts": [
+        {
+          "loinc": "2160-0",
+          "value": 126,
+          "unit": "µmol/L",
+          "date": null
+        }
+      ],
+      "medications": [],
+      "probes": "non-measurement numbers nearby: age, room, phone"
+    },
+    {
+      "id": "g-en-17",
+      "lang": "en",
+      "kind": "note",
+      "received_at": "2024-04-10",
+      "text": "Potassium was not measured. Creatinine 119 µmol/L.",
+      "facts": [
+        {
+          "loinc": "2160-0",
+          "value": 119,
+          "unit": "µmol/L",
+          "date": null
+        }
+      ],
+      "medications": [],
+      "probes": "negation: 'not measured' must not produce a fact"
+    },
+    {
+      "id": "g-en-18",
+      "lang": "en",
+      "kind": "lab_report",
+      "received_at": "2024-04-15",
+      "text": "Creatinine 133 µmol/L (reference 44-106 µmol/L).",
+      "facts": [
+        {
+          "loinc": "2160-0",
+          "value": 133,
+          "unit": "µmol/L",
+          "date": null
+        }
+      ],
+      "medications": [],
+      "probes": "a reference range in the text is not a measurement"
+    },
+    {
+      "id": "g-en-19",
+      "lang": "en",
+      "kind": "discharge_summary",
+      "received_at": "2024-04-20",
+      "text": "Creatinine 137 µmol/L. On discharge creatinine 137 µmol/L, unchanged.",
+      "facts": [
+        {
+          "loinc": "2160-0",
+          "value": 137,
+          "unit": "µmol/L",
+          "date": null
+        }
+      ],
+      "medications": [],
+      "probes": "a repeated mention of the same fact must collapse into one"
+    },
+    {
+      "id": "g-en-20",
+      "lang": "en",
+      "kind": "discharge_summary",
+      "received_at": "2024-05-01",
+      "text": "Discharge summary. Diagnosis: atrial fibrillation, hypertension. Labs: creatinine 141 µmol/L, potassium 5.3 mmol/L, glucose 8.1 mmol/L. Systolic bp 158 mmHg. Prescribed: warfarin 5 mg daily, lisinopril 10 mg daily.",
+      "facts": [
+        {
+          "loinc": "2160-0",
+          "value": 141,
+          "unit": "µmol/L",
+          "date": null
+        },
+        {
+          "loinc": "2823-3",
+          "value": 5.3,
+          "unit": "mmol/L",
+          "date": null
+        },
+        {
+          "loinc": "2345-7",
+          "value": 8.1,
+          "unit": "mmol/L",
+          "date": null
+        },
+        {
+          "loinc": "8480-6",
+          "value": 158,
+          "unit": "mmHg",
+          "date": null
+        }
+      ],
+      "medications": [
+        {
+          "rxnorm": "11289",
+          "dose_mg_per_day": 5
+        },
+        {
+          "rxnorm": "29046",
+          "dose_mg_per_day": 10
+        }
+      ],
+      "probes": "realistic discharge summary: many facts of different kinds in one document"
+    }
+  ]
+}

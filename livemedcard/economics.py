@@ -112,7 +112,10 @@ def expected_cost(
     prior, harm = _PARAMS[hazard]
     cost = max(0.0, 1.0 - confidence) * prior * harm
     if high_risk_signal:
-        cost += P_UNADDRESSED * _PARAMS["medication"][1]
+        # Ціною ризикує той самий документ, а не гіпотетичний рецепт: пропущений
+        # показник поза межею коштує як показник. Раніше тут стояла вартість
+        # ліків для будь-якого hazard — це завищувало всі лабораторні рядки.
+        cost += P_UNADDRESSED * harm
     return cost
 
 

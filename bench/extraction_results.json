@@ -1,0 +1,1005 @@
+{
+  "extractor": "stub",
+  "gold_version": "1.0.0",
+  "measured_at": "2026-07-27",
+  "summary": {
+    "facts": {
+      "tp": 37,
+      "fp": 0,
+      "fn": 7,
+      "precision": 1.0,
+      "recall": 0.841,
+      "f1": 0.914,
+      "wilson_recall_low": 0.706
+    },
+    "all": {
+      "tp": 51,
+      "fp": 2,
+      "fn": 9,
+      "precision": 0.962,
+      "recall": 0.85,
+      "f1": 0.903,
+      "wilson_recall_low": 0.739
+    },
+    "lang:uk": {
+      "tp": 25,
+      "fp": 1,
+      "fn": 5,
+      "precision": 0.962,
+      "recall": 0.833,
+      "f1": 0.893,
+      "wilson_recall_low": 0.664
+    },
+    "medications": {
+      "tp": 14,
+      "fp": 2,
+      "fn": 2,
+      "precision": 0.875,
+      "recall": 0.875,
+      "f1": 0.875,
+      "wilson_recall_low": 0.64
+    },
+    "lang:en": {
+      "tp": 26,
+      "fp": 1,
+      "fn": 4,
+      "precision": 0.963,
+      "recall": 0.867,
+      "f1": 0.912,
+      "wilson_recall_low": 0.703
+    }
+  },
+  "documents": [
+    {
+      "id": "g-uk-01",
+      "lang": "uk",
+      "kind": "lab_report",
+      "probes": "базовий випадок: значення впритул до терміна",
+      "facts": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "medications": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null
+      }
+    },
+    {
+      "id": "g-uk-02",
+      "lang": "uk",
+      "kind": "lab_report",
+      "probes": "значення НЕ впритул: між терміном і числом стоїть дієслово",
+      "facts": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 1,
+        "precision": null,
+        "recall": 0.0,
+        "f1": null
+      },
+      "medications": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null
+      }
+    },
+    {
+      "id": "g-uk-03",
+      "lang": "uk",
+      "kind": "lab_report",
+      "probes": "табличне вирівнювання крапками — типове для бланків",
+      "facts": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 2,
+        "precision": null,
+        "recall": 0.0,
+        "f1": null
+      },
+      "medications": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null
+      }
+    },
+    {
+      "id": "g-uk-04",
+      "lang": "uk",
+      "kind": "lab_report",
+      "probes": "дата на кожен факт, відмінна від дати подання",
+      "facts": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "medications": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null
+      }
+    },
+    {
+      "id": "g-uk-05",
+      "lang": "uk",
+      "kind": "note",
+      "probes": "дати немає взагалі — valid time має лишитись датою документа",
+      "facts": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "medications": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null
+      }
+    },
+    {
+      "id": "g-uk-06",
+      "lang": "uk",
+      "kind": "lab_report",
+      "probes": "період замість дати: якорем має стати кінець періоду",
+      "facts": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "medications": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null
+      }
+    },
+    {
+      "id": "g-uk-07",
+      "lang": "uk",
+      "kind": "lab_report",
+      "probes": "одиниця не збігається з довідником — має дати unit_mismatch, не тихе порівняння",
+      "facts": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 1,
+        "precision": null,
+        "recall": 0.0,
+        "f1": null
+      },
+      "medications": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null
+      }
+    },
+    {
+      "id": "g-uk-08",
+      "lang": "uk",
+      "kind": "lab_report",
+      "probes": "одиниць немає зовсім",
+      "facts": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "medications": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null
+      }
+    },
+    {
+      "id": "g-uk-09",
+      "lang": "uk",
+      "kind": "lab_report",
+      "probes": "довший термін не має злипатися з коротшим (гемоглобін ⊂ глікований гемоглобін)",
+      "facts": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "medications": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null
+      }
+    },
+    {
+      "id": "g-uk-10",
+      "lang": "uk",
+      "kind": "prescription",
+      "probes": "доза × кратність словом («тричі»)",
+      "facts": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null
+      },
+      "medications": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    {
+      "id": "g-uk-11",
+      "lang": "uk",
+      "kind": "prescription",
+      "probes": "доза за формою випуску («по 1 таблетці N мг»)",
+      "facts": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null
+      },
+      "medications": {
+        "tp": 0,
+        "fp": 1,
+        "fn": 1,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      }
+    },
+    {
+      "id": "g-uk-12",
+      "lang": "uk",
+      "kind": "prescription",
+      "probes": "препарат без дози — має потрапити в картку, але без дозової перевірки",
+      "facts": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null
+      },
+      "medications": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    {
+      "id": "g-uk-13",
+      "lang": "uk",
+      "kind": "prescription",
+      "probes": "пара, що утворює взаємодію — обидва препарати мусять бути витягнуті",
+      "facts": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null
+      },
+      "medications": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    {
+      "id": "g-uk-14",
+      "lang": "uk",
+      "kind": "prescription",
+      "probes": "перевищення добової межі (2550 mg) — сигнал залежить від правильної арифметики",
+      "facts": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null
+      },
+      "medications": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    {
+      "id": "g-uk-15",
+      "lang": "uk",
+      "kind": "lab_report",
+      "probes": "показників немає у словнику — очікуємо порожньо, але це втрата recall, а не успіх",
+      "facts": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null
+      },
+      "medications": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null
+      }
+    },
+    {
+      "id": "g-uk-16",
+      "lang": "uk",
+      "kind": "note",
+      "probes": "числа-не-показники поруч: вік, палата, телефон",
+      "facts": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "medications": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null
+      }
+    },
+    {
+      "id": "g-uk-17",
+      "lang": "uk",
+      "kind": "note",
+      "probes": "заперечення: «не визначався» не має породжувати факт",
+      "facts": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "medications": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null
+      }
+    },
+    {
+      "id": "g-uk-18",
+      "lang": "uk",
+      "kind": "lab_report",
+      "probes": "межі норми в тексті не є вимірюванням",
+      "facts": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "medications": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null
+      }
+    },
+    {
+      "id": "g-uk-19",
+      "lang": "uk",
+      "kind": "discharge_summary",
+      "probes": "повторна згадка того самого факту має колапсувати в один",
+      "facts": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "medications": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null
+      }
+    },
+    {
+      "id": "g-uk-20",
+      "lang": "uk",
+      "kind": "discharge_summary",
+      "probes": "реалістичний епікриз: багато фактів різних типів в одному документі",
+      "facts": {
+        "tp": 4,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "medications": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    {
+      "id": "g-en-01",
+      "lang": "en",
+      "kind": "lab_report",
+      "probes": "baseline: value adjacent to the term",
+      "facts": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "medications": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null
+      }
+    },
+    {
+      "id": "g-en-02",
+      "lang": "en",
+      "kind": "lab_report",
+      "probes": "value not adjacent: a verb sits between term and number",
+      "facts": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 1,
+        "precision": null,
+        "recall": 0.0,
+        "f1": null
+      },
+      "medications": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null
+      }
+    },
+    {
+      "id": "g-en-03",
+      "lang": "en",
+      "kind": "lab_report",
+      "probes": "dot-leader table layout, typical of lab forms",
+      "facts": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 2,
+        "precision": null,
+        "recall": 0.0,
+        "f1": null
+      },
+      "medications": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null
+      }
+    },
+    {
+      "id": "g-en-04",
+      "lang": "en",
+      "kind": "lab_report",
+      "probes": "per-fact date differing from the submission date",
+      "facts": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "medications": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null
+      }
+    },
+    {
+      "id": "g-en-05",
+      "lang": "en",
+      "kind": "note",
+      "probes": "no date at all — valid time must stay the document date",
+      "facts": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "medications": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null
+      }
+    },
+    {
+      "id": "g-en-06",
+      "lang": "en",
+      "kind": "lab_report",
+      "probes": "period instead of a date: the end should anchor it",
+      "facts": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "medications": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null
+      }
+    },
+    {
+      "id": "g-en-07",
+      "lang": "en",
+      "kind": "lab_report",
+      "probes": "unit differs from the reference — must raise unit_mismatch, not compare silently",
+      "facts": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "medications": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null
+      }
+    },
+    {
+      "id": "g-en-08",
+      "lang": "en",
+      "kind": "lab_report",
+      "probes": "no units at all",
+      "facts": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "medications": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null
+      }
+    },
+    {
+      "id": "g-en-09",
+      "lang": "en",
+      "kind": "lab_report",
+      "probes": "longer term must not collapse into the shorter one",
+      "facts": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "medications": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null
+      }
+    },
+    {
+      "id": "g-en-10",
+      "lang": "en",
+      "kind": "prescription",
+      "probes": "dose × frequency in words",
+      "facts": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null
+      },
+      "medications": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    {
+      "id": "g-en-11",
+      "lang": "en",
+      "kind": "prescription",
+      "probes": "dose expressed through the dosage form",
+      "facts": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null
+      },
+      "medications": {
+        "tp": 0,
+        "fp": 1,
+        "fn": 1,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      }
+    },
+    {
+      "id": "g-en-12",
+      "lang": "en",
+      "kind": "prescription",
+      "probes": "medication without a dose — must enter the card, but without a dose check",
+      "facts": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null
+      },
+      "medications": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    {
+      "id": "g-en-13",
+      "lang": "en",
+      "kind": "prescription",
+      "probes": "an interacting pair — both must be extracted or L1 has nothing to compare",
+      "facts": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null
+      },
+      "medications": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    {
+      "id": "g-en-14",
+      "lang": "en",
+      "kind": "prescription",
+      "probes": "daily limit exceeded — the signal depends on correct arithmetic",
+      "facts": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null
+      },
+      "medications": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    {
+      "id": "g-en-15",
+      "lang": "en",
+      "kind": "lab_report",
+      "probes": "analytes absent from the vocabulary — empty is expected, but it is lost recall, not success",
+      "facts": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null
+      },
+      "medications": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null
+      }
+    },
+    {
+      "id": "g-en-16",
+      "lang": "en",
+      "kind": "note",
+      "probes": "non-measurement numbers nearby: age, room, phone",
+      "facts": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "medications": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null
+      }
+    },
+    {
+      "id": "g-en-17",
+      "lang": "en",
+      "kind": "note",
+      "probes": "negation: 'not measured' must not produce a fact",
+      "facts": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "medications": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null
+      }
+    },
+    {
+      "id": "g-en-18",
+      "lang": "en",
+      "kind": "lab_report",
+      "probes": "a reference range in the text is not a measurement",
+      "facts": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "medications": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null
+      }
+    },
+    {
+      "id": "g-en-19",
+      "lang": "en",
+      "kind": "discharge_summary",
+      "probes": "a repeated mention of the same fact must collapse into one",
+      "facts": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "medications": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null
+      }
+    },
+    {
+      "id": "g-en-20",
+      "lang": "en",
+      "kind": "discharge_summary",
+      "probes": "realistic discharge summary: many facts of different kinds in one document",
+      "facts": {
+        "tp": 4,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "medications": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    }
+  ],
+  "misses": [
+    {
+      "id": "g-uk-02",
+      "scope": "facts",
+      "probes": "значення НЕ впритул: між терміном і числом стоїть дієслово",
+      "missed": [
+        "('2160-0', 118.0, 'µmol/l')"
+      ],
+      "spurious": []
+    },
+    {
+      "id": "g-uk-03",
+      "scope": "facts",
+      "probes": "табличне вирівнювання крапками — типове для бланків",
+      "missed": [
+        "('2160-0', 96.0, 'µmol/l')",
+        "('2823-3', 4.4, 'mmol/l')"
+      ],
+      "spurious": []
+    },
+    {
+      "id": "g-uk-07",
+      "scope": "facts",
+      "probes": "одиниця не збігається з довідником — має дати unit_mismatch, не тихе порівняння",
+      "missed": [
+        "('2345-7', 122.0, 'mg/dl')"
+      ],
+      "spurious": []
+    },
+    {
+      "id": "g-uk-11",
+      "scope": "medications",
+      "probes": "доза за формою випуску («по 1 таблетці N мг»)",
+      "missed": [
+        "('6809', 2000)"
+      ],
+      "spurious": [
+        "('6809', None)"
+      ]
+    },
+    {
+      "id": "g-en-02",
+      "scope": "facts",
+      "probes": "value not adjacent: a verb sits between term and number",
+      "missed": [
+        "('2160-0', 118.0, 'µmol/l')"
+      ],
+      "spurious": []
+    },
+    {
+      "id": "g-en-03",
+      "scope": "facts",
+      "probes": "dot-leader table layout, typical of lab forms",
+      "missed": [
+        "('2160-0', 96.0, 'µmol/l')",
+        "('2823-3', 4.4, 'mmol/l')"
+      ],
+      "spurious": []
+    },
+    {
+      "id": "g-en-11",
+      "scope": "medications",
+      "probes": "dose expressed through the dosage form",
+      "missed": [
+        "('6809', 2000)"
+      ],
+      "spurious": [
+        "('6809', None)"
+      ]
+    }
+  ]
+}

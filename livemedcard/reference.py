@@ -26,11 +26,35 @@ from .refmodels import (
     RefRange,
     Vocab,
 )
+from .versioning import fingerprint
 
 
 @lru_cache(maxsize=None)
 def _raw(name: str) -> Any:
     return json.loads((DATA_DIR / name).read_text(encoding="utf-8"))
+
+
+# Файли, що утворюють НАБІР ПРАВИЛ безпеки: саме вони визначають, чи стане факт
+# сигналом. `vocab.json` сюди не входить — він впливає на витяг (recall), а не на
+# рішення про небезпеку, і змішувати ці дві речі в одній версії було б неточно.
+_RULESET_FILES = ("interactions.json", "dose_limits.json", "reference_ranges.json")
+
+
+@lru_cache(maxsize=None)
+def ruleset_version() -> str:
+    """Версія набору правил безпеки: задекларована + відбиток вмісту.
+
+    Задекларована частина (`"version"` у файлах) прив'язана до `data/CHANGELOG.md`
+    і має обґрунтування — це те, що читає аудитор. Відбиток вмісту закриває
+    очевидну дірку такої схеми: правило можна змінити й забути підняти версію.
+    Разом вони дають властивість, яку перевіряє тест: **вміст правил неможливо
+    змінити так, щоб журнал цього не помітив.**
+    """
+    declared = "/".join(str(_raw(n).get("version", "0")) for n in _RULESET_FILES)
+    body = "".join(
+        json.dumps(_raw(n), sort_keys=True, ensure_ascii=False) for n in _RULESET_FILES
+    )
+    return f"{declared}+{fingerprint(body)}"
 
 
 @lru_cache(maxsize=None)

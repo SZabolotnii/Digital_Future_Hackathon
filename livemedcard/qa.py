@@ -362,8 +362,13 @@ class QA:
         """
         passages = []
         for nid in self.graph.nodes_of_type("Document"):
-            text = self.graph.g.nodes[nid].get("text") or ""
-            passages.extend(chunk(nid.split("/", 1)[-1], text))
+            node = self.graph.g.nodes[nid]
+            doc_id = nid.split("/", 1)[-1]
+            # Обидві іпостасі: оригінал і стиснення Stage 1. Шукати лише в
+            # оригіналі означало б втрачати нормалізацію, яку зробила модель;
+            # лише в стисненні — відповідати цитатами, яких у документі не було.
+            for field in ("text", "generated_text"):
+                passages.extend(chunk(doc_id, node.get(field) or ""))
         if not passages:
             return None
         embed = self._embed if self._embed is not None else _config_embed()

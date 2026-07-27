@@ -9,6 +9,7 @@ def _major_signal(confidence: float = 1.0) -> Signal:
     return Signal(
         layer="L1",
         kind="interaction",
+        key="interaction:1191|11289",
         severity="major",
         detail="test major signal",
         subjects=["MedicationRequest/1"],
@@ -20,6 +21,7 @@ def _moderate_signal(confidence: float = 1.0) -> Signal:
     return Signal(
         layer="L2a",
         kind="trend",
+        key="trend:2160-0:rising",
         severity="moderate",
         detail="test moderate signal",
         subjects=["Observation/1"],

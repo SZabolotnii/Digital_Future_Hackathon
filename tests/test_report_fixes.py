@@ -75,12 +75,25 @@ def test_different_values_in_one_doc_get_distinct_ids():
     assert len({o.id for o in res.observations}) == 2
 
 
-def test_stub_confidence_comes_from_config():
+def test_document_confidence_is_measured_not_configured():
+    """Раніше тут перевірялось, що впевненість береться з конфігу. Тепер вимога
+    сильніша: вона береться з ВИМІРЮВАННЯ на gold-корпусі (нижня межа Вілсона),
+    а константа лишається відкатом на випадок, коли калібрування не проганяли."""
+    from livemedcard.calibration import confidence_for
+
     doc = Document(id="d", text="Креатинін 100 µmol/L.", kind="lab_report",
                    received_at=datetime(2024, 1, 1))
     res = StubExtractor().extract(doc, "p1")
     assert res.observations[0].provenance.confidence == STUB_CONFIDENCE
-    assert res.mean_confidence == STUB_CONFIDENCE
+
+    measured = confidence_for("StubExtractor")
+    assert res.mean_confidence == (
+        measured if measured is not None else STUB_CONFIDENCE
+    )
+    # Виміряне число нижче за призначене: корпус ловить пропуски, яких константа
+    # не знала. Якщо колись стане навпаки — це привід перевірити корпус.
+    if measured is not None:
+        assert measured < STUB_CONFIDENCE
 
 
 # ── кешовані незмінні довідники ────────────────────────────────────────────────
