@@ -10,6 +10,8 @@
 ```
 Документ (фото/текст)
    │
+   ▼  фото → текст (LMC_IMAGE_OCR): vision-LLM `ocr.py` | PP-OCR `ppocr.py` (бокси → рядки)
+   │
    ▼  L2b  — Stage 1 (MedGemma → SGR-summary) → Stage 2 (детермінований deterministic_extract)
              дефолт offline: StubExtractor (Stage 2 напряму по сирому тексту)
 ExtractionResult  (FHIR: Observation / Condition / MedicationRequest + Provenance; + DocumentReference — free-text)
@@ -46,6 +48,7 @@ Q&A (grounded): запит → детермінований ретрив по Fa
 | — | `livemedcard/stores.py` | `FactStore` (KV-T), `KnowledgeGraph` (networkx) | — |
 | — | `livemedcard/reference.py` | Завантаження довідкових БД з `data/*.json` | — |
 | L2b | `livemedcard/layers/l2b_extractor.py` | `Extractor` protocol + `StubExtractor` | `Document` → `ExtractionResult` |
+| Stage 1 | `livemedcard/ocr.py` · `livemedcard/ppocr.py` | Драйвери «зображення → текст» (vision-LLM / PP-OCR) | base64 → `str` |
 | L1 | `livemedcard/layers/l1_safety.py` | Взаємодії ліків, дозові межі | ресурси → `list[Signal]` |
 | L2a | `livemedcard/layers/l2a_trends.py` | Тренди + вихід за референс | `FactStore` → `list[Signal]` |
 | L3 | `livemedcard/layers/l3_router.py` | Роутинг/ескалація | `list[Signal]`, conf → `Decision` |
@@ -74,6 +77,20 @@ Q&A (grounded): запит → детермінований ретрив по Fa
 
   У будь-якому режимі стохастика LLM впливає лише на recall; сигнали безпеки
   L1/L2a лишаються детермінованими на FactStore.
+- **Stage 1 — змінний драйвер** (`LMC_IMAGE_OCR`), і вибір між ними робиться не
+  за якістю транскрипції. Виміряно (`docs/ocr_stage1_benchmark.md`): рушій, що
+  віддає готовий текст, групує лабораторну таблицю по колонках, значення
+  перестає стояти впритул до терміна, і документ дає **нуль** кодованих
+  показників при майже бездоганному тексті. `ppocr.py` віддає бокс на рядок, з
+  якого рядок збирається назад — і ті самі показники доходять до картки. Тому
+  критерій — **чи є геометрія**, а не покриття підрядками. 4B-VLM лишається
+  якорем для рукопису, де програють обидва (2/4 проти 4/4).
+- **Словник шукається по згорнутих омоглифах** (`l2b_extractor._fold`): OCR
+  кирилиці систематично русифікує українську (`Креатинін→Креатинин`), а точний
+  збіг такий показник втрачає разом із його сигналом. Згортання застосовується
+  до **обох** боків порівняння й лише всередині пошуку — згортання самого тексту
+  зводить «Глікований гемоглобін» до «гемоглобін» і перетворює HbA1c 7.6 % на
+  гемоглобін у межах норми, тобто міняє пропущений факт на хибно нормальний.
 - **L3 ескалює до людини** за двома незалежними приводами: детермінований сигнал
   `severity ∈ {major, critical}` (незалежно від впевненості витягу — реальна
   небезпека завжди потребує рішення людини) або впевненість витягу нижча за
@@ -118,7 +135,7 @@ Q&A (grounded): запит → детермінований ретрив по Fa
 ```bash
 uv run python -m livemedcard.demo          # E2E демо в терміналі
 uv run uvicorn livemedcard.api:app         # веб-UI на http://127.0.0.1:8000
-uv run --extra dev pytest                  # тести (258 шт.)
+uv run --extra dev pytest                  # тести (274 шт.)
 uv run --extra dev ruff check livemedcard tests   # лінтер (як у CI)
 ```
 

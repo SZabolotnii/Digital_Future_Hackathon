@@ -26,6 +26,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `retrieval.py` — релевантнісний ретрив по free-text іпостасі (`chunk` → пасажі з offset-ами + `rank`): лексичне ранжування offline (дефолт), опційно семантичний косинус через `llm_client.embeddings` (`LMC_SEMANTIC_RETRIEVAL`), м'який відкат на лексику; живить freetext-Q&A. Ретрив НЕ породжує сигналів (межа детермінізму)
 - `llm_client.py` — спільний OpenAI-сумісний клієнт до локального сервера (LM Studio): `chat_completions(messages)` + `detect_model()` + `embeddings()` (семантичний ретрив); лише stdlib (`urllib`), щоб тести мокали `urllib.request.urlopen`. Спільний канал для OCR, Stage 1 і embeddings
 - `ocr.py` — `OcrService`: OCR медичних зображень (vision-модель типу MedGemma). Делегує HTTP у `llm_client`, лишає лише vision-payload і промпт дослівної транскрипції. Крок image→text перед двоетапним L2b, **жодних висновків про безпеку**
+- `ppocr.py` — альтернативний драйвер Stage 1 (`LMC_IMAGE_OCR=ppocr`): PP-OCR, детекція рядків + розпізнавання, offline, 30 МБ ваг. Цінність не в точності, а в **геометрії**: `_rows_from_boxes` збирає рядок таблиці назад із боксів, тож назва показника і значення повертаються поруч і доходять до Stage 2. Apple Vision на тому самому бланку дає кращий текст і **нуль** кодованих показників, бо групує таблицю по колонках. У PP-OCRv6 **немає кирилиці** — для неї явно береться `eslav_PP-OCRv5_mobile_rec`, і `engine_id()` це називає (мовчазна підміна моделі несумісна з провенансом). Опційна залежність: `uv sync --extra ppocr`
 
 Темпоральний шар (третя проєкція над FHIR-ресурсами; ADR — `docs/temporal-graph.md`):
 - `temporal.py` — `TemporalGraph`: сутності в часі (`TemporalEntity` з `first_valid`/`first_recorded`/`interval`), ребра з інтервалами (`treats`, `co_active`; ребра `precedes` свідомо **немає** — хибна каузальність), епізоди (сегментація за розривом `EPISODE_GAP_DAYS`), метрики топології (мультиморбідність, поліфармація, `anchored_fraction`), темпоральні запити (`as_of`/`since`/`first_appearance` з віссю `valid`|`record`). **Бітемпоральність:** valid time (коли факт істинний) vs record time (коли картка дізналась); `anchored_fraction` — частка фактів на реальній даті, а не на моменті обробки. **Межа детермінізму:** модуль НЕ імпортує `Signal` (закріплено AST-тестом), граф лише описовий. `LiveMedCard.temporal()` будує проєкцію на вимогу; `_document_dates` (valid-time якір призначень) переживає snapshot/Bundle
@@ -57,6 +58,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `calibration.py` — `confidence_for(extractor)` читає `data/extractor_calibration.json`; `mean_confidence` stub-а тепер **виміряна величина**, не константа. Береться **нижня межа Вілсона**, не точковий recall: недооцінка коштує перевірки людиною, переоцінка — пропущеного факту. Без файла — відкат на `UNVERIFIED_CONFIDENCE`
 - **Наслідок, який треба знати:** 0.739 нижче за обидва пороги (0.967/0.80), тож `escalation_rate` = 1.0 — автоматично не проходить нічого. Це не регресія, а зникнення довіри, для якої не було підстав. Деталі та знайдені дефекти — `docs/calibration.md`
 - **Дефекти, які знайшов корпус і які виправлено:** (1) одиниця бралася зі словника, а не з документа — «glucose 122 mg/dL» писалась як 122 mmol/L (major `range_breach` на нормальному значенні), а запобіжник `unit_mismatch` не міг спрацювати **ніколи**; тепер одиниця читається з тексту за закритим списком написань (`units.UNIT_PATTERN`), немає в тексті → `None`. (2) `_FREQ_RE` мав `(тріч)` замість `(трич)` — «тричі на добу» давало добову дозу втричі меншу. Записані й НЕ виправлені прогалини (щоб не підганяти систему під власну мірку): значення не впритул до терміна, табличні крапки-заповнювачі, «по 1 таблетці N мг»
+- **Згортання кириличних омоглифів** (`l2b_extractor._fold`, `tests/test_homoglyph_folding.py`): OCR-розпізнавачі кирилиці систематично русифікують українську (`Креатинін→Креатинин`), а словник шукає точний збіг — показник зникає з картки разом зі своїм сигналом. Згортання застосовується до **обох** боків порівняння й лише всередині пошуку; кожен символ 1:1, тож `source_span` лишається дійсним. Пастка, яку тест тримає: згортання самого тексту ламає більше, ніж лагодить — правильний «Аспірин» стає «Аспірін» (ліки зникають), а «Глікований гемоглобін» падає на longest-match «гемоглобін», і HbA1c 7.6 % стає гемоглобіном 7.6 в межах норми. **Пропущений факт міняється на хибно нормальний.** Латинсько-кириличні омоглифи свідомо НЕ згортаються (словник білінгвальний). Gold-корпус русифікації не містить, тож числа калібрування не змінились
 - `history.py` — часовий ряд метрик (OSI): `POST /metrics/snapshot`, `GET /metrics/history`, env `LMC_METRICS_HISTORY`. Знімки робить **оператор**, не система на кожен `GET /metrics` — інакше ряд показував би активність вкладки, а не дрейф
 - `docs/eu-ai-act.md` — матриця ст. 12–15: вимога → артефакт → метрика → **target/alert/action** пороги, і окремий розділ «чого немає» (IPSR, CE як ECE, незалежна анотація). CI прогонить бенчмарк витягу, а тест звіряє записане калібрування з поточним кодом — стале число валить збірку
 
@@ -72,7 +74,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 uv run python -m livemedcard.demo            # E2E-демо в терміналі
 uv run uvicorn livemedcard.api:app --reload  # веб-UI на http://127.0.0.1:8000 + JSON API
-uv run --extra dev pytest -q                 # тести (258 шт.)
+uv run --extra dev pytest -q                 # тести (274 шт.)
 uv run --extra dev pytest tests/test_pipeline.py -q   # один файл
 uv run --extra dev ruff check livemedcard tests       # лінтер (як у CI)
 LMC_PERSIST_PATH=~/lmc.json uv run uvicorn livemedcard.api:app  # з персистентністю
@@ -100,6 +102,16 @@ Q&A і експорт FHIR. Ендпойнти: `/state?lang=`, `/ingest`, `/ing
 env `LMC_LMSTUDIO_URL` (типово `http://127.0.0.1:1234/v1`) і `LMC_OCR_MODEL`
 (типово `medgemma-1.5-4b-it`). Без сервера ендпойнт віддає `503`. Тести
 (`tests/test_ocr.py`) мокають `urllib`, тож реального сервера не потребують.
+
+**OCR без LLM (PP-OCR):** `LMC_IMAGE_OCR=ppocr` веде `/ingest/image` через
+`livemedcard/ppocr.py` — детекція рядків + розпізнавання, offline, без сервера.
+`uv sync --extra ppocr`; env `LMC_PPOCR_TIER` (`tiny|small|medium`, типово
+`small`) і `LMC_PPOCR_LANG` (типово `uk`). Мова обирає розпізнавач: у PP-OCRv6
+кирилиці немає, тож для `uk/ru/be/bg` береться `eslav_PP-OCRv5_mobile_rec`.
+**Не заміна 4B-VLM:** рукопис 2/4 проти 4/4, зате друковані таблиці доходять до
+фактів, а не лише до тексту (`docs/ocr_stage1_benchmark.md`). Бенчмарк —
+`bench/run_ppocr_bench.py`; тести (`tests/test_ppocr.py`) paddleocr не
+потребують.
 
 **Двоетапний L2b (дві іпостасі даних).** За методом статті автора *LLM StructCore*
 (Schema-Guided Reasoning Condensation): вхідний текст (OCR або введений) дає дві
