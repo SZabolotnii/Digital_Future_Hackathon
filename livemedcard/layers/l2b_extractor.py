@@ -138,6 +138,30 @@ class Extractor(Protocol):
     def extract(self, doc: Document, patient_id: str) -> ExtractionResult: ...
 
 
+# Кириличні омоглифи, які OCR плутає між українською й російською. East-Slavic
+# розпізнавач PP-OCR пише «Креатинин» замість «Креатинін» і «Калий» замість
+# «Калій» — систематично, не випадково (`docs/ocr_stage1_benchmark.md`). Словник
+# шукає exact-match, тож такий показник не отримує LOINC, не заходить у FactStore
+# і зникає разом зі своїм сигналом: 135 µmol/L креатиніну при межі 53–97 просто
+# не існує для шару безпеки.
+#
+# Згортаємо ОБИДВА боки порівняння, а не текст документа. Різниця не косметична:
+# згортання самого тексту перетворює правильний «Аспірин» на «Аспірін», якого в
+# словнику немає (ліки зникають), а «Глікований гемоглобін» — на рядок, що вже не
+# збігається з довгим терміном, тож longest-match падає на «гемоглобін» і HbA1c
+# 7.6 % стає гемоглобіном 7.6 в межах норми. Пропущений факт міняється на хибно
+# нормальний — рівно та підміна, якої система не має робити мовчки.
+#
+# Кожен символ міняється один-в-один, довжина рядка зберігається, тож offset-и
+# `source_span` лишаються дійсними проти ОРИГІНАЛЬНОГО тексту.
+_HOMOGLYPHS = str.maketrans({"и": "і", "й": "і", "ы": "і", "ё": "е", "э": "е"})
+
+
+def _fold(text: str) -> str:
+    """Згортання кириличних омоглифів для порівняння зі словником."""
+    return text.translate(_HOMOGLYPHS)
+
+
 def _find_vocab_terms(
     text: str, vocab_terms: dict[str, _T]
 ) -> list[tuple[str, _T, re.Match[str]]]:
@@ -145,16 +169,18 @@ def _find_vocab_terms(
 
     Довші (багатослівні) терміни перевіряються першими, щоб виграти при
     перекритті зі коротшими. Результат впорядкований за позицією входження
-    в тексті.
+    в тексті. Порівняння — по згорнутих омоглифах (`_fold`), тож русифікована
+    OCR-транскрипція знаходить той самий український термін.
     """
     terms_by_length_desc = sorted(vocab_terms.items(), key=lambda kv: -len(kv[0]))
     claimed_spans: list[tuple[int, int]] = []
     found: list[tuple[int, str, _T, re.Match[str]]] = []
+    haystack = _fold(text)
     for term, info in terms_by_length_desc:
-        pattern = re.compile(rf"\b{re.escape(term)}\b", re.IGNORECASE)
+        pattern = re.compile(rf"\b{re.escape(_fold(term))}\b", re.IGNORECASE)
         # Усі входження терміна, а не лише перше — щоб не губити повторні
         # вимірювання одного показника в межах документа.
-        for match in pattern.finditer(text):
+        for match in pattern.finditer(haystack):
             start, end = match.span()
             if any(start < claimed_end and end > claimed_start for claimed_start, claimed_end in claimed_spans):
                 continue

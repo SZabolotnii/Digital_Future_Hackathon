@@ -76,6 +76,8 @@ from .reference import (
 )
 from .repository import load_card, save_card
 from .ocr import OcrService, OcrError
+from . import ppocr
+from .ppocr import PpOcrError
 
 
 app = FastAPI(title="LiveMedCard", version="0.1.0")
@@ -109,7 +111,7 @@ def _photo_ocr_mode() -> str:
     backend = IMAGE_OCR or EXTRACTOR
     if backend == "ocrlab":
         return "cloud"
-    if backend in ("nuextract", "local", "two_stage", "two_stage_lora"):
+    if backend in ("nuextract", "local", "ppocr", "two_stage", "two_stage_lora"):
         return "local"
     return "none"
 
@@ -247,9 +249,13 @@ def ingest_image(req: ImageIngestRequest, state: _State = Depends(_get_state)):
         elif img_backend == "nuextract":
             text = l2b_nuextract.image_to_markdown(req.image_base64)
             img_extractor = NuExtractExtractor()
+        elif img_backend == "ppocr":
+            # PP-OCR лише транскрибує (детекція рядків + розпізнавання), тож факти
+            # з нього бере дефолтний детермінований екстрактор картки — без LLM.
+            text = ppocr.image_to_text(req.image_base64)
         else:
             text = OcrService.perform_ocr(req.image_base64)
-    except (OcrError, LLMError, OcrLabError) as exc:
+    except (OcrError, LLMError, OcrLabError, PpOcrError) as exc:
         raise HTTPException(
             status_code=503,
             detail=str(exc),

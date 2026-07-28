@@ -1,0 +1,94 @@
+{
+  "tiny-en": {
+    "libreview": {
+      "hit": 9,
+      "total": 9,
+      "sec": 7.7,
+      "miss": [],
+      "hand": "—"
+    },
+    "xerox-01": {
+      "hit": 12,
+      "total": 12,
+      "sec": 4.9,
+      "miss": [],
+      "hand": "—"
+    },
+    "pdf12-01": {
+      "hit": 10,
+      "total": 10,
+      "sec": 4.4,
+      "miss": [],
+      "hand": "—"
+    },
+    "officenotes": {
+      "hit": 13,
+      "total": 14,
+      "sec": 5.1,
+      "miss": [
+        "6.9 s"
+      ],
+      "hand": "2/4"
+    }
+  },
+  "small-en": {
+    "libreview": {
+      "hit": 9,
+      "total": 9,
+      "sec": 12.6,
+      "miss": [],
+      "hand": "—"
+    },
+    "xerox-01": {
+      "hit": 12,
+      "total": 12,
+      "sec": 13.0,
+      "miss": [],
+      "hand": "—"
+    },
+    "pdf12-01": {
+      "hit": 10,
+      "total": 10,
+      "sec": 11.8,
+      "miss": [],
+      "hand": "—"
+    },
+    "officenotes": {
+      "hit": 14,
+      "total": 14,
+      "sec": 13.7,
+      "miss": [],
+      "hand": "2/4"
+    }
+  },
+  "medium-en": {
+    "libreview": {
+      "hit": 9,
+      "total": 9,
+      "sec": 31.9,
+      "miss": [],
+      "hand": "—"
+    },
+    "xerox-01": {
+      "hit": 12,
+      "total": 12,
+      "sec": 43.6,
+      "miss": [],
+      "hand": "—"
+    },
+    "pdf12-01": {
+      "hit": 10,
+      "total": 10,
+      "sec": 38.5,
+      "miss": [],
+      "hand": "—"
+    },
+    "officenotes": {
+      "hit": 14,
+      "total": 14,
+      "sec": 44.2,
+      "miss": [],
+      "hand": "2/4"
+    }
+  }
+}
