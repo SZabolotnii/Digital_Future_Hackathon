@@ -23,3 +23,10 @@ lmc.json
 
 # локальні runtime-артефакти Claude Code
 .claude/scheduled_tasks.lock
+
+# Вхід і вихід бенчмарків Stage 1: реальні медичні документи та їхні
+# транскрипції не покидають пристрій. Зведені числа (`*_results.json`,
+# `gold.json`) — навпаки, у git, бо на них спираються документи.
+bench/*.png
+bench/*.jpg
+bench/out_*.txt

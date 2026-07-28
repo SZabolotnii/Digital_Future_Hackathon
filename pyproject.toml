@@ -22,6 +22,12 @@ dev = [
 cloud = [
     "gradio_client>=1.3",
 ]
+# PP-OCR як драйвер Stage 1 (зображення → текст, offline). Опційний: важкий
+# runtime, а дефолтний шлях картки — текст, не фото.
+ppocr = [
+    "paddleocr>=3.7",
+    "paddlepaddle>=3.3",
+]
 
 [project.scripts]
 livemedcard-demo = "livemedcard.demo:main"

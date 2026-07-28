@@ -1,7 +1,7 @@
 {
   "extractor": "stub",
   "gold_version": "1.0.0",
-  "measured_at": "2026-07-27",
+  "measured_at": "2026-07-28",
   "summary": {
     "facts": {
       "tp": 37,

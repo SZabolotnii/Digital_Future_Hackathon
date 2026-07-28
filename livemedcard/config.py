@@ -99,8 +99,17 @@ EXTRACTOR = os.getenv("LMC_EXTRACTOR", "stub")
 # текстового екстрактора. Дозволяє публічному демо тримати детермінований `stub`
 # для сіду/тексту/безпеки (миттєвий старт, 0 хмари), але для явного завантаження
 # фото — робити РЕАЛЬНИЙ OCR через хмарний Lab. Порожньо → успадковує EXTRACTOR.
-#   "ocrlab" — хмарний ZeroGPU NuExtract3; "nuextract" — локальний; "local" — vision-LLM (OcrService).
+#   "ocrlab" — хмарний ZeroGPU NuExtract3; "nuextract" — локальний;
+#   "local" — vision-LLM (OcrService); "ppocr" — PP-OCR (детекція+розпізнавання, offline).
 IMAGE_OCR = os.getenv("LMC_IMAGE_OCR", "")
+
+# PP-OCR (Stage 1: зображення → текст). Тир моделі — tiny | small | medium.
+# Дефолт `small`: на наборі з 5 документів він дає те саме покриття, що й
+# medium (56/58), учетверо швидше і за 30 МБ ваг замість 132
+# (`docs/ocr_stage1_benchmark.md`). Мова визначає розпізнавач: у PP-OCRv6
+# кирилиці немає, тож для неї підставляється PP-OCRv5 (див. `ppocr.py`).
+PPOCR_TIER = os.getenv("LMC_PPOCR_TIER", "small")
+PPOCR_LANG = os.getenv("LMC_PPOCR_LANG", "uk")
 
 # Хмарний OCR Lab (ZeroGPU) — окремий Gradio Space (Spec.md). Вмикається, коли
 # EXTRACTOR == "ocrlab" АБО IMAGE_OCR == "ocrlab" (лише синтетичні/деідентифіковані документи).
