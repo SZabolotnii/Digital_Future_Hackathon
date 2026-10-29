@@ -259,7 +259,7 @@ livemedcard/
 tests/                    # 274 тести (pytest)
 ARCHITECTURE.md           # Детальна архітектура TRACE
 USER_GUIDE.md             # Посібник користувача
-REVIEW_AND_ROADMAP.md     # Code review + дорожня карта
+hackathon/                # Хакатонний спадок: submit-PDF, review, старий Spec
 ```
 
 ---
@@ -313,7 +313,9 @@ REVIEW_AND_ROADMAP.md     # Code review + дорожня карта
       прочитав рукописну резолюцію лікаря. Apple Vision (1.2 с, нуль ваг) — швидкий шлях
       для друкованих документів, 55/58, губить рукопис; HunyuanOCR 1B — портативний
       варіант, 53/58. Роутер за confidence Vision **не працює** (вона перевпевнена:
-      рукописне фото = 0.983, як чистий друк). Заміри — [`docs/ocr_stage1_benchmark.md`](docs/ocr_stage1_benchmark.md)
+      рукописне фото = 0.983, як чистий друк). Заміри — [`docs/ocr_stage1_benchmark.md`](docs/ocr_stage1_benchmark.md).
+      Еталон рукописної анкети (`packet-1`) прибрано з gold-даних репозиторію 29.10.2026
+      з міркувань приватності, тож історичні числа для `packet` із репо не відтворюються.
 - [ ] Розширення довідкових БД (NLM DDI, повний LOINC-референс) + CGM/AGP-терміни у
       `vocab.json` — без них детермінований Stage 2 не бачить GMI / Time-in-Range
 
@@ -346,10 +348,10 @@ REVIEW_AND_ROADMAP.md     # Code review + дорожня карта
 
 Розроблено в рамках **Digital Future Hackathon** (ніша Aging & Longevity, соло-участь).
 
-- Архітектурний звіт та submit: `LiveMedCard_DigitalFuture_Submit.pdf`
+- Архітектурний звіт та submit: [`hackathon/LiveMedCard_DigitalFuture_Submit.pdf`](hackathon/LiveMedCard_DigitalFuture_Submit.pdf)
 - Детальна архітектура: [`ARCHITECTURE.md`](ARCHITECTURE.md)
 - Посібник користувача: [`USER_GUIDE.md`](USER_GUIDE.md)
-- Code review та дорожня карта: [`REVIEW_AND_ROADMAP.md`](REVIEW_AND_ROADMAP.md)
+- Code review та дорожня карта: [`hackathon/REVIEW_AND_ROADMAP.md`](hackathon/REVIEW_AND_ROADMAP.md)
 
 ---
 
