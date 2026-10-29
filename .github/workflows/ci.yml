@@ -20,3 +20,17 @@ jobs:
       # між ним і поточним кодом має ламати збірку, а не тихо старіти.
       - name: Extraction benchmark (gold corpus)
         run: uv run python bench/run_extraction_bench.py
+
+  # Образ збирається на кожен push (без публікації): зламаний Dockerfile чи
+  # .dockerignore, що відрізав потрібний файл, видно до деплою, а не під час нього.
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build image (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
