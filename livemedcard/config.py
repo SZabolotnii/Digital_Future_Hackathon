@@ -119,7 +119,7 @@ IMAGE_OCR = os.getenv("LMC_IMAGE_OCR", "")
 PPOCR_TIER = os.getenv("LMC_PPOCR_TIER", "small")
 PPOCR_LANG = os.getenv("LMC_PPOCR_LANG", "uk")
 
-# Хмарний OCR Lab (ZeroGPU) — окремий Gradio Space (hackathon/Spec.md). Вмикається, коли
+# Хмарний OCR Lab (ZeroGPU) — окремий Gradio Space (docs/ocr-lab-spec.md). Вмикається, коли
 # EXTRACTOR == "ocrlab" АБО IMAGE_OCR == "ocrlab" (лише синтетичні/деідентифіковані документи).
 OCRLAB_SPACE = os.getenv("LMC_OCRLAB_SPACE", "DocUA/livemedcard-ocr-lab")
 OCRLAB_TOKEN = os.getenv("LMC_OCRLAB_TOKEN") or os.getenv("HF_TOKEN") or None
