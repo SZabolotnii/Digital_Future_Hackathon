@@ -94,6 +94,14 @@ OCR_MODEL = os.getenv("LMC_OCR_MODEL", "medgemma-1.5-4b-it")
 #   "ocrlab"         — той самий NuExtract3, але на хмарному ZeroGPU Space
 #                      (opt-in cloud; лише синтетичні/деідентифіковані документи).
 EXTRACTOR = os.getenv("LMC_EXTRACTOR", "stub")
+# Невідоме значення зупиняє старт (ADR-15): мовчазний перехід на stub у хмарі
+# маскував би помилку конфігурації під «працює, але не тим екстрактором».
+EXTRACTOR_CHOICES = ("stub", "two_stage", "two_stage_lora", "nuextract", "ocrlab")
+if EXTRACTOR not in EXTRACTOR_CHOICES:
+    raise ValueError(
+        f"LMC_EXTRACTOR={EXTRACTOR!r} невідомий; допустимі значення: "
+        + ", ".join(EXTRACTOR_CHOICES)
+    )
 
 # Бекенд OCR саме для завантаження ФОТО (`/ingest/image`), відокремлений від
 # текстового екстрактора. Дозволяє публічному демо тримати детермінований `stub`
@@ -111,7 +119,7 @@ IMAGE_OCR = os.getenv("LMC_IMAGE_OCR", "")
 PPOCR_TIER = os.getenv("LMC_PPOCR_TIER", "small")
 PPOCR_LANG = os.getenv("LMC_PPOCR_LANG", "uk")
 
-# Хмарний OCR Lab (ZeroGPU) — окремий Gradio Space (Spec.md). Вмикається, коли
+# Хмарний OCR Lab (ZeroGPU) — окремий Gradio Space (docs/ocr-lab-spec.md). Вмикається, коли
 # EXTRACTOR == "ocrlab" АБО IMAGE_OCR == "ocrlab" (лише синтетичні/деідентифіковані документи).
 OCRLAB_SPACE = os.getenv("LMC_OCRLAB_SPACE", "DocUA/livemedcard-ocr-lab")
 OCRLAB_TOKEN = os.getenv("LMC_OCRLAB_TOKEN") or os.getenv("HF_TOKEN") or None

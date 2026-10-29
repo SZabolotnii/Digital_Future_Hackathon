@@ -1,7 +1,7 @@
 """L2b через хмарний OCR Lab (ZeroGPU NuExtract3) — opt-in cloud-шлях.
 
 Дзеркалить `l2b_nuextract`, але транспорт — `gradio_client` до окремого Space
-(Spec.md FR-MODEL-004: різниця лише в транспорті, контракт/шаблон/normalizer ті
+(docs/ocr-lab-spec.md FR-MODEL-004: різниця лише в транспорті, контракт/шаблон/normalizer ті
 самі). Local-first лишається дефолтом; цей шлях вмикається ЯВНО
 (`LMC_EXTRACTOR=ocrlab`) і надсилає зображення у хмару HF — тож призначений лише
 для **синтетичних / повністю деідентифікованих** документів.

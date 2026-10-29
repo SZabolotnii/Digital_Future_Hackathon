@@ -492,7 +492,7 @@ class OcrLabExtractor:
     """L2b через хмарний OCR Lab (ZeroGPU NuExtract3) — opt-in cloud-варіант.
 
     Дзеркалить `NuExtractExtractor`, але текст→факти йде через `gradio_client` до
-    окремого Space (Spec.md FR-MODEL-004: різниця лише в транспорті). Для зображень
+    окремого Space (docs/ocr-lab-spec.md FR-MODEL-004: різниця лише в транспорті). Для зображень
     Stage 1 (image→markdown) робить `/ingest/image` через `l2b_ocrlab.image_to_markdown`,
     тож сюди приходить markdown у `doc.text`. Observations будує той самий
     `to_observations` — межа детермінізму збережена.

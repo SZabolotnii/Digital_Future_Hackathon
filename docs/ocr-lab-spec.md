@@ -632,9 +632,9 @@ split не вважається прийнятним результатом.
 
 ## 15. References
 
-- [LiveMedCard README](README.md)
-- [LiveMedCard architecture](ARCHITECTURE.md)
-- [LiveMedCard review and roadmap](REVIEW_AND_ROADMAP.md)
+- [LiveMedCard README](../README.md)
+- [LiveMedCard architecture](../ARCHITECTURE.md)
+- [LiveMedCard review and roadmap](../hackathon/REVIEW_AND_ROADMAP.md)
 - [Hugging Face ZeroGPU documentation](https://huggingface.co/docs/hub/main/en/spaces-zerogpu)
 - [NuExtract3 model card](https://huggingface.co/numind/NuExtract3)
 - [MedGemma 1.5 model card](https://huggingface.co/google/medgemma-1.5-4b-it)

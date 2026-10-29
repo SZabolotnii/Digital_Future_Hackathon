@@ -87,6 +87,21 @@ uv run python -m livemedcard.demo
 
 ## Розгортання
 
+### Два профілі розгортання: local-first і cloud/B2B
+
+Один код і один Docker-образ; профілі відрізняються лише конфігурацією.
+
+- **Local-first (дефолт, працює зараз)** — одна родина на своєму комп'ютері. Екстрактор
+  `stub` або локальні моделі, стан у пам'яті чи JSON-файлі (`LMC_PERSIST_PATH`).
+  Дані не залишають пристрій, жодних хмарних залежностей.
+- **Cloud/B2B (заплановано на Google Cloud, листопад–грудень 2026; ще не реалізовано)**:
+  - публічне демо на Cloud Run: `stub`, без БД, без LLM;
+  - приватний сервіс за IAP для команди й клініки: багато пацієнтів у Cloud SQL,
+    Gemini на Vertex AI як друга спроба витягу після L3.
+
+Клінічна логіка в обох профілях та сама: L1/L2a детерміновані, LLM лише **пропонує** факти,
+а факт приймається, тільки якщо його `source_span` дослівно є в тексті документа.
+
 ### Локально з персистентністю
 
 За замовчуванням стан зберігається лише в пам'яті і зникає при перезапуску. Щоб зберігати між сесіями:
@@ -99,18 +114,13 @@ LMC_PERSIST_PATH=~/livemedcard.json uv run uvicorn livemedcard.api:app
 
 ### Docker
 
-```dockerfile
-FROM python:3.12-slim
-WORKDIR /app
-COPY . .
-RUN pip install uv && uv sync
-EXPOSE 8000
-CMD ["uv", "run", "uvicorn", "livemedcard.api:app", "--host", "0.0.0.0", "--port", "8000"]
-```
+Образ збирається з [`Dockerfile`](Dockerfile): multi-stage, залежності з `uv.lock`
+(`uv sync --frozen --no-dev`), non-root користувач. Слухає `${PORT:-7860}`: 7860 для
+Hugging Face Spaces, `PORT` задає Cloud Run.
 
 ```bash
 docker build -t livemedcard .
-docker run -p 8000:8000 \
+docker run -p 7860:7860 \
   -v "$HOME/.livemedcard:/data" \
   -e LMC_PERSIST_PATH=/data/card.json \
   livemedcard
@@ -186,17 +196,15 @@ VLM ≈ 0.6–1.0 ГБ + KV-кеш/контекст + рантайм/compute-б�
 
 > ⚠️ Поточна реалізація — демонстраційний прототип. Для production необхідно додати:
 > - **Автентифікацію** (Bearer-токен / OAuth2) — у поточній версії будь-хто з доступом до URL бачить картку.
-> - **Ізоляцію пацієнтів** — зараз один процес = одна картка.
+> - **Ізоляцію пацієнтів** — публічне демо вже тримає окрему картку на сесію (cookie `lmc_sid`, LRU на 300 карток у пам'яті), але це ізоляція відвідувачів, а не облік пацієнтів із правами доступу.
 > - **HTTPS** — обов'язково для медичних даних.
->
-> Архітектура `_State + threading.Lock` готова до розширення на `dict[patient_id, _State]` + middleware без зміни логіки ендпойнтів.
 
 ---
 
 ## Тести та якість
 
 ```bash
-# Усі тести (149 шт.)
+# Усі тести (276 шт.)
 uv run --extra dev pytest -q
 
 # Лінтер
@@ -241,10 +249,10 @@ livemedcard/
 └── static/
     └── index.html        # Веб-SPA (без збірки, самодостатня)
 
-tests/                    # 149 тестів (pytest)
+tests/                    # 276 тестів (pytest)
 ARCHITECTURE.md           # Детальна архітектура TRACE
 USER_GUIDE.md             # Посібник користувача
-REVIEW_AND_ROADMAP.md     # Code review + дорожня карта
+hackathon/                # Хакатонний спадок: submit-PDF, review, deep-research
 ```
 
 ---
@@ -255,6 +263,9 @@ REVIEW_AND_ROADMAP.md     # Code review + дорожня карта
 |---|---|---|
 | `GET` | `/` | Веб-інтерфейс (SPA) |
 | `POST` | `/ingest` | Обробити документ `{id, text, kind, received_at?}` |
+| `POST` | `/ingest/image` | Фото документа → OCR (хмарний OCR Lab) → факти |
+| `GET` | `/samples?lang=uk\|en` | Демо-документи як сирі вхідні дані, без завантаження в картку |
+| `GET` | `/samples/image` | Синтетичний бланк лабораторії для фото-шляху (OCR) |
 | `POST` | `/ingest/samples?lang=uk\|en` | Демо-документи мовою `lang` (набори дзеркальні: ті самі значення → ті самі сигнали) |
 | `POST` | `/reset` | Скинути картку (новий пацієнт) |
 | `GET` | `/state?lang=uk\|en` | Агрегований стан картки (для UI): ряди, некодовані факти, подані документи, сигнали |
@@ -266,7 +277,11 @@ REVIEW_AND_ROADMAP.md     # Code review + дорожня карта
 | `GET` | `/export` | FHIR Bundle (JSON) |
 | `POST` | `/import` | Імпорт з FHIR Bundle |
 | `GET` | `/audit` | Журнал рішень L3 |
+| `POST` | `/review` | Дія людини (L4) над сигналом або рішенням щодо документа |
 | `GET` | `/metrics` | Агреговані метрики |
+| `POST` | `/metrics/snapshot` | Зафіксувати поточні метрики в часовому ряді |
+| `GET` | `/metrics/history` | Часовий ряд метрик і що в ньому зрушило |
+| `GET` | `/temporal` | Темпоральна проєкція: сутності в часі, епізоди (сигналів не породжує) |
 | `GET` | `/health` | Health check |
 
 Інтерактивна документація: **http://127.0.0.1:8000/docs** (Swagger UI).
@@ -298,7 +313,9 @@ REVIEW_AND_ROADMAP.md     # Code review + дорожня карта
       прочитав рукописну резолюцію лікаря. Apple Vision (1.2 с, нуль ваг) — швидкий шлях
       для друкованих документів, 55/58, губить рукопис; HunyuanOCR 1B — портативний
       варіант, 53/58. Роутер за confidence Vision **не працює** (вона перевпевнена:
-      рукописне фото = 0.983, як чистий друк). Заміри — [`docs/ocr_stage1_benchmark.md`](docs/ocr_stage1_benchmark.md)
+      рукописне фото = 0.983, як чистий друк). Заміри — [`docs/ocr_stage1_benchmark.md`](docs/ocr_stage1_benchmark.md).
+      Еталон рукописної анкети (`packet-1`) прибрано з gold-даних репозиторію 29.10.2026
+      з міркувань приватності, тож історичні числа для `packet` із репо не відтворюються.
 - [ ] Розширення довідкових БД (NLM DDI, повний LOINC-референс) + CGM/AGP-терміни у
       `vocab.json` — без них детермінований Stage 2 не бачить GMI / Time-in-Range
 
@@ -331,10 +348,10 @@ REVIEW_AND_ROADMAP.md     # Code review + дорожня карта
 
 Розроблено в рамках **Digital Future Hackathon** (ніша Aging & Longevity, соло-участь).
 
-- Архітектурний звіт та submit: `LiveMedCard_DigitalFuture_Submit.pdf`
+- Архітектурний звіт та submit: [`hackathon/LiveMedCard_DigitalFuture_Submit.pdf`](hackathon/LiveMedCard_DigitalFuture_Submit.pdf)
 - Детальна архітектура: [`ARCHITECTURE.md`](ARCHITECTURE.md)
 - Посібник користувача: [`USER_GUIDE.md`](USER_GUIDE.md)
-- Code review та дорожня карта: [`REVIEW_AND_ROADMAP.md`](REVIEW_AND_ROADMAP.md)
+- Code review та дорожня карта: [`hackathon/REVIEW_AND_ROADMAP.md`](hackathon/REVIEW_AND_ROADMAP.md)
 
 ---
 
