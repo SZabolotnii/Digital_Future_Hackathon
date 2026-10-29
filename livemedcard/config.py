@@ -94,6 +94,14 @@ OCR_MODEL = os.getenv("LMC_OCR_MODEL", "medgemma-1.5-4b-it")
 #   "ocrlab"         — той самий NuExtract3, але на хмарному ZeroGPU Space
 #                      (opt-in cloud; лише синтетичні/деідентифіковані документи).
 EXTRACTOR = os.getenv("LMC_EXTRACTOR", "stub")
+# Невідоме значення зупиняє старт (ADR-15): мовчазний перехід на stub у хмарі
+# маскував би помилку конфігурації під «працює, але не тим екстрактором».
+EXTRACTOR_CHOICES = ("stub", "two_stage", "two_stage_lora", "nuextract", "ocrlab")
+if EXTRACTOR not in EXTRACTOR_CHOICES:
+    raise ValueError(
+        f"LMC_EXTRACTOR={EXTRACTOR!r} невідомий; допустимі значення: "
+        + ", ".join(EXTRACTOR_CHOICES)
+    )
 
 # Бекенд OCR саме для завантаження ФОТО (`/ingest/image`), відокремлений від
 # текстового екстрактора. Дозволяє публічному демо тримати детермінований `stub`
