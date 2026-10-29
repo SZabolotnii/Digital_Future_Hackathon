@@ -12,7 +12,7 @@
 змішувати ці дві речі в одній версії було б неточно.
 
 `reference.ruleset_version()` віддає задекларовані версії разом із відбитком
-вмісту (`1.0.0/1.0.0/1.0.0+34d65f77`). Тест `test_ruleset_version_is_declared`
+вмісту (`1.0.0/1.0.0/1.0.0+34d65f77`). Тест `test_ruleset_version_is_declared_and_logged`
 звіряє відбиток із записаним нижче — тож **змінити правило й не помітити цього в
 журналі неможливо**: або запис з'явиться, або тест впаде.
 
@@ -44,4 +44,4 @@
 
 **Перевіряють тести:** `tests/test_l1_safety.py`, `tests/test_l2a_trends.py`,
 `tests/test_architecture.py::test_sex_specific_reference_range`,
-`tests/test_versioning.py::test_ruleset_version_is_declared`.
+`tests/test_versioning.py::test_ruleset_version_is_declared_and_logged`.
