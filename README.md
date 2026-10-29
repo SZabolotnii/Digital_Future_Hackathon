@@ -259,7 +259,7 @@ livemedcard/
 tests/                    # 274 тести (pytest)
 ARCHITECTURE.md           # Детальна архітектура TRACE
 USER_GUIDE.md             # Посібник користувача
-hackathon/                # Хакатонний спадок: submit-PDF, review, старий Spec
+hackathon/                # Хакатонний спадок: submit-PDF, review, deep-research
 ```
 
 ---

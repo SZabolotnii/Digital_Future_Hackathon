@@ -1,6 +1,6 @@
 """KVT4 — схема, normalizer і детермінований keyword→LOINC міст для OCR Lab.
 
-Дві форми KVT4 (за hackathon/Spec.md §4.2):
+Дві форми KVT4 (за docs/ocr-lab-spec.md §4.2):
   1. raw model output  — те, що NuExtract повертає за шаблоном;
   2. normalized fact   — після normalizer: розбите value/unit, доданий
      source_document_id / confidence / unreadable, змапований LOINC.
@@ -8,7 +8,7 @@
 Джерело істини для мосту keyword→LOINC — `livemedcard/layers/l2b_stage2_lora.py`
 (_KEYWORD_LOINC / _CGM_LOINC / _resolve_loinc / _split_value / _parse_timestamp).
 Тут — самодостатня дзеркальна копія, щоб коди на cloud- і local-шляхах збігались
-(hackathon/Spec.md FR-MODEL-004 / FR-KVT-003). Оновлюєш там — синхронізуй тут.
+(docs/ocr-lab-spec.md FR-MODEL-004 / FR-KVT-003). Оновлюєш там — синхронізуй тут.
 """
 from __future__ import annotations
 
@@ -57,7 +57,7 @@ _TRAIL_PAREN_RE = re.compile(r"\s*\([^()]*\)\s*$")
 
 
 def resolve_loinc(keyword: str) -> Optional[tuple[str, str]]:
-    """LOINC для keyword. Консервативно, щоб НЕ мапити хибно (hackathon/Spec.md §10):
+    """LOINC для keyword. Консервативно, щоб НЕ мапити хибно (docs/ocr-lab-spec.md §10):
     точний збіг → зняти кінцеве уточнення в дужках і точний збіг → CGM substring →
     None (free-form, без сигналу). Свідомо НЕ робимо fuzzy substring по лабах —
     «глікований гемоглобін» не має колапсувати у «гемоглобін»."""
@@ -94,7 +94,7 @@ def _norm_cluster(c: object) -> str:
 
 
 def normalize(raw_facts: list[dict], source_document_id: str) -> list[dict]:
-    """raw model output → normalized facts (hackathon/Spec.md §4.2).
+    """raw model output → normalized facts (docs/ocr-lab-spec.md §4.2).
 
     Нічого не вигадуємо: value, що не парситься в число → unreadable=true, value=null,
     але keyword/timestamp зберігаються. LOINC додаємо лише за підтвердженим мостом.

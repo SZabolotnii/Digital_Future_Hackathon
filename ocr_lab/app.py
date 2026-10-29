@@ -1,4 +1,4 @@
-"""LiveMedCard OCR Lab — NuExtract3 на ZeroGPU (hackathon/Spec.md Phase 0/1).
+"""LiveMedCard OCR Lab — NuExtract3 на ZeroGPU (docs/ocr-lab-spec.md Phase 0/1).
 
 Окремий Gradio/ZeroGPU Space (НЕ модифікація головного local-first застосунку).
 Один рушій NuExtract3 робить дві іпостасі документа: image→markdown і
