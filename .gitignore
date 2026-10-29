@@ -30,3 +30,10 @@ lmc.json
 bench/*.png
 bench/*.jpg
 bench/out_*.txt
+
+# Медіа пітчу — у GitHub Release (hackathon-media-2026-07), не в git: роздувають
+# історію, а прибрати їх потім можна лише переписуванням.
+*.mp4
+*.mov
+*.gif
+*.pptx
