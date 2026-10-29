@@ -220,5 +220,5 @@ embedder-часу на ingest.
 ---
 
 *Пов'язані документи: `docs/analiz-multivector-workshop.md` (первинний аналіз),
-`Spec.md` (OCR Lab SRS), `docs/economics.md` (CPR/економіка рішень),
+`hackathon/Spec.md` (OCR Lab SRS), `docs/economics.md` (CPR/економіка рішень),
 `livemedcard/retrieval.py` (поточний seam).*
