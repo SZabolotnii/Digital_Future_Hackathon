@@ -196,7 +196,7 @@ VLM ≈ 0.6–1.0 ГБ + KV-кеш/контекст + рантайм/compute-б�
 ## Тести та якість
 
 ```bash
-# Усі тести (149 шт.)
+# Усі тести (274 шт.)
 uv run --extra dev pytest -q
 
 # Лінтер
@@ -241,7 +241,7 @@ livemedcard/
 └── static/
     └── index.html        # Веб-SPA (без збірки, самодостатня)
 
-tests/                    # 149 тестів (pytest)
+tests/                    # 274 тести (pytest)
 ARCHITECTURE.md           # Детальна архітектура TRACE
 USER_GUIDE.md             # Посібник користувача
 REVIEW_AND_ROADMAP.md     # Code review + дорожня карта
