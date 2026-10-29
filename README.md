@@ -114,18 +114,13 @@ LMC_PERSIST_PATH=~/livemedcard.json uv run uvicorn livemedcard.api:app
 
 ### Docker
 
-```dockerfile
-FROM python:3.12-slim
-WORKDIR /app
-COPY . .
-RUN pip install uv && uv sync
-EXPOSE 8000
-CMD ["uv", "run", "uvicorn", "livemedcard.api:app", "--host", "0.0.0.0", "--port", "8000"]
-```
+Образ збирається з [`Dockerfile`](Dockerfile): multi-stage, залежності з `uv.lock`
+(`uv sync --frozen --no-dev`), non-root користувач. Слухає `${PORT:-7860}`: 7860 для
+Hugging Face Spaces, `PORT` задає Cloud Run.
 
 ```bash
 docker build -t livemedcard .
-docker run -p 8000:8000 \
+docker run -p 7860:7860 \
   -v "$HOME/.livemedcard:/data" \
   -e LMC_PERSIST_PATH=/data/card.json \
   livemedcard
@@ -201,17 +196,15 @@ VLM ≈ 0.6–1.0 ГБ + KV-кеш/контекст + рантайм/compute-б�
 
 > ⚠️ Поточна реалізація — демонстраційний прототип. Для production необхідно додати:
 > - **Автентифікацію** (Bearer-токен / OAuth2) — у поточній версії будь-хто з доступом до URL бачить картку.
-> - **Ізоляцію пацієнтів** — зараз один процес = одна картка.
+> - **Ізоляцію пацієнтів** — публічне демо вже тримає окрему картку на сесію (cookie `lmc_sid`, LRU на 300 карток у пам'яті), але це ізоляція відвідувачів, а не облік пацієнтів із правами доступу.
 > - **HTTPS** — обов'язково для медичних даних.
->
-> Архітектура `_State + threading.Lock` готова до розширення на `dict[patient_id, _State]` + middleware без зміни логіки ендпойнтів.
 
 ---
 
 ## Тести та якість
 
 ```bash
-# Усі тести (274 шт.)
+# Усі тести (276 шт.)
 uv run --extra dev pytest -q
 
 # Лінтер
@@ -256,7 +249,7 @@ livemedcard/
 └── static/
     └── index.html        # Веб-SPA (без збірки, самодостатня)
 
-tests/                    # 274 тести (pytest)
+tests/                    # 276 тестів (pytest)
 ARCHITECTURE.md           # Детальна архітектура TRACE
 USER_GUIDE.md             # Посібник користувача
 hackathon/                # Хакатонний спадок: submit-PDF, review, deep-research
@@ -270,6 +263,9 @@ hackathon/                # Хакатонний спадок: submit-PDF, revie
 |---|---|---|
 | `GET` | `/` | Веб-інтерфейс (SPA) |
 | `POST` | `/ingest` | Обробити документ `{id, text, kind, received_at?}` |
+| `POST` | `/ingest/image` | Фото документа → OCR (хмарний OCR Lab) → факти |
+| `GET` | `/samples?lang=uk\|en` | Демо-документи як сирі вхідні дані, без завантаження в картку |
+| `GET` | `/samples/image` | Синтетичний бланк лабораторії для фото-шляху (OCR) |
 | `POST` | `/ingest/samples?lang=uk\|en` | Демо-документи мовою `lang` (набори дзеркальні: ті самі значення → ті самі сигнали) |
 | `POST` | `/reset` | Скинути картку (новий пацієнт) |
 | `GET` | `/state?lang=uk\|en` | Агрегований стан картки (для UI): ряди, некодовані факти, подані документи, сигнали |
@@ -281,7 +277,11 @@ hackathon/                # Хакатонний спадок: submit-PDF, revie
 | `GET` | `/export` | FHIR Bundle (JSON) |
 | `POST` | `/import` | Імпорт з FHIR Bundle |
 | `GET` | `/audit` | Журнал рішень L3 |
+| `POST` | `/review` | Дія людини (L4) над сигналом або рішенням щодо документа |
 | `GET` | `/metrics` | Агреговані метрики |
+| `POST` | `/metrics/snapshot` | Зафіксувати поточні метрики в часовому ряді |
+| `GET` | `/metrics/history` | Часовий ряд метрик і що в ньому зрушило |
+| `GET` | `/temporal` | Темпоральна проєкція: сутності в часі, епізоди (сигналів не породжує) |
 | `GET` | `/health` | Health check |
 
 Інтерактивна документація: **http://127.0.0.1:8000/docs** (Swagger UI).
