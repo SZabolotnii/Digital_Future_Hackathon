@@ -1,4 +1,5 @@
-# Тримаємо build-context малим: у образ іде лише livemedcard/ (див. Dockerfile COPY).
+# Тримаємо build-context малим: у образ ідуть pyproject.toml, uv.lock, livemedcard/
+# і два файли бенчу (див. Dockerfile COPY). Код застосунку *.md під час роботи не читає.
 *.pdf
 *.md
 tests/
@@ -13,3 +14,22 @@ __pycache__/
 .github/
 GEMINI.md
 *.log
+
+# Хакатонний спадок, медіа, документація, інфраструктура.
+hackathon/
+recording/
+pitch/
+docs/
+demo-docs/
+deep-research/
+ocr_lab/
+Temporal-Knowledge-Graphs/
+infra/
+charts/
+
+# Бенч: лише run_extraction_bench.py і extraction_gold.json потрібні в образі
+# (job `livemedcard-bench`). Входи/виходи Stage 1 — реальні документи, не в образ.
+bench/*.png
+bench/*.jpg
+bench/*.txt
+bench/out_*
