@@ -151,7 +151,7 @@ uv run --extra dev ruff check livemedcard tests   # лінтер (як у CI)
 - Аудит рішень L3 і метрики (`/audit`, `/metrics`); `LiveMedCard` — джерело істини
   FHIR-ресурсів, `FactStore`/`KnowledgeGraph` — похідні проєкції.
 
-## Зміцнення за зовнішнім архітектурним ревʼю (livemedcard.html)
+## Зміцнення за зовнішнім архітектурним ревʼю (hackathon/livemedcard.html)
 
 - **Потокобезпечний стан API**: картка інкапсульована в `_State` під
   `threading.Lock` (sync-ендпойнти FastAPI виконуються в пулі потоків);

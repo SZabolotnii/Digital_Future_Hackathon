@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Матеріали кейсового завдання для **Digital Future Hackathon** (ніша Aging & Longevity, соло-участь): проєкт **LiveMedCard** — «жива медична картка», що структурує медичні документи та відповідає на питання. У репозиторії два пласти: (1) submit-документи (PDF, згенеровані reportlab-скриптами) і (2) **робоча програмна реалізація MVP** — Python-пакет `livemedcard/` за архітектурою TRACE.
 
-Еволюція назви: «Картка+» (рання версія) → **LiveMedCard** (фінальна). Актуальний submit — `LiveMedCard_DigitalFuture_Submit.pdf`, згенерований `build_submit.py`.
+Еволюція назви: «Картка+» (рання версія) → **LiveMedCard** (фінальна). Актуальний submit — `hackathon/LiveMedCard_DigitalFuture_Submit.pdf`, згенерований `hackathon/build_submit.py`.
 
 ## Файли та структура
 
@@ -63,9 +63,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `docs/eu-ai-act.md` — матриця ст. 12–15: вимога → артефакт → метрика → **target/alert/action** пороги, і окремий розділ «чого немає» (IPSR, CE як ECE, незалежна анотація). CI прогонить бенчмарк витягу, а тест звіряє записане калібрування з поточним кодом — стале число валить збірку
 
 Документи та легасі:
-- `build_pdf.py` / `build_onepager.py` / `build_submit.py` — reportlab-генератори PDF (`build_submit.py` — фінальний, з flowable `TraceDiagram`)
-- `case_kartka_plus.md` — вихідний текст кейсу
-- `livemedcard_fhir_skeleton.py` — **початковий** одно-файловий прототип; концепції перенесено в пакет `livemedcard/`, тримати як довідку, не розвивати
+- `hackathon/build_pdf.py` / `hackathon/build_onepager.py` / `hackathon/build_submit.py` — reportlab-генератори PDF (`build_submit.py` — фінальний, з flowable `TraceDiagram`)
+- `hackathon/case_kartka_plus.md` — вихідний текст кейсу
+- `hackathon/livemedcard_fhir_skeleton.py` — **початковий** одно-файловий прототип; концепції перенесено в пакет `livemedcard/`, тримати як довідку, не розвивати
 
 ## Команди
 
@@ -148,7 +148,7 @@ surface-ить **дату на факт** (`показник: значення (
 
 ### ⚠ Генерація PDF: скрипти писалися під Linux-sandbox
 
-Усі `build_*.py` **не запустяться на цьому Mac без правок**:
+Усі `hackathon/build_*.py` **не запустяться на цьому Mac без правок**:
 - шрифти DejaVu очікуються за `/usr/share/fonts/truetype/dejavu/` (на macOS немає; локальна альтернатива — знайти TTF через `fc-list` або скористатися `DejaVuSans.ttf` з пакета reportlab/matplotlib);
 - `build_submit.py` пише вивід у `/sessions/.../mnt/outputs/...` — шлях контейнера; замінити на локальний.
 
@@ -156,7 +156,7 @@ surface-ить **дату на факт** (`показник: значення (
 
 ## Архітектура (спільна для скелета і текстів)
 
-Скелет `livemedcard_fhir_skeleton.py` інстанціює фреймворк **TRACE** (Zabolotnii, arXiv:2605.03838) — шари знизу вгору:
+Скелет `hackathon/livemedcard_fhir_skeleton.py` інстанціює фреймворк **TRACE** (Zabolotnii, arXiv:2605.03838) — шари знизу вгору:
 
 - **L1** — детермінований якір довіри (НЕ навчений): взаємодії ліків / дозові межі по відкритій БД (`check_interactions`, `INTERACTION_DB`)
 - **L2a** — класичний ML: детерміновані тренд-сигнали на факт-сторі (`detect_monotonic_trend`)
