@@ -325,6 +325,7 @@
   .add textarea{font:inherit;min-height:78px;border-radius:10px;border:1px solid var(--line);
     padding:10px;background:var(--panel);color:var(--ink);resize:vertical}
   .add textarea:focus,.add select:focus{outline:none;border-color:var(--accent)}
+  .add-warn{margin:0;font-size:12px;color:var(--moderate)}
   .add select{font:inherit;padding:9px;border-radius:10px;border:1px solid var(--line);
     background:var(--panel);color:var(--ink)}
   .or{margin:2px 0;font:600 11px/1 var(--mono);color:var(--faint);text-transform:uppercase;
@@ -501,6 +502,7 @@
 
   <div class="add" id="add-form">
     <textarea id="add-text" placeholder="Paste document text, e.g.: “Creatinine 121 µmol/L. Prescribed: aspirin 100 mg daily.”"></textarea>
+    <p class="add-warn" id="add-warn">Synthetic or fully de-identified text only — never real personal medical data.</p>
     <div class="or" id="or-photo">— or upload a photo (OCR) —</div>
     <label class="dropzone" id="dropzone">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:5px;color:var(--accent)"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -701,6 +703,7 @@ const I18N = {
     btnSamples:'Load demo card', btnAdd:'+ Add document',
     btnExport:'Export FHIR', btnReset:'Reset',
     addPlaceholder:'Paste document text, e.g.: “Creatinine 121 µmol/L. Prescribed: aspirin 100 mg daily.”',
+    addWarn:'Synthetic or fully de-identified text only — never real personal medical data.',
     orPhoto:'— or upload a photo (OCR) —',
     dropzoneDefault:'Drag a photo here or click to choose',
     optDischarge:'Discharge summary', optLab:'Lab report', optRx:'Prescription', optNote:'Note',
@@ -825,7 +828,7 @@ const I18N = {
         {h:'Asking the card',
          p:['Answers are grounded in the facts on the card and always cite their sources. Ask in English or Ukrainian — the answer comes back in the language of the question. If the card holds no fact to answer with, it says so instead of guessing.']},
         {h:'Photos and privacy',
-         p:['In this public demo, the text you type, the card itself and <b>every safety decision</b> stay on the server and never reach a language model. A <b>photo</b> is different: it is sent to a cloud OCR lab, so the app asks for your consent first and reading takes up to ~90 seconds.',
+         p:['In this public demo, the text you type, the card itself and <b>every safety decision</b> stay on the server and never reach a language model. <b>Photos</b> depend on the deployment: the chip at the top shows where a photo goes. If it goes to a cloud OCR lab, the app asks for your consent first and reading takes up to ~90 seconds; if photo reading is off, there is no photo upload at all.',
             '<b>Upload synthetic or fully de-identified documents only</b> — never real personal medical data. Run the project yourself and everything, including OCR, stays on your machine.']},
       ],
     },
@@ -839,6 +842,7 @@ const I18N = {
     btnSamples:'Завантажити демо-картку', btnAdd:'+ Додати документ',
     btnExport:'Експорт FHIR', btnReset:'Скинути',
     addPlaceholder:'Вставте текст документа, напр.: «Креатинін 121 µmol/L. Призначено: аспірин 100 мг на добу.»',
+    addWarn:'Лише синтетичний або повністю деідентифікований текст — ніколи не справжні персональні медичні дані.',
     orPhoto:'— або завантажте фото (OCR) —',
     dropzoneDefault:'Перетягніть фото сюди або натисніть для вибору',
     optDischarge:'Виписний епікриз', optLab:'Лабораторний звіт', optRx:'Рецепт', optNote:'Нотатка',
@@ -966,7 +970,7 @@ const I18N = {
         {h:'Питання до картки',
          p:['Відповіді заземлені на фактах картки й завжди супроводжуються джерелами. Питайте українською або англійською — відповідь буде мовою питання. Якщо в картці немає факту для відповіді, вона так і скаже, а не вигадає.']},
         {h:'Фото і приватність',
-         p:['У цьому публічному демо введений текст, сама картка й <b>усі рішення безпеки</b> лишаються на сервері й до мовної моделі не потрапляють. З <b>фото</b> інакше: воно вирушає в хмарний OCR-лаб, тож застосунок спершу питає вашої згоди, а зчитування триває до ~90 секунд.',
+         p:['У цьому публічному демо введений текст, сама картка й <b>усі рішення безпеки</b> лишаються на сервері й до мовної моделі не потрапляють. З <b>фото</b> залежить від розгортання: чип угорі показує, куди воно піде. Якщо в хмарний OCR-лаб, застосунок спершу питає вашої згоди, а зчитування триває до ~90 секунд; якщо розпізнавання вимкнено, завантаження фото немає зовсім.',
             '<b>Завантажуйте лише синтетичні або повністю деідентифіковані документи</b> — ніколи не справжні персональні медичні дані. Якщо запустити проєкт у себе, все, включно з OCR, лишається на вашій машині.']},
       ],
     },
@@ -1000,6 +1004,7 @@ function applyLang(lang){
   $('#h-docs').textContent = t.hDocs;
   renderHelp();                      // довідка йде за мовою, навіть якщо відкрита
   $('#add-text').placeholder = t.addPlaceholder;
+  $('#add-warn').textContent = t.addWarn;
   $('#or-photo').textContent = t.orPhoto;
   if(!fileInput.files.length) $('#dropzone-text').textContent = t.dropzoneDefault;
   $('#opt-discharge').textContent = t.optDischarge;
