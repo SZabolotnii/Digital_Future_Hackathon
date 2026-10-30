@@ -2,6 +2,8 @@
 
 > **«Жива медична картка»** — структурує медичні документи, будує таймлайн здоров'я і відповідає на питання з посиланням на джерела.
 
+**Демо:** <https://livemedcard-demo-822896283289.europe-central2.run.app> — лише синтетичні або деідентифіковані документи.
+
 [![CI](https://github.com/SZabolotnii/Digital_Future_Hackathon/actions/workflows/ci.yml/badge.svg)](https://github.com/SZabolotnii/Digital_Future_Hackathon/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/Python-3.11%2B-blue)](https://www.python.org/)
 [![FHIR R4](https://img.shields.io/badge/FHIR-R4-orange)](https://hl7.org/fhir/R4/)
@@ -94,10 +96,12 @@ uv run python -m livemedcard.demo
 - **Local-first (дефолт, працює зараз)** — одна родина на своєму комп'ютері. Екстрактор
   `stub` або локальні моделі, стан у пам'яті чи JSON-файлі (`LMC_PERSIST_PATH`).
   Дані не залишають пристрій, жодних хмарних залежностей.
-- **Cloud/B2B (заплановано на Google Cloud, листопад–грудень 2026; ще не реалізовано)**:
-  - публічне демо на Cloud Run: `stub`, без БД, без LLM;
-  - приватний сервіс за IAP для команди й клініки: багато пацієнтів у Cloud SQL,
-    Gemini на Vertex AI як друга спроба витягу після L3.
+- **Cloud/B2B (Google Cloud, листопад–грудень 2026)**:
+  - публічне демо на Cloud Run — **працює**:
+    <https://livemedcard-demo-822896283289.europe-central2.run.app> (`stub`, без БД,
+    без LLM, розпізнавання фото вимкнено);
+  - приватний сервіс за IAP для команди й клініки (ще не реалізовано): багато пацієнтів
+    у Cloud SQL, Gemini на Vertex AI як друга спроба витягу після L3.
 
 Клінічна логіка в обох профілях та сама: L1/L2a детерміновані, LLM лише **пропонує** факти,
 а факт приймається, тільки якщо його `source_span` дослівно є в тексті документа.
