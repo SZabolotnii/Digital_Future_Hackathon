@@ -12,7 +12,7 @@ short_description: Синтетичний OCR/extraction sandbox · NuExtract3 �
 # LiveMedCard OCR Lab
 
 Окремий **OCR / structured-extraction** сервіс на **ZeroGPU** для проєкту
-[LiveMedCard](https://huggingface.co/spaces/DocUA/LiveMedCard). Один рушій
+[LiveMedCard](https://github.com/SZabolotnii/Digital_Future_Hackathon). Один рушій
 **NuExtract3** (Apache-2.0, VLM) дає дві іпостасі документа: **markdown-транскрипцію**
 та **структуровані KVT4-факти**, які може прийняти LiveMedCard.
 
