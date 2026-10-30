@@ -108,8 +108,16 @@ if EXTRACTOR not in EXTRACTOR_CHOICES:
 # для сіду/тексту/безпеки (миттєвий старт, 0 хмари), але для явного завантаження
 # фото — робити РЕАЛЬНИЙ OCR через хмарний Lab. Порожньо → успадковує EXTRACTOR.
 #   "ocrlab" — хмарний ZeroGPU NuExtract3; "nuextract" — локальний;
-#   "local" — vision-LLM (OcrService); "ppocr" — PP-OCR (детекція+розпізнавання, offline).
+#   "local" — vision-LLM (OcrService); "ppocr" — PP-OCR (детекція+розпізнавання, offline);
+#   "none" — розпізнавання фото вимкнено (хмарне демо без OCR, FR-CNT-005).
 IMAGE_OCR = os.getenv("LMC_IMAGE_OCR", "")
+# Як і з EXTRACTOR, невідоме значення зупиняє старт (ADR-15).
+IMAGE_OCR_CHOICES = ("", "ocrlab", "nuextract", "local", "ppocr", "none")
+if IMAGE_OCR not in IMAGE_OCR_CHOICES:
+    raise ValueError(
+        f"LMC_IMAGE_OCR={IMAGE_OCR!r} невідомий; допустимі значення: "
+        "порожньо, " + ", ".join(IMAGE_OCR_CHOICES[1:])
+    )
 
 # PP-OCR (Stage 1: зображення → текст). Тир моделі — tiny | small | medium.
 # Дефолт `small`: на наборі з 5 документів він дає те саме покриття, що й

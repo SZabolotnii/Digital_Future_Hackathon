@@ -107,13 +107,15 @@ def _photo_ocr_mode() -> str:
 
     Публічне демо тримає детермінований `stub` для тексту, але фото віддає в хмарний
     ZeroGPU Lab — і UI мусить показувати саме це, а не загальне «без хмари».
+    'none' — лише явне `LMC_IMAGE_OCR=none`: тоді SPA ховає завантаження фото.
     """
+    if IMAGE_OCR == "none":
+        return "none"
     backend = IMAGE_OCR or EXTRACTOR
     if backend == "ocrlab":
         return "cloud"
-    if backend in ("nuextract", "local", "ppocr", "two_stage", "two_stage_lora"):
-        return "local"
-    return "none"
+    # Решта читає фото на пристрої; для `stub` це vision-LLM через OcrService.
+    return "local"
 
 
 class _State:
@@ -227,6 +229,12 @@ class ImageIngestRequest(BaseModel):
 
 @app.post("/ingest/image")
 def ingest_image(req: ImageIngestRequest, state: _State = Depends(_get_state)):
+    if IMAGE_OCR == "none":
+        # FR-CNT-005: жодного вихідного запиту (LM Studio, HF), лише чесна відмова.
+        raise HTTPException(
+            status_code=503,
+            detail="Розпізнавання фото в цьому розгортанні вимкнено",
+        )
     if not req.image_base64.strip():
         raise HTTPException(
             status_code=422,
