@@ -136,6 +136,20 @@ def test_api_ingest_image_service_unavailable(client):
         assert r.json()["detail"] == "LM Studio is down"
 
 
+def test_api_ingest_image_disabled(client, monkeypatch):
+    """FR-CNT-005: LMC_IMAGE_OCR=none → 503 без жодного виклику OCR."""
+    monkeypatch.setattr(api_module, "IMAGE_OCR", "none")
+    with patch.object(OcrService, "perform_ocr",
+                      side_effect=AssertionError("OCR не мав викликатись")):
+        r = client.post("/ingest/image", json={
+            "image_base64": "data:image/png;base64,fakeimagecontent",
+            "kind": "lab_report",
+        })
+    assert r.status_code == 503
+    assert "вимкнено" in r.json()["detail"]
+    assert client.get("/state").json()["photo_ocr"] == "none"
+
+
 def test_api_ingest_image_empty_payload(client):
     """Verify that /ingest/image returns 422 on empty image payload."""
     payload = {

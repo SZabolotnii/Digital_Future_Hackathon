@@ -1130,6 +1130,9 @@ function renderTrust(){
   if(mode==='cloud') chips.push(t.trustPhotoCloud);
   else if(mode==='local') chips.push(t.trustPhotoLocal);
   $('#trust').innerHTML = chips.map(x=>`<span>${x}</span>`).join('');
+  // LMC_IMAGE_OCR=none: фото в цьому розгортанні не читається — не пропонуємо його.
+  const off = mode==='none' ? 'none' : '';
+  ['#or-photo','#dropzone','.sphoto'].forEach(s=>{ $(s).style.display=off; });
 }
 
 function render(st){
