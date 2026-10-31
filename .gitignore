@@ -37,3 +37,10 @@ bench/out_*.txt
 *.mov
 *.gif
 *.pptx
+
+# Terraform: стан живе в GCS, локально лише кеш провайдерів.
+# .terraform.lock.hcl комітимо — він фіксує версії провайдерів.
+infra/terraform/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
