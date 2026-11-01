@@ -1,0 +1,85 @@
+# CD для Cloud Run (FR-CICD-002). Запускає trigger `lmc-deploy`; його викликає
+# GitHub Actions після зелених тестів (ADR-06), тож деплой не випереджає тести.
+# Трафік переходить на нову ревізію лише після smoke на її тегованому URL:
+# якщо smoke падає, демо лишається на попередній ревізії, а збірка червона.
+
+substitutions:
+  _REGION: europe-central2
+  _SERVICE: livemedcard-demo
+  _IMAGE: europe-central2-docker.pkg.dev/${PROJECT_ID}/livemedcard/livemedcard
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  dynamicSubstitutions: true
+
+steps:
+  # 1. Образ за git SHA. Теги в репозиторії незмінні, тож повторний запуск
+  #    того самого коміту не перезбирає образ, а бере вже опублікований.
+  - id: image-exists
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        if gcloud artifacts docker images describe "${_IMAGE}:${SHORT_SHA}" >/dev/null 2>&1; then
+          touch /workspace/image-exists
+        fi
+
+  - id: build-push
+    name: gcr.io/cloud-builders/docker
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -e
+        if [ -f /workspace/image-exists ]; then
+          echo "Image ${_IMAGE}:${SHORT_SHA} already exists, skipping build"
+          exit 0
+        fi
+        docker build -t "${_IMAGE}:${SHORT_SHA}" .
+        docker push "${_IMAGE}:${SHORT_SHA}"
+
+  # 2. Міграції схеми (livemedcard-migrate) з'являться на тижні 3.
+
+  # 3. Нова ревізія без трафіку, під тегом.
+  - id: deploy-no-traffic
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_SERVICE}
+      - --image=${_IMAGE}:${SHORT_SHA}
+      - --region=${_REGION}
+      - --no-traffic
+      - --tag=sha-${SHORT_SHA}
+
+  # 4. Smoke на URL тегу.
+  - id: smoke
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        url=$$(gcloud run services describe "${_SERVICE}" --region="${_REGION}" --format='value(status.url)')
+        tag_url="https://sha-${SHORT_SHA}---$${url#https://}"
+        echo "Smoke: $${tag_url}"
+        curl -fsS --retry 3 --retry-all-errors "$${tag_url}/health"
+        echo
+        curl -fsS -X POST "$${tag_url}/ingest/samples?lang=uk" -o /workspace/samples.json
+        python3 -c 'import json,sys; r=json.load(open("/workspace/samples.json")); sys.exit(0 if isinstance(r, list) and r else "empty samples response")'
+        echo "samples: ok"
+
+  # 5. Трафік на нову ревізію; тег більше не потрібен.
+  - id: promote
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      - run
+      - services
+      - update-traffic
+      - ${_SERVICE}
+      - --region=${_REGION}
+      - --to-latest
+      - --remove-tags=sha-${SHORT_SHA}

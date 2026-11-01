@@ -19,6 +19,13 @@ resource "google_service_account" "build" {
   display_name = "LiveMedCard build (Cloud Build)"
 }
 
+# GitHub Actions входить сюди через WIF (модуль cicd) і лише запускає Cloud Build.
+resource "google_service_account" "gha" {
+  project      = var.project_id
+  account_id   = "lmc-gha"
+  display_name = "LiveMedCard GitHub Actions (WIF)"
+}
+
 locals {
   project_roles = {
     "run_demo-logWriter"    = { sa = google_service_account.run_demo.member, role = "roles/logging.logWriter" }
@@ -26,6 +33,7 @@ locals {
     "build-runDeveloper"    = { sa = google_service_account.build.member, role = "roles/run.developer" }
     "build-arWriter"        = { sa = google_service_account.build.member, role = "roles/artifactregistry.writer" }
     "build-logWriter"       = { sa = google_service_account.build.member, role = "roles/logging.logWriter" }
+    "gha-buildsEditor"      = { sa = google_service_account.gha.member, role = "roles/cloudbuild.builds.editor" }
   }
 }
 
@@ -44,6 +52,14 @@ resource "google_service_account_iam_member" "build_acts_as_run_demo" {
   member             = google_service_account.build.member
 }
 
+# Trigger збирає від імені lmc-build, тож той, хто його запускає, має право
+# діяти як lmc-build. У Spec §3.4 цього рядка немає (див. додаток А).
+resource "google_service_account_iam_member" "gha_acts_as_build" {
+  service_account_id = google_service_account.build.name
+  role               = "roles/iam.serviceAccountUser"
+  member             = google_service_account.gha.member
+}
+
 # Тимчасово, доки деплой іде через `gcloud run deploy --source`: Cloud Build
 # читає архів джерел із цього bucket. Bucket створив gcloud, тож тут лише доступ.
 resource "google_storage_bucket_iam_member" "build_reads_run_sources" {
@@ -58,4 +74,16 @@ output "run_demo_email" {
 
 output "build_email" {
   value = google_service_account.build.email
+}
+
+output "build_id" {
+  value = google_service_account.build.id
+}
+
+output "gha_id" {
+  value = google_service_account.gha.name
+}
+
+output "gha_email" {
+  value = google_service_account.gha.email
 }
