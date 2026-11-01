@@ -49,14 +49,24 @@ jobs:
       group: deploy-main
       cancel-in-progress: false
     steps:
-      - uses: google-github-actions/auth@v2
+      # Поки йшли тести, у main міг прийти новіший коміт: тоді деплоїть він.
+      - name: Skip if main has moved on
+        id: tip
+        run: |
+          tip=$(git ls-remote "https://github.com/${{ github.repository }}.git" refs/heads/main | cut -f1)
+          if [ "$tip" = "${{ github.sha }}" ]; then echo "current=true" >> "$GITHUB_OUTPUT"
+          else echo "main moved to $tip; skipping deploy of ${{ github.sha }}"; fi
+      - if: steps.tip.outputs.current == 'true'
+        uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: projects/822896283289/locations/global/workloadIdentityPools/github/providers/github-oidc
           service_account: lmc-gha@apps-deploy-512911.iam.gserviceaccount.com
-      - uses: google-github-actions/setup-gcloud@v2
+      - if: steps.tip.outputs.current == 'true'
+        uses: google-github-actions/setup-gcloud@v2
       # trigger лише запускає збірку; чекаємо її статус, щоб невдалий деплой
       # (зокрема smoke) робив workflow червоним.
       - name: Run Cloud Build trigger and wait
+        if: steps.tip.outputs.current == 'true'
         run: |
           build=$(gcloud builds triggers run lmc-deploy \
             --project=apps-deploy-512911 --region=europe-central2 \

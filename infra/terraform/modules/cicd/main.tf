@@ -96,10 +96,11 @@ resource "google_cloudbuild_trigger" "deploy" {
     repo_type  = "GITHUB"
   }
 
+  # Без revision: cloudbuild.yaml береться з того самого SHA, що пройшов тести
+  # (--sha у `gcloud builds triggers run`), а не з поточної вершини main.
   git_file_source {
     path       = "cloudbuild.yaml"
     repository = google_cloudbuildv2_repository.app.id
-    revision   = "refs/heads/main"
     repo_type  = "GITHUB"
   }
 }

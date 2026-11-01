@@ -2,11 +2,14 @@
 # GitHub Actions після зелених тестів (ADR-06), тож деплой не випереджає тести.
 # Трафік переходить на нову ревізію лише після smoke на її тегованому URL:
 # якщо smoke падає, демо лишається на попередній ревізії, а збірка червона.
+# Трафік отримує саме перевірена ревізія і лише тоді, коли її коміт досі
+# вершина main: старіший прогін, що завершився пізніше, не відкотить новіший.
 
 substitutions:
   _REGION: europe-central2
   _SERVICE: livemedcard-demo
   _IMAGE: europe-central2-docker.pkg.dev/${PROJECT_ID}/livemedcard/livemedcard
+  _REPO_URL: https://github.com/SZabolotnii/Digital_Future_Hackathon.git
 
 options:
   logging: CLOUD_LOGGING_ONLY
@@ -71,15 +74,36 @@ steps:
         python3 -c 'import json,sys; r=json.load(open("/workspace/samples.json")); sys.exit(0 if isinstance(r, list) and r else "empty samples response")'
         echo "samples: ok"
 
-  # 5. Трафік на нову ревізію; тег більше не потрібен.
+  # 5. Чи цей коміт досі вершина main. Якщо ні, трафік не перемикаємо:
+  #    новіший коміт розгорне свій прогін.
+  - id: still-main-tip
+    name: gcr.io/cloud-builders/git
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        tip=$$(git ls-remote "${_REPO_URL}" refs/heads/main | cut -f1)
+        if [ "$${tip}" != "${COMMIT_SHA}" ]; then
+          echo "main moved to $${tip}; ${COMMIT_SHA} will not get traffic"
+          touch /workspace/stale
+        fi
+
+  # 6. Трафік на ревізію, яка пройшла smoke (за її тегом, а не --to-latest);
+  #    тег після цього знімається.
   - id: promote
     name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
-    entrypoint: gcloud
+    entrypoint: bash
     args:
-      - run
-      - services
-      - update-traffic
-      - ${_SERVICE}
-      - --region=${_REGION}
-      - --to-latest
-      - --remove-tags=sha-${SHORT_SHA}
+      - -c
+      - |
+        set -euo pipefail
+        if [ -f /workspace/stale ]; then
+          gcloud run services update-traffic "${_SERVICE}" --region="${_REGION}" --remove-tags="sha-${SHORT_SHA}"
+          exit 0
+        fi
+        rev=$$(gcloud run services describe "${_SERVICE}" --region="${_REGION}" --format=json \
+          | python3 -c 'import json,sys; t=json.load(sys.stdin)["status"]["traffic"]; print(next(x["revisionName"] for x in t if x.get("tag") == "sha-${SHORT_SHA}"))')
+        echo "Promote $${rev}"
+        gcloud run services update-traffic "${_SERVICE}" --region="${_REGION}" \
+          --to-revisions="$${rev}=100" --remove-tags="sha-${SHORT_SHA}"

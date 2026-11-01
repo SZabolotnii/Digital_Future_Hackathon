@@ -71,4 +71,6 @@ module "cicd" {
 
   region                   = var.region
   build_service_account_id = module.iam.build_id
+
+  depends_on = [module.project]
 }
