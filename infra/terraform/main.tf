@@ -61,3 +61,16 @@ module "run" {
   region               = var.region
   demo_service_account = module.iam.run_demo_email
 }
+
+module "cicd" {
+  source                 = "./modules/cicd"
+  project_id             = var.project_id
+  github_repository      = var.github_repository
+  github_repository_id   = var.github_repository_id
+  gha_service_account_id = module.iam.gha_id
+
+  region                   = var.region
+  build_service_account_id = module.iam.build_id
+
+  depends_on = [module.project]
+}

@@ -15,3 +15,11 @@ variable "billing_account_name" {
   type        = string
   description = "Назва billing-акаунта; ID у репо не тримаємо."
 }
+
+variable "github_repository" {
+  type = string
+}
+
+variable "github_repository_id" {
+  type = string
+}

@@ -36,7 +36,16 @@ cd infra/terraform && terraform init && terraform plan
 
 Токен живе годину; після цього команду `export` повторюють.
 
-## 4. Пізніше
+## 4. Підключення GitHub до Cloud Build
 
-- Підключення GitHub до Cloud Build (GitHub App ставиться через браузер), тиждень 2.
+OAuth і встановлення GitHub App робляться лише в браузері. Спершу `terraform apply` видає сервісному агенту Cloud Build роль `secretmanager.admin` (модуль `cicd`), бо підключення зберігає токен GitHub у Secret Manager. Потім:
+
+```bash
+gcloud builds connections create github lmc-github --region=europe-central2 --project=$P
+```
+
+Команда друкує посилання. Відкрити його під власником проєкту, дозволити Google Cloud Build доступ до GitHub-акаунта й установити застосунок лише на репозиторій `Digital_Future_Hackathon`. Перевірка: `gcloud builds connections describe lmc-github --region=europe-central2` показує `stage: COMPLETE`. Репозиторій у підключенні і trigger `lmc-deploy` далі створює Terraform.
+
+## 5. Пізніше
+
 - DNS-запис для GKE Ingress, тиждень 8.
