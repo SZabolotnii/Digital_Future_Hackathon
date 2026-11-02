@@ -83,7 +83,7 @@ resource "google_cloud_run_v2_service" "demo" {
       }
       env {
         name  = "LMC_SEED_SAMPLES"
-        value = "1"
+        value = "en"
       }
       env {
         name = "LMC_CONFIG"

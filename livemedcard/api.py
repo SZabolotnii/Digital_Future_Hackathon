@@ -135,7 +135,7 @@ def _seeded_card() -> LiveMedCard:
     """Свіжа картка; для публічного демо — одразу із сід-таймлайном (stub, миттєво)."""
     card = LiveMedCard(_new_patient(), _make_extractor())
     if SEED_SAMPLES:
-        card.ingest_all([Document(**d) for d in load_sample_docs()])
+        card.ingest_all([Document(**d) for d in load_sample_docs(SEED_SAMPLES)])
     return card
 
 
