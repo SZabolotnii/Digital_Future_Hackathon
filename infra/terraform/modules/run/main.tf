@@ -60,9 +60,12 @@ resource "google_cloud_run_v2_service" "demo" {
   }
 
   lifecycle {
-    # build_config записує `gcloud run deploy --source` під час кожного деплою.
+    # Образ, ім'я ревізії і трафік задає деплой (cloudbuild.yaml); build_config
+    # записував `gcloud run deploy --source`.
     ignore_changes = [
       template[0].containers[0].image,
+      template[0].revision,
+      traffic,
       build_config,
       client,
       client_version,
