@@ -23,3 +23,8 @@ variable "github_repository" {
 variable "github_repository_id" {
   type = string
 }
+
+variable "alert_email" {
+  type        = string
+  description = "Адреса для алертів (FR-OBS-003). У публічному репо не тримаємо: задається в local.auto.tfvars."
+}

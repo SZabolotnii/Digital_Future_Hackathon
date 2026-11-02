@@ -74,3 +74,12 @@ module "cicd" {
 
   depends_on = [module.project]
 }
+
+module "observability" {
+  source      = "./modules/observability"
+  project_id  = var.project_id
+  demo_url    = module.run.demo_url
+  alert_email = var.alert_email
+
+  depends_on = [module.project]
+}
