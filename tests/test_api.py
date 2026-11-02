@@ -7,6 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import livemedcard.api as api_module
+from livemedcard.reference import load_sample_docs
 
 
 @pytest.fixture()
@@ -26,6 +27,21 @@ def test_state_initially_empty(client):
     assert body["document_count"] == 0
     assert body["series"] == []
     assert body["signals"] == []
+
+
+@pytest.mark.parametrize(("seed", "lang"), [("en", "en"), ("1", "uk")])
+def test_seed_samples_language(monkeypatch, seed, lang):
+    seeded = []
+
+    def spy(lang="uk"):
+        docs = load_sample_docs(lang)
+        seeded.extend(docs)
+        return docs
+
+    monkeypatch.setattr(api_module, "SEED_SAMPLES", seed)
+    monkeypatch.setattr(api_module, "load_sample_docs", spy)
+    api_module._seeded_card()
+    assert seeded == load_sample_docs(lang)
 
 
 def test_ingest_then_timeline_and_sex_range(client):
