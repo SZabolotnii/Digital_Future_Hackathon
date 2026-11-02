@@ -16,8 +16,8 @@ options:
   dynamicSubstitutions: true
 
 steps:
-  # 1. Образ за git SHA. Теги в репозиторії незмінні, тож повторний запуск
-  #    того самого коміту не перезбирає образ, а бере вже опублікований.
+  # 1. Образ за git SHA. Повторний запуск того самого коміту не перезбирає
+  #    і не перезаписує образ, а бере вже опублікований.
   - id: image-exists
     name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
     entrypoint: bash
