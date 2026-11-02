@@ -44,18 +44,21 @@ steps:
 
   # 2. Міграції схеми (livemedcard-migrate) з'являться на тижні 3.
 
-  # 3. Нова ревізія без трафіку, під тегом.
+  # 3. Нова ревізія без трафіку, під тегом. Тег ставиться окремою командою:
+  #    з `deploy --tag` gcloud записує ім'я ревізії в шаблон сервісу, і тоді
+  #    кожна зміна сервісу через Terraform падає з 409 (ревізія з таким ім'ям
+  #    уже є).
   - id: deploy-no-traffic
     name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
-    entrypoint: gcloud
+    entrypoint: bash
     args:
-      - run
-      - deploy
-      - ${_SERVICE}
-      - --image=${_IMAGE}:${SHORT_SHA}
-      - --region=${_REGION}
-      - --no-traffic
-      - --tag=sha-${SHORT_SHA}
+      - -c
+      - |
+        set -euo pipefail
+        gcloud run deploy "${_SERVICE}" --image="${_IMAGE}:${SHORT_SHA}" --region="${_REGION}" --no-traffic
+        rev=$$(gcloud run services describe "${_SERVICE}" --region="${_REGION}" --format='value(status.latestCreatedRevisionName)')
+        echo "Tag $${rev} as sha-${SHORT_SHA}"
+        gcloud run services update-traffic "${_SERVICE}" --region="${_REGION}" --set-tags="sha-${SHORT_SHA}=$${rev}"
 
   # 4. Smoke на URL тегу.
   - id: smoke

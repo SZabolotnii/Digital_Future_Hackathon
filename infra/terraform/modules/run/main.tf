@@ -10,6 +10,35 @@ variable "demo_service_account" {
   type = string
 }
 
+# Плейсхолдер: застосунок його не читає. Він відпрацьовує шлях секрету в Cloud Run
+# до появи справжніх (пароль БД, тиждень 3). Секрети лише тут, у змінних —
+# посилання (NFR-SEC-003).
+resource "google_secret_manager_secret" "lmc_config" {
+  project   = var.project_id
+  secret_id = "LMC_CONFIG"
+
+  replication {
+    user_managed {
+      replicas {
+        location = var.region
+      }
+    }
+  }
+}
+
+resource "google_secret_manager_secret_version" "lmc_config" {
+  secret      = google_secret_manager_secret.lmc_config.id
+  secret_data = "{}"
+}
+
+# Runtime демо читає лише цей секрет.
+resource "google_secret_manager_secret_iam_member" "run_demo_reads_lmc_config" {
+  project   = var.project_id
+  secret_id = google_secret_manager_secret.lmc_config.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${var.demo_service_account}"
+}
+
 # Публічне демо: stub, лише демо-документи, без БД і LLM.
 resource "google_cloud_run_v2_service" "demo" {
   project  = var.project_id
@@ -56,15 +85,29 @@ resource "google_cloud_run_v2_service" "demo" {
         name  = "LMC_SEED_SAMPLES"
         value = "1"
       }
+      env {
+        name = "LMC_CONFIG"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.lmc_config.secret_id
+            version = "latest"
+          }
+        }
+      }
     }
   }
 
+  # Без доступу до секрету ревізія не стартує.
+  depends_on = [
+    google_secret_manager_secret_iam_member.run_demo_reads_lmc_config,
+    google_secret_manager_secret_version.lmc_config,
+  ]
+
   lifecycle {
-    # Образ, ім'я ревізії і трафік задає деплой (cloudbuild.yaml); build_config
-    # записував `gcloud run deploy --source`.
+    # Образ і трафік задає деплой (cloudbuild.yaml); build_config записував
+    # `gcloud run deploy --source`. Ім'я ревізії деплой у шаблон не пише.
     ignore_changes = [
       template[0].containers[0].image,
-      template[0].revision,
       traffic,
       build_config,
       client,
