@@ -46,6 +46,14 @@ gcloud builds connections create github lmc-github --region=europe-central2 --pr
 
 Команда друкує посилання. Відкрити його під власником проєкту, дозволити Google Cloud Build доступ до GitHub-акаунта й установити застосунок лише на репозиторій `Digital_Future_Hackathon`. Перевірка: `gcloud builds connections describe lmc-github --region=europe-central2` показує `stage: COMPLETE`. Репозиторій у підключенні і trigger `lmc-deploy` далі створює Terraform.
 
-## 5. Пізніше
+## 5. Адреса для алертів
+
+Репо публічне, тож адреса для алертів (FR-OBS-003) живе в локальному файлі, який є в `.gitignore`:
+
+```bash
+echo 'alert_email = "<owner-email>"' > infra/terraform/local.auto.tfvars
+```
+
+## 6. Пізніше
 
 - DNS-запис для GKE Ingress, тиждень 8.

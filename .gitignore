@@ -43,4 +43,6 @@ bench/out_*.txt
 infra/terraform/.terraform/
 *.tfstate
 *.tfstate.*
+# Значення, яких не має бути в публічному репо (адреса для алертів).
+infra/terraform/local.auto.tfvars
 *.tfplan
