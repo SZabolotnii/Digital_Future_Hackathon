@@ -31,10 +31,11 @@ Spec передбачає `gcloud auth application-default login`. Якщо ADC 
 gcloud config configurations create livemedcard   # один раз
 gcloud auth login <owner-account> --configuration=livemedcard
 export GOOGLE_OAUTH_ACCESS_TOKEN=$(CLOUDSDK_ACTIVE_CONFIG_NAME=livemedcard gcloud auth print-access-token)
+echo 'alert_email = "<owner-email>"' > infra/terraform/local.auto.tfvars   # один раз
 cd infra/terraform && terraform init && terraform plan
 ```
 
-Токен живе годину; після цього команду `export` повторюють.
+Токен живе годину; після цього команду `export` повторюють. Адреса для алертів (FR-OBS-003) живе в `local.auto.tfvars`, який є в `.gitignore`, бо репо публічне; без неї `plan` зупиняється й питає `alert_email`.
 
 ## 4. Підключення GitHub до Cloud Build
 
@@ -46,14 +47,6 @@ gcloud builds connections create github lmc-github --region=europe-central2 --pr
 
 Команда друкує посилання. Відкрити його під власником проєкту, дозволити Google Cloud Build доступ до GitHub-акаунта й установити застосунок лише на репозиторій `Digital_Future_Hackathon`. Перевірка: `gcloud builds connections describe lmc-github --region=europe-central2` показує `stage: COMPLETE`. Репозиторій у підключенні і trigger `lmc-deploy` далі створює Terraform.
 
-## 5. Адреса для алертів
-
-Репо публічне, тож адреса для алертів (FR-OBS-003) живе в локальному файлі, який є в `.gitignore`:
-
-```bash
-echo 'alert_email = "<owner-email>"' > infra/terraform/local.auto.tfvars
-```
-
-## 6. Пізніше
+## 5. Пізніше
 
 - DNS-запис для GKE Ingress, тиждень 8.
