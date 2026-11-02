@@ -60,14 +60,6 @@ resource "google_service_account_iam_member" "gha_acts_as_build" {
   member             = google_service_account.gha.member
 }
 
-# Тимчасово, доки деплой іде через `gcloud run deploy --source`: Cloud Build
-# читає архів джерел із цього bucket. Bucket створив gcloud, тож тут лише доступ.
-resource "google_storage_bucket_iam_member" "build_reads_run_sources" {
-  bucket = "run-sources-${var.project_id}-${var.region}"
-  role   = "roles/storage.objectViewer"
-  member = google_service_account.build.member
-}
-
 output "run_demo_email" {
   value = google_service_account.run_demo.email
 }
